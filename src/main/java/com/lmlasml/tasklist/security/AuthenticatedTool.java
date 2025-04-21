@@ -4,14 +4,10 @@ import java.util.Collection;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 
-import com.lmlasml.tasklist.model.User;
-
-public abstract class AuthenticatedTool {
-	
-	public static User getUser() {
-		return (User) SecurityContextHolder.getContext().getAuthentication().getDetails();
-	}
+@Component
+public abstract class AuthenticatedTool {	
 	
 	public static int getUserId() {
 		return (int) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
