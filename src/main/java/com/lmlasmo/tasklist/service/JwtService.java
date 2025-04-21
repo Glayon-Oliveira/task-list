@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 
+import jakarta.annotation.PostConstruct;
+
 @Service
 public class JwtService {
 	
@@ -18,7 +20,12 @@ public class JwtService {
 	@Value("app.jwt.key")
 	private String key;
 	
-	private Algorithm algorithm = Algorithm.HMAC256(key);
+	private Algorithm algorithm;
+	
+	@PostConstruct
+	private void init() {
+		 algorithm = Algorithm.HMAC256(key);
+	}
 	
 	public String gerateToken(int id, String[] roles) {					
 		Date issued = new Date();

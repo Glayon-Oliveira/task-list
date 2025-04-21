@@ -26,20 +26,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter{
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {		
-		String token = getToken(request);
+		String token = getToken(request);	
 		
 		if(token != null) authenticate(token);
 		
 		filterChain.doFilter(request, response);
 	}
 	
-	private void authenticate(String token) {		
-		int id = service.getId(token);
+	private void authenticate(String token) {
+		int id = service.getId(token);		
 		List<SimpleGrantedAuthority> roles = List.of(service.getRoles(token)).stream()
 				.map(SimpleGrantedAuthority::new)
 				.toList();
 		
-		UsernamePasswordAuthenticationToken auth = UsernamePasswordAuthenticationToken.authenticated(id, null, roles);
+		UsernamePasswordAuthenticationToken auth = UsernamePasswordAuthenticationToken.authenticated(id, null, roles);		
 		SecurityContextHolder.getContext().setAuthentication(auth);		
 	}
 	
