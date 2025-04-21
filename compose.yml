@@ -1,0 +1,38 @@
+services:
+ task-list:
+   build:
+    context: .
+   ports:
+    - 8080:8080
+   networks:
+    - task-list-network
+   environment:
+    MYSQL_HOST: task-list-db
+    MYSQL_USERNAME: ${MYSQL_USERNAME}
+    MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    MYSQL_DATABASE: tasklist
+   restart: on-failure
+   depends_on:
+    - task-list-db
+
+ task-list-db:
+  image: mysql:8.0
+  networks:
+   - task-list-network
+  ports:
+   - 3306:3306
+  volumes:  
+   - ./scripts-sql:/docker-entrypoint-initdb.d
+   - task-list-mysql-data:/var/lib/mysql
+  environment:
+   MYSQL_USER: ${MYSQL_USERNAME}
+   MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+   MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+   MYSQL_DATABASE: tasklist
+   MYSQL_CHARSET: utf8mb4
+   MYSQL_COLLATION: utf8mb4_unicode_ci
+
+networks:
+ task-list-network:
+volumes:
+ task-list-mysql-data:

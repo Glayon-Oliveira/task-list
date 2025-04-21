@@ -13,7 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
-import com.lmlasml.tasklist.repository.JwtAuthenticationFilter;
+import com.lmlasml.tasklist.filter.JwtAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity

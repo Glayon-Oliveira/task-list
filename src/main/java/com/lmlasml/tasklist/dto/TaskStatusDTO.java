@@ -16,7 +16,7 @@ public class TaskStatusDTO {
 	
 	@JsonProperty
 	@NotNull
-	@Min(0)
+	@Min(1)
 	private int id;
 	
 	@JsonProperty

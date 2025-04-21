@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -22,11 +22,11 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class MainAdviceController {
 	
-	@ExceptionHandler(UsernameNotFoundException.class)
+	@ExceptionHandler(exception = {AuthenticationException.class})	
 	@ResponseBody
 	@ResponseStatus(code = HttpStatus.UNAUTHORIZED)
-	public ExceptionResponseDTO usernameNotFoundException(UsernameNotFoundException exception, HttpServletRequest request) {
-		return new ExceptionResponseDTO(401, HttpStatus.UNAUTHORIZED.getReasonPhrase(),exception.getMessage(),
+	public ExceptionResponseDTO usernameNotFoundException(AuthenticationException exception, HttpServletRequest request) {
+		return new ExceptionResponseDTO(401, HttpStatus.UNAUTHORIZED.getReasonPhrase(), exception.getMessage(),
 				request.getServletPath(), LocalDateTime.now());
 	}
 	
