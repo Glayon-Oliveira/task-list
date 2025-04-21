@@ -18,8 +18,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class TaskDTO {
 	
-	@JsonProperty(required = false)
-	@Null
+	@JsonProperty(required = false)	
 	private int id;
 	
 	@JsonProperty

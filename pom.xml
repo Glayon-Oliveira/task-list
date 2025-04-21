@@ -101,6 +101,7 @@
 				</configuration>
 			</plugin>
 		</plugins>
+		<finalName>task-list</finalName>
 	</build>
 
 </project>
