@@ -1,13 +1,19 @@
 package com.lmlasmo.tasklist.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
+import com.lmlasmo.tasklist.validation.ValidZoneId;
 
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Null;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -25,13 +31,26 @@ public class TaskDTO {
 	@NotEmpty
 	private String name;
 	
+	@JsonProperty(required = false)
+	private String summary;
+	
+	@JsonProperty	
+	@NotNull
+	@Future
+	private OffsetDateTime deadline;
+	
 	@JsonProperty
-	@NotEmpty
-	private String task;
+	@NotBlank
+	@ValidZoneId
+	private String deadlineZone;
 	
 	@JsonProperty(required = false)
 	@Null
-	private LocalDateTime timestamp;
+	private Instant createdAt;
+	
+	@JsonProperty(required = false)
+	@Null
+	private Instant updatedAt;
 	
 	@JsonProperty(required = false)
 	@Null
@@ -44,9 +63,13 @@ public class TaskDTO {
 	public TaskDTO(Task task) {
 		this.id = task.getId();
 		this.name = task.getName();
-		this.timestamp = task.getTimestamp();
+		this.summary = task.getSummary();		
+		this.createdAt = task.getCreatedAt();
+		this.updatedAt = task.getUpdatedAt();
 		this.status = task.getStatus();
 		this.userId = task.getUser().getId();
+		this.deadline = task.getDeadline().atOffset(ZoneOffset.UTC).withSecond(0).withNano(0);
+		this.deadlineZone = task.getDeadlineZone();
 	}
 
 }

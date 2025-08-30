@@ -11,14 +11,18 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.dto.TaskDTO;
-import com.lmlasmo.tasklist.dto.TaskStatusDTO;
+import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.service.TaskService;
+import com.lmlasmo.tasklist.service.TaskStatusService;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
@@ -26,31 +30,31 @@ import lombok.AllArgsConstructor;
 @RequestMapping("/task")
 public class TaskController {
 
-	private TaskService service;
+	private TaskService taskService;
+	private TaskStatusService taskStatusService;
 	
 	@PostMapping("/")
 	@ResponseBody
 	public TaskDTO create(@RequestBody @Valid TaskDTO create) {
-		create = service.save(create);
+		create = taskService.save(create);
 		return create;
 	}	
 	
-	@PutMapping("/")
-	@ResponseBody
-	public TaskDTO updateStatus(@RequestBody @Valid TaskStatusDTO status) {
-		return service.update(status);
-	}
-	
 	@DeleteMapping("/{id}")
 	public ResponseEntity<Object> delete(@PathVariable int id) {
-		service.delete(id);
+		taskService.delete(id);
 		return ResponseEntity.ok().build();
+	}
+	
+	@PutMapping(params = {"taskId", "status"})	
+	public void updateTaskStatus(@RequestParam @Min(1) int taskId, @RequestParam @NotNull TaskStatusType status) {
+		taskStatusService.updateTaskStatus(taskId, status);
 	}
 	
 	@GetMapping("/")	
 	public Page<TaskDTO> findAllByI(Pageable pageable){
 		int id = (int) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-		return service.findByUser(id, pageable);
+		return taskService.findByUser(id, pageable);
 	}
 	
 }

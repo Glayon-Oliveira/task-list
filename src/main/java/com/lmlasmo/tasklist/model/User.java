@@ -1,9 +1,12 @@
 package com.lmlasmo.tasklist.model;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -49,6 +52,14 @@ public class User implements UserDetails{
 	@Enumerated(EnumType.STRING)
 	@Column
 	private RoleType role = RoleType.COMUM;
+	
+	@CreationTimestamp
+	@Column(name = "created_at")
+	private Instant createdAt;
+	
+	@UpdateTimestamp
+	@Column(name = "updated_at")
+	private Instant updatedAt;
 	
 	@OneToMany(mappedBy = "user")
 	private Set<Task> tasks;

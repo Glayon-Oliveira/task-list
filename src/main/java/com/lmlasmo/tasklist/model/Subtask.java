@@ -1,14 +1,13 @@
 package com.lmlasmo.tasklist.model;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import com.lmlasmo.tasklist.dto.TaskDTO;
+import com.lmlasmo.tasklist.dto.SubtaskDTO;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -19,26 +18,21 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
 @NoArgsConstructor
-@RequiredArgsConstructor
 @Entity
-@Table(name = "tasks")
-public class Task {
+@Table(name = "subtasks")
+public class Subtask {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	@NonNull
-	private Integer id;
+	private int id;
 	
 	@Column
 	private String name;
@@ -46,11 +40,15 @@ public class Task {
 	@Column
 	private String summary;
 	
-	@Column
-	private Instant deadline;
+	@Column(name = "duration_minutes")
+	private int durationMinutes;
 	
-	@Column(name = "deadline_zone", length = 50)
-	private String deadlineZone;
+	@Enumerated(EnumType.STRING)
+	@Column
+	private TaskStatusType status = TaskStatusType.PENDING;
+	
+	@Column
+	private int position;
 	
 	@CreationTimestamp
 	@Column(name = "created_at")
@@ -60,23 +58,15 @@ public class Task {
 	@Column(name = "updated_at")
 	private Instant updatedAt;
 	
-	@Enumerated(EnumType.STRING)
-	@Column	
-	private TaskStatusType status = TaskStatusType.PENDING;
+	@ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.REMOVE)
+	@JoinColumn(name = "task_id")
+	private Task task;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
-	@JoinColumn(name = "user_id")
-	private User user;
-	
-	@OneToMany(mappedBy = "task")	
-	private Set<Subtask> subtasks = new HashSet<>();
-	
-	public Task(TaskDTO create) {
+	public Subtask(SubtaskDTO create) {
 		this.name = create.getName();
+		this.durationMinutes = create.getDurationMinutes();		
 		this.summary = create.getSummary();
-		this.deadline = create.getDeadline().toInstant();
-		this.deadlineZone = create.getDeadlineZone();
-		this.user = new User(create.getUserId());
+		this.task = new Task(create.getTaskId());
 	}
-
+	
 }
