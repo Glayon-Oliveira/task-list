@@ -14,6 +14,7 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.lmlasmo.tasklist.advice.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.advice.exception.EntityNotUpdateException;
 import com.lmlasmo.tasklist.advice.exception.ExceptionResponseDTO;
+import com.lmlasmo.tasklist.advice.exception.TaskHasSubtasksException;
 
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
@@ -65,6 +66,13 @@ public class MainAdviceController {
 	@ResponseBody
 	@ResponseStatus(code = HttpStatus.BAD_REQUEST)
 	public ExceptionResponseDTO exceptionResponseDTO(EntityNotUpdateException exception, HttpServletRequest request) {
+		return new ExceptionResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), exception.getMessage(),
+				request.getServletPath(), LocalDateTime.now());
+	}
+	
+	@ExceptionHandler(TaskHasSubtasksException.class)
+	@ResponseStatus(code = HttpStatus.BAD_REQUEST)
+	public ExceptionResponseDTO taskHasSubtasksException(TaskHasSubtasksException exception, HttpServletRequest request) {
 		return new ExceptionResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), exception.getMessage(),
 				request.getServletPath(), LocalDateTime.now());
 	}
