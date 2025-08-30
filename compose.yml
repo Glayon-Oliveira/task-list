@@ -21,8 +21,7 @@ services:
    - task-list-network
   ports:
    - 3306:3306
-  volumes:  
-   - ./scripts-sql:/docker-entrypoint-initdb.d
+  volumes:
    - task-list-mysql-data:/var/lib/mysql
   environment:
    MYSQL_USER: ${MYSQL_USERNAME}
