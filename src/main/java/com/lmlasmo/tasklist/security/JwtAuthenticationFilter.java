@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.lmlasmo.tasklist.service.JwtService;
+import com.lmlasmo.tasklist.service.UserService;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,7 +22,8 @@ import lombok.AllArgsConstructor;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter{
 
-	private JwtService service;
+	private JwtService jwtService;
+	private UserService userService;
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
@@ -34,8 +36,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter{
 	}
 	
 	private void authenticate(String token) {
-		int id = service.getId(token);		
-		List<SimpleGrantedAuthority> roles = List.of(service.getRoles(token)).stream()
+		Integer id = jwtService.getId(token);
+		
+		if(id == null) return;
+		
+		if(!userService.existsById(id)) return;
+		
+		List<SimpleGrantedAuthority> roles = List.of(jwtService.getRoles(token)).stream()
 				.map(SimpleGrantedAuthority::new)
 				.toList();
 		
@@ -50,8 +57,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter{
 		
 		if(!auth.startsWith("Bearer")) return null;
 		
-		auth = auth.replace("Bearer", "");
-		auth = auth.replace(" ", "");		
+		auth = auth.replace("Bearer ", "");
 		return auth;
 	}
 	
