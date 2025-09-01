@@ -28,7 +28,7 @@ public class TaskStatusService {
 		
 		taskRepository.updateStatus(taskId, status);
 	}
-	
+
 	@Transactional
 	public void updateSubtaskStatus(TaskStatusType status, List<Integer> subtaskIds) {		
 		List<IdStatusTask> stIdStatusTasks = subtaskRepository.findAllIdAndStatusAndTaskById(subtaskIds);

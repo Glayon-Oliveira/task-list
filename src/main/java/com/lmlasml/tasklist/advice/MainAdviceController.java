@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -23,16 +22,14 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class MainAdviceController {
 	
-	@ExceptionHandler(exception = {AuthenticationException.class})	
-	@ResponseBody
+	@ExceptionHandler(exception = {AuthenticationException.class})		
 	@ResponseStatus(code = HttpStatus.UNAUTHORIZED)
 	public ExceptionResponseDTO usernameNotFoundException(AuthenticationException exception, HttpServletRequest request) {
 		return new ExceptionResponseDTO(401, HttpStatus.UNAUTHORIZED.getReasonPhrase(), exception.getMessage(),
 				request.getServletPath(), LocalDateTime.now());
 	}
 	
-	@ExceptionHandler(JWTVerificationException.class)
-	@ResponseBody
+	@ExceptionHandler(JWTVerificationException.class)	
 	@ResponseStatus(code = HttpStatus.UNAUTHORIZED)
 	public ExceptionResponseDTO jwtVerifier(JWTVerificationException exception, HttpServletRequest request) {
 		return new ExceptionResponseDTO(401, HttpStatus.UNAUTHORIZED.getReasonPhrase(), "Invalid token",
@@ -40,7 +37,6 @@ public class MainAdviceController {
 	}	
 
 	@ExceptionHandler(EntityNotFoundException.class)
-	@ResponseBody
 	@ResponseStatus(code = HttpStatus.NOT_FOUND)
 	public ExceptionResponseDTO notFound(EntityNotFoundException exception, HttpServletRequest request){
 		return new ExceptionResponseDTO(404, HttpStatus.NOT_FOUND.getReasonPhrase(),exception.getMessage(),
@@ -62,8 +58,7 @@ public class MainAdviceController {
 		}
 	}
 	
-	@ExceptionHandler(EntityNotUpdateException.class)
-	@ResponseBody
+	@ExceptionHandler(EntityNotUpdateException.class)	
 	@ResponseStatus(code = HttpStatus.BAD_REQUEST)
 	public ExceptionResponseDTO exceptionResponseDTO(EntityNotUpdateException exception, HttpServletRequest request) {
 		return new ExceptionResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), exception.getMessage(),
