@@ -1,6 +1,7 @@
 package com.lmlasmo.tasklist.service;
 
-import java.util.Calendar;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -14,40 +15,45 @@ import jakarta.annotation.PostConstruct;
 @Service
 public class JwtService {
 	
-	@Value("app.jwt.issuer")
+	@Value("${app.jwt.issuer}")
 	private String issuer;
 	
-	@Value("app.jwt.key")
+	@Value("${app.jwt.key}")
 	private String key;
+	
+	@Value("${app.jwt.duration}")
+	private Duration duration;
 	
 	private Algorithm algorithm;
 	
 	@PostConstruct
 	private void init() {
-		 algorithm = Algorithm.HMAC256(key);
+		algorithm = Algorithm.HMAC256(key);
 	}
 	
-	public String gerateToken(int id, String[] roles) {					
-		Date issued = new Date();
-		Calendar expires = Calendar.getInstance();
-		expires.setTime(issued);
-		expires.add(Calendar.DAY_OF_YEAR, 30);				
+	public String gerateToken(int id, String[] roles) {
+		Instant issued = Instant.now();
+		Instant expires = issued.plus(duration);
 		
 		return JWT.create()
 				.withIssuer(issuer)
 				.withSubject(Integer.toString(id))
 				.withArrayClaim("roles", roles)
-				.withIssuedAt(new Date())
-				.withExpiresAt(expires.getTime())
+				.withIssuedAt(Date.from(issued))
+				.withExpiresAt(Date.from(expires))
 				.sign(algorithm);		
 	}
 	
 	public void isValid(String token) {		
-		JWT.require(algorithm).build().verify(token);		
+		JWT.require(algorithm).build().verify(token);
 	}
 	
-	public int getId(String token) {
-		return Integer.parseInt(JWT.require(algorithm).build().verify(token).getSubject());
+	public Integer getId(String token) {
+		try {
+			return Integer.parseInt(JWT.require(algorithm).build().verify(token).getSubject());
+		}catch(Exception e) {
+			return null;
+		}		
 	}
 	
 	public String[] getRoles(String token) {
