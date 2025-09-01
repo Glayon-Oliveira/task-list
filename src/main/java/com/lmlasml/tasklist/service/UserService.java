@@ -66,13 +66,17 @@ public class UserService {
 		if(repository.existsById(id)) throw new EntityExistsException("User not deleted"); 		
 	}
 	
+	public boolean existsById(int id) {
+		return repository.existsById(id);
+	}
+	
 	public UserDTO findById(int id) {		
 		UserDTO user = repository.findById(id).map(UserDTO::new).orElseGet(null);
 		
 		if(user == null) throw new EntityNotFoundException("User not found");
 		
 		return user;
-	}
+	}	
 	
 	public Page<UserDTO> findAll(Pageable pageable) {
 		return repository.findAll(pageable).map(UserDTO::new);
