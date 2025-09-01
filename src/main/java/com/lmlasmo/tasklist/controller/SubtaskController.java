@@ -28,7 +28,7 @@ import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 @RestController
-@RequestMapping("/subtask")
+@RequestMapping("/api/subtask")
 public class SubtaskController {
 	
 	private SubtaskService subtaskService;
@@ -41,18 +41,21 @@ public class SubtaskController {
 	}
 	
 	@DeleteMapping(params = "subtaskIds")
+	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Void delete(@RequestParam List<@Min(1) Integer> subtaskIds) {
 		subtaskService.delete(subtaskIds);
 		return null;
 	}
 	
 	@PutMapping(path = "/{subtaskId}", params = "position")
+	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Void updateSubtaskPosition(@PathVariable @Min(1) int subtaskId, @RequestParam @Min(1) int position) {
 		subtaskService.updatePosition(subtaskId, position);
 		return null;
 	}
 	
 	@PutMapping(params = {"subtaskIds", "status"})
+	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Void updateSubtaskStatus(@RequestParam List<@Min(1) Integer> subtaskIds, @RequestParam @NotNull TaskStatusType status) {
 		taskStatusService.updateSubtaskStatus(status, subtaskIds);
 		return null;

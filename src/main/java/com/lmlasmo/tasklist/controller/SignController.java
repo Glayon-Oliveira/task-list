@@ -8,7 +8,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -25,16 +24,14 @@ import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 @RestController
-@RequestMapping("/sign")
+@RequestMapping("/api/sign")
 public class SignController {
 	
 	private UserService userService;
 	private JwtService jwtService;
 	private AuthenticationManager manager;	
 	
-	@PostMapping("/in")
-	@ResponseBody
-	@ResponseStatus(code = HttpStatus.OK)
+	@PostMapping("/in")	
 	public JWTTokenDTO inByJson(@RequestBody @Valid LoginDTO login) {		
 		Authentication auth = new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPassword());		
 		auth = manager.authenticate(auth);
@@ -45,9 +42,8 @@ public class SignController {
 		return new JWTTokenDTO(token);
 	}	
 	
-	@PostMapping("/up")
-	@ResponseBody
-	@ResponseStatus(code = HttpStatus.OK)
+	@PostMapping("/up")	
+	@ResponseStatus(code = HttpStatus.CREATED)
 	public UserDTO upByJson(@RequestBody @Valid SignupDTO signup) {
 		return userService.save(signup);		
 	}	

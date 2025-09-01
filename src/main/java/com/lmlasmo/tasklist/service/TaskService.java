@@ -11,9 +11,7 @@ import com.lmlasmo.tasklist.repository.TaskRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
 
-@Getter
 @AllArgsConstructor
 @Service
 public class TaskService {
