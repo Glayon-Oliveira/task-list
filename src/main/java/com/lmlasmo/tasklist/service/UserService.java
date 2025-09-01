@@ -4,7 +4,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.lmlasmo.tasklist.advice.exception.EntityNotUpdateException;
 import com.lmlasmo.tasklist.dto.SignupDTO;
@@ -15,12 +14,9 @@ import com.lmlasmo.tasklist.repository.UserRepository;
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
 
-@Getter
 @AllArgsConstructor
 @Service
-@Transactional
 public class UserService {
 
 	private UserRepository repository;
@@ -36,7 +32,7 @@ public class UserService {
 		return new UserDTO(user);
 	}
 	
-	public UserDTO updateUsername(int id, String username) {
+	public void updateUsername(int id, String username) {
 		User user = repository.findById(id).orElseGet(null);
 		
 		if(user == null) throw new EntityNotFoundException("User not found");
@@ -44,10 +40,9 @@ public class UserService {
 		if(repository.existsByUsername(username)) throw new EntityNotUpdateException(username + " already used");
 		
 		user.setUsername(username);
-		return new UserDTO(repository.save(user));
 	}
 	
-	public UserDTO updatePassword(int id, String password) {		
+	public void updatePassword(int id, String password) {		
 		User user = repository.findById(id).orElseGet(null);
 		
 		if(user == null) throw new EntityNotFoundException("User not found");
@@ -55,7 +50,6 @@ public class UserService {
 		if(encoder.matches(password, user.getPassword())) throw new EntityNotUpdateException("Password already used");
 		
 		user.setPassword(encoder.encode(password));		
-		return new UserDTO(repository.save(user));
 	}
 	
 	public void delete(int id) {		

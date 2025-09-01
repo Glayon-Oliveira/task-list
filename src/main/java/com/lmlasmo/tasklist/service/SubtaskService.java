@@ -25,7 +25,7 @@ import lombok.AllArgsConstructor;
 public class SubtaskService {
 
 	private SubtaskRepository subtaskRepository;
-	
+		
 	public SubtaskDTO save(SubtaskDTO create) {
 		Subtask subtask = new Subtask(create);
 		
