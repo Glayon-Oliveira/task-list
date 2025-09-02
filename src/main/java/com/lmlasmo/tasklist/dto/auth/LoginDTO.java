@@ -1,4 +1,4 @@
-package com.lmlasmo.tasklist.dto;
+package com.lmlasmo.tasklist.dto.auth;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

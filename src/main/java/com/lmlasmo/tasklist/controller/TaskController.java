@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.dto.TaskDTO;
+import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.service.TaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
@@ -35,9 +36,8 @@ public class TaskController {
 	
 	@PostMapping("/")
 	@ResponseStatus(code = HttpStatus.CREATED)
-	public TaskDTO create(@RequestBody @Valid TaskDTO create) {
-		create = taskService.save(create);
-		return create;
+	public TaskDTO create(@RequestBody @Valid CreateTaskDTO create) {
+		return taskService.save(create);
 	}	
 	
 	@DeleteMapping("/{id}")
@@ -54,7 +54,7 @@ public class TaskController {
 		return null;
 	}
 	
-	@GetMapping("/")	
+	@GetMapping("/")
 	public Page<TaskDTO> findAllByI(Pageable pageable){
 		int id = (int) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
 		return taskService.findByUser(id, pageable);

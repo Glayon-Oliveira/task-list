@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.dto.TaskDTO;
+import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.repository.TaskRepository;
@@ -18,7 +19,7 @@ public class TaskService {
 	
 	private TaskRepository repository;
 
-	public TaskDTO save(TaskDTO create) {		
+	public TaskDTO save(CreateTaskDTO create) {		
 		Task task = new Task(create);
 		return new TaskDTO(repository.save(task));
 	}

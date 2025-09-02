@@ -6,9 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Null;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,36 +15,31 @@ import lombok.Setter;
 @NoArgsConstructor
 public class SubtaskDTO {
 	
-	@JsonProperty(required = false)	
+	@JsonProperty	
 	private int id;
 	
 	@JsonProperty
-	@NotBlank
 	private String name;
 	
-	@JsonProperty(required = false)
+	@JsonProperty
 	private String summary;
 	
-	@JsonProperty(required = false)
-	@Min(1)
-	private int durationMinutes = 5;
+	@JsonProperty
+	private int durationMinutes;
 	
-	@JsonProperty(required = false)
-	@Null
+	@JsonProperty
 	private TaskStatusType status;
 	
-	@JsonProperty
-	@Null
+	@JsonProperty	
 	private Integer position;
 	
-	@JsonProperty(required = false)
+	@JsonProperty
 	private Instant createdAt;
 	
-	@JsonProperty(required = false)
+	@JsonProperty
 	private Instant updatedAt;
 	
-	@JsonProperty
-	@Min(1)
+	@JsonProperty	
 	private int taskId;
 	
 	public SubtaskDTO(Subtask subtask) {

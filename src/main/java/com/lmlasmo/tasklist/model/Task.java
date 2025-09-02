@@ -7,7 +7,7 @@ import java.util.Set;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import com.lmlasmo.tasklist.dto.TaskDTO;
+import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -71,7 +71,7 @@ public class Task {
 	@OneToMany(mappedBy = "task")	
 	private Set<Subtask> subtasks = new HashSet<>();
 	
-	public Task(TaskDTO create) {
+	public Task(CreateTaskDTO create) {
 		this.name = create.getName();
 		this.summary = create.getSummary();
 		this.deadline = create.getDeadline().toInstant();
