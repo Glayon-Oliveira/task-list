@@ -1,4 +1,4 @@
-package com.lmlasmo.tasklist.advice.exception;
+package com.lmlasmo.tasklist.exception;
 
 public class TaskHasSubtasksException extends RuntimeException{
 
