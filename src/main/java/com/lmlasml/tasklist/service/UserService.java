@@ -68,10 +68,6 @@ public class UserService {
 				.orElseThrow(() -> new EntityNotFoundException("User not found"));
 		
 		return user;
-	}	
-	
-	public Page<UserDTO> findAll(Pageable pageable) {
-		return repository.findAll(pageable).map(UserDTO::new);
-	}	
+	}
 	
 }
