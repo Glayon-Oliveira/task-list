@@ -45,6 +45,8 @@ public interface SubtaskRepository extends JpaRepository<Subtask, Integer>{
 	
 	public boolean existsByTaskIdAndStatus(int taskId, TaskStatusType status);
 	
+	public boolean existsByIdAndTaskUserId(int subtaskId, int userId);
+	
 	@Modifying
 	@Transactional
 	@Query("UPDATE Subtask s SET s.position = :position WHERE s.id = :subtaskId")
@@ -55,6 +57,8 @@ public interface SubtaskRepository extends JpaRepository<Subtask, Integer>{
 	@Query("UPDATE Subtask s SET s.status = :status WHERE s.id = :subtaskId")
 	public void updateStatus(int subtaskId, TaskStatusType status);
 		
-	public long countByTaskId(int taskId);
+	public long countByTaskId(int taskId);	
+
+	public long countByIdInAndTaskUserId(List<Integer> subtaskIds, int userId);
 	
 }

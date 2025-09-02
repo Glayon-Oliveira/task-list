@@ -8,6 +8,7 @@ import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.model.Task;
+import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.repository.TaskRepository;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -19,8 +20,8 @@ public class TaskService {
 	
 	private TaskRepository repository;
 
-	public TaskDTO save(CreateTaskDTO create) {		
-		Task task = new Task(create);
+	public TaskDTO save(CreateTaskDTO create, int userId) {		
+		Task task = new Task(create, new User(userId));
 		return new TaskDTO(repository.save(task));
 	}
 	

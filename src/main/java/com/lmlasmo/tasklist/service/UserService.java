@@ -1,7 +1,5 @@
 package com.lmlasmo.tasklist.service;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -68,10 +66,6 @@ public class UserService {
 				.orElseThrow(() -> new EntityNotFoundException("User not found"));
 		
 		return user;
-	}	
-	
-	public Page<UserDTO> findAll(Pageable pageable) {
-		return repository.findAll(pageable).map(UserDTO::new);
-	}	
+	}
 	
 }

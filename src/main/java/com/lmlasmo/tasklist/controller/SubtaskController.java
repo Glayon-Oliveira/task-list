@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -37,12 +38,14 @@ public class SubtaskController {
 	
 	@PostMapping
 	@ResponseStatus(code = HttpStatus.CREATED)
+	@PreAuthorize("@resourceAccessService.canAccessTask(#create.taskId, authentication.principal)")
 	public SubtaskDTO create(@RequestBody @Valid CreateSubtaskDTO create) {
 		return subtaskService.save(create);
 	}
 	
 	@DeleteMapping(params = "subtaskIds")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskIds, authentication.principal)")
 	public Void delete(@RequestParam List<@Min(1) Integer> subtaskIds) {
 		subtaskService.delete(subtaskIds);
 		return null;
@@ -50,6 +53,7 @@ public class SubtaskController {
 	
 	@PutMapping(path = "/{subtaskId}", params = "position")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, authentication.principal)")
 	public Void updateSubtaskPosition(@PathVariable @Min(1) int subtaskId, @RequestParam @Min(1) int position) {
 		subtaskService.updatePosition(subtaskId, position);
 		return null;
@@ -57,12 +61,14 @@ public class SubtaskController {
 	
 	@PutMapping(params = {"subtaskIds", "status"})
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskIds, authentication.principal)")
 	public Void updateSubtaskStatus(@RequestParam List<@Min(1) Integer> subtaskIds, @RequestParam @NotNull TaskStatusType status) {
 		taskStatusService.updateSubtaskStatus(status, subtaskIds);
 		return null;
 	}
 
 	@GetMapping(params = "taskId")
+	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
 	public Page<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId, Pageable pageable){
 		return subtaskService.findByTask(taskId, pageable);
 	}

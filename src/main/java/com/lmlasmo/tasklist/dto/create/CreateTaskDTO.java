@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.validation.ValidZoneId;
 
 import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -35,9 +34,5 @@ public class CreateTaskDTO {
 	@NotBlank
 	@ValidZoneId
 	private String deadlineZone;
-	
-	@JsonProperty(value = "user_id")
-	@Min(1)
-	private int userId;
 	
 }

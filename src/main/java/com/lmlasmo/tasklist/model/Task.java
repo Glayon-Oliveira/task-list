@@ -71,12 +71,12 @@ public class Task {
 	@OneToMany(mappedBy = "task")	
 	private Set<Subtask> subtasks = new HashSet<>();
 	
-	public Task(CreateTaskDTO create) {
+	public Task(CreateTaskDTO create, User user) {
 		this.name = create.getName();
 		this.summary = create.getSummary();
 		this.deadline = create.getDeadline().toInstant();
 		this.deadlineZone = create.getDeadlineZone();
-		this.user = new User(create.getUserId());
+		this.user = user;
 	}
 
 }
