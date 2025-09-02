@@ -5,9 +5,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.lmlasmo.tasklist.advice.exception.EntityNotUpdateException;
 import com.lmlasmo.tasklist.dto.SignupDTO;
 import com.lmlasmo.tasklist.dto.UserDTO;
+import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
+import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.repository.UserRepository;
 
@@ -23,7 +24,6 @@ public class UserService {
 	private PasswordEncoder encoder;
 	
 	public UserDTO save(SignupDTO signup) {
-		
 		if(repository.existsByUsername(signup.getUsername())) throw new EntityExistsException("User already used");
 		
 		signup.setPassword(encoder.encode(signup.getPassword()));
@@ -33,9 +33,8 @@ public class UserService {
 	}
 	
 	public void updateUsername(int id, String username) {
-		User user = repository.findById(id).orElseGet(null);
-		
-		if(user == null) throw new EntityNotFoundException("User not found");
+		User user = repository.findById(id)
+				.orElseThrow(() -> new EntityNotFoundException("User not found"));
 		
 		if(repository.existsByUsername(username)) throw new EntityNotUpdateException(username + " already used");
 		
@@ -43,21 +42,20 @@ public class UserService {
 	}
 	
 	public void updatePassword(int id, String password) {		
-		User user = repository.findById(id).orElseGet(null);
-		
-		if(user == null) throw new EntityNotFoundException("User not found");
+		User user = repository.findById(id)
+				.orElseThrow(() -> new EntityNotFoundException("User not found"));
 		
 		if(encoder.matches(password, user.getPassword())) throw new EntityNotUpdateException("Password already used");
 		
 		user.setPassword(encoder.encode(password));		
 	}
 	
-	public void delete(int id) {		
+	public void delete(int id) {
 		if(!repository.existsById(id)) throw new EntityNotFoundException("User not found");
 		
 		repository.deleteById(id);
 		
-		if(repository.existsById(id)) throw new EntityExistsException("User not deleted"); 		
+		if(repository.existsById(id)) throw new EntityNotDeleteException("User not deleted"); 		
 	}
 	
 	public boolean existsById(int id) {
@@ -65,9 +63,9 @@ public class UserService {
 	}
 	
 	public UserDTO findById(int id) {		
-		UserDTO user = repository.findById(id).map(UserDTO::new).orElseGet(null);
-		
-		if(user == null) throw new EntityNotFoundException("User not found");
+		UserDTO user = repository.findById(id)
+				.map(UserDTO::new)
+				.orElseThrow(() -> new EntityNotFoundException("User not found"));
 		
 		return user;
 	}	
