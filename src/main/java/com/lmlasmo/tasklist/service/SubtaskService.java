@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
+import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.IdPosition;
@@ -26,7 +27,7 @@ public class SubtaskService {
 
 	private SubtaskRepository subtaskRepository;
 		
-	public SubtaskDTO save(SubtaskDTO create) {
+	public SubtaskDTO save(CreateSubtaskDTO create) {
 		Subtask subtask = new Subtask(create);
 		
 		List<IdPosition> idPositions = subtaskRepository.findIdAndPositionByTaskId(create.getTaskId());

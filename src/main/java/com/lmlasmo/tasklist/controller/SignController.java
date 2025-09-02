@@ -11,10 +11,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lmlasmo.tasklist.dto.JWTTokenDTO;
-import com.lmlasmo.tasklist.dto.LoginDTO;
-import com.lmlasmo.tasklist.dto.SignupDTO;
 import com.lmlasmo.tasklist.dto.UserDTO;
+import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO;
+import com.lmlasmo.tasklist.dto.auth.LoginDTO;
+import com.lmlasmo.tasklist.dto.create.SignupDTO;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.service.JwtService;
 import com.lmlasmo.tasklist.service.UserService;

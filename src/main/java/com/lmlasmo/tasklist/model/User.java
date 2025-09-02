@@ -11,7 +11,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import com.lmlasmo.tasklist.dto.SignupDTO;
+import com.lmlasmo.tasklist.dto.create.SignupDTO;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

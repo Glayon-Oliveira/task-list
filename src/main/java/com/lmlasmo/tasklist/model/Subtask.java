@@ -5,7 +5,7 @@ import java.time.Instant;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import com.lmlasmo.tasklist.dto.SubtaskDTO;
+import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -62,9 +62,9 @@ public class Subtask {
 	@JoinColumn(name = "task_id")
 	private Task task;
 	
-	public Subtask(SubtaskDTO create) {
+	public Subtask(CreateSubtaskDTO create) {
 		this.name = create.getName();
-		this.durationMinutes = create.getDurationMinutes();		
+		this.durationMinutes = create.getDurationMinutes();
 		this.summary = create.getSummary();
 		this.task = new Task(create.getTaskId());
 	}
