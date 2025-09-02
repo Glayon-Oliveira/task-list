@@ -53,9 +53,8 @@ public class SubtaskService {
 	
 	@Transactional
 	public void updatePosition(int subtaskId, int position) {
-		IdPosition subtask = subtaskRepository.findIdAndPositionById(subtaskId).orElseGet(() -> null);
-		
-		if(subtask == null) throw new EntityNotFoundException("Subtask not found for id " + subtaskId);
+		IdPosition subtask = subtaskRepository.findIdAndPositionById(subtaskId)
+				.orElseThrow(() -> new EntityNotFoundException("Subtask not found for id " + subtaskId));
 		
 		if(subtask.getPosition() == position) throw new EntityExistsException("New position of subtask is equals at exists position");
 		

@@ -4,8 +4,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import com.lmlasmo.tasklist.advice.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.dto.TaskDTO;
+import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.repository.TaskRepository;
 

@@ -5,7 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.lmlasmo.tasklist.advice.exception.TaskHasSubtasksException;
+import com.lmlasmo.tasklist.exception.TaskHasSubtasksException;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.TaskRepository;

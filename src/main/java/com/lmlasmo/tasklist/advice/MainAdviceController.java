@@ -1,75 +1,58 @@
 package com.lmlasmo.tasklist.advice;
 
-import java.time.LocalDateTime;
+import java.util.Map;
 
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.lmlasmo.tasklist.advice.exception.EntityNotDeleteException;
-import com.lmlasmo.tasklist.advice.exception.EntityNotUpdateException;
-import com.lmlasmo.tasklist.advice.exception.ExceptionResponseDTO;
-import com.lmlasmo.tasklist.advice.exception.TaskHasSubtasksException;
+import com.lmlasmo.tasklist.advice.util.AdviceWrapper;
+import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
 public class MainAdviceController {
 	
-	@ExceptionHandler(exception = {AuthenticationException.class})		
-	@ResponseStatus(code = HttpStatus.UNAUTHORIZED)
-	public ExceptionResponseDTO usernameNotFoundException(AuthenticationException exception, HttpServletRequest request) {
-		return new ExceptionResponseDTO(401, HttpStatus.UNAUTHORIZED.getReasonPhrase(), exception.getMessage(),
-				request.getServletPath(), LocalDateTime.now());
-	}
-	
-	@ExceptionHandler(JWTVerificationException.class)	
-	@ResponseStatus(code = HttpStatus.UNAUTHORIZED)
-	public ExceptionResponseDTO jwtVerifier(JWTVerificationException exception, HttpServletRequest request) {
-		return new ExceptionResponseDTO(401, HttpStatus.UNAUTHORIZED.getReasonPhrase(), "Invalid token",
-				request.getServletPath(), LocalDateTime.now());
-	}	
-
 	@ExceptionHandler(EntityNotFoundException.class)
 	@ResponseStatus(code = HttpStatus.NOT_FOUND)
-	public ExceptionResponseDTO notFound(EntityNotFoundException exception, HttpServletRequest request){
-		return new ExceptionResponseDTO(404, HttpStatus.NOT_FOUND.getReasonPhrase(),exception.getMessage(),
-				request.getServletPath(), LocalDateTime.now());
+	public Map<String, Object> exceptionResponse(EntityNotFoundException exception, HttpServletRequest request){
+		return AdviceWrapper.wrapper(HttpStatus.NOT_FOUND, exception.getMessage(), request);
 	}
 	
-	@ExceptionHandler(EntityExistsException.class)	
-	public ResponseEntity<ExceptionResponseDTO> EntityExistsException(EntityExistsException exception, HttpServletRequest request){		
+	@ExceptionHandler(NoResourceFoundException.class)
+	@ResponseStatus(code = HttpStatus.NOT_FOUND)
+	public Map<String, Object> exceptionResponse(NoResourceFoundException exception, HttpServletRequest request){
+		return AdviceWrapper.wrapper(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+	}
+	
+	@ExceptionHandler(EntityExistsException.class)
+	@ResponseStatus(code = HttpStatus.CONFLICT)
+	public Map<String, Object> exceptionResponse(EntityExistsException exception, HttpServletRequest request){		
+		return AdviceWrapper.wrapper(HttpStatus.CONFLICT, exception.getMessage(), request);
+	}	
+	
+	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	@ResponseStatus(code = HttpStatus.METHOD_NOT_ALLOWED)
+	public Map<String, Object> exceptionResponse(HttpRequestMethodNotSupportedException ex, HttpServletRequest req){
+		String message = "HTTP method not supported. Supported methods %s";
+		message = String.format(message, String.join(", ", ex.getSupportedMethods()));
 		
-		ExceptionResponseDTO response = new ExceptionResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(),
-				exception.getMessage(), request.getServletPath(), LocalDateTime.now());
-		
-		if(exception instanceof EntityNotDeleteException) {
-			response.setStatus(500);
-			response.setError(HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase());
-			return ResponseEntity.internalServerError().body(response);
-		}else {
-			return ResponseEntity.badRequest().body(response);
-		}
+		return AdviceWrapper.wrapper(HttpStatus.METHOD_NOT_ALLOWED,message, req);
 	}
 	
-	@ExceptionHandler(EntityNotUpdateException.class)	
-	@ResponseStatus(code = HttpStatus.BAD_REQUEST)
-	public ExceptionResponseDTO exceptionResponseDTO(EntityNotUpdateException exception, HttpServletRequest request) {
-		return new ExceptionResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), exception.getMessage(),
-				request.getServletPath(), LocalDateTime.now());
-	}
-	
-	@ExceptionHandler(TaskHasSubtasksException.class)
-	@ResponseStatus(code = HttpStatus.BAD_REQUEST)
-	public ExceptionResponseDTO taskHasSubtasksException(TaskHasSubtasksException exception, HttpServletRequest request) {
-		return new ExceptionResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), exception.getMessage(),
-				request.getServletPath(), LocalDateTime.now());
+	@ExceptionHandler(EntityNotDeleteException.class)
+	@ResponseStatus(code = HttpStatus.INTERNAL_SERVER_ERROR)
+	public Map<String, Object> exceptionResponse(EntityNotDeleteException ex, HttpServletRequest req){
+		return AdviceWrapper.wrapper(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), req);
 	}
 	
 }
