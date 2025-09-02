@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasml.tasklist.dto.SubtaskDTO;
+import com.lmlasml.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasml.tasklist.model.TaskStatusType;
 import com.lmlasml.tasklist.service.SubtaskService;
 import com.lmlasml.tasklist.service.TaskStatusService;
@@ -36,7 +37,7 @@ public class SubtaskController {
 	
 	@PostMapping
 	@ResponseStatus(code = HttpStatus.CREATED)
-	public SubtaskDTO create(@RequestBody @Valid SubtaskDTO create) {
+	public SubtaskDTO create(@RequestBody @Valid CreateSubtaskDTO create) {
 		return subtaskService.save(create);
 	}
 	

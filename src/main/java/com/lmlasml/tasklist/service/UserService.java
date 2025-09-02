@@ -5,8 +5,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.lmlasml.tasklist.dto.SignupDTO;
 import com.lmlasml.tasklist.dto.UserDTO;
+import com.lmlasml.tasklist.dto.create.SignupDTO;
 import com.lmlasml.tasklist.exception.EntityNotDeleteException;
 import com.lmlasml.tasklist.exception.EntityNotUpdateException;
 import com.lmlasml.tasklist.model.User;
