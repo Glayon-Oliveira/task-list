@@ -1,7 +1,5 @@
 package com.lmlasmo.tasklist.controller;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,11 +39,6 @@ public class UserController {
 	@GetMapping("/i")	
 	public UserDTO findByI() {				
 		return userService.findById(AuthenticatedTool.getUserId());		
-	}
-	
-	@GetMapping("/")
-	public Page<UserDTO> findAll(Pageable pageable){
-		return userService.findAll(pageable);
 	}
 	
 }
