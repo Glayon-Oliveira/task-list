@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 
@@ -19,12 +20,14 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationFi
 public class SecurityConf {
 	
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter) throws Exception {
+	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter,
+			AuthenticationEntryPoint entryPoint) throws Exception {
 		return http.csrf(c -> c.disable())
 				.formLogin(c -> c.disable())
 				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(a -> a.requestMatchers("/api/sign/**").permitAll()
 						.anyRequest().authenticated())
+				.exceptionHandling(e -> e.authenticationEntryPoint(entryPoint))
 				.addFilterBefore(jwtFilter, BasicAuthenticationFilter.class)
 				.build();
 	}

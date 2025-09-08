@@ -4,15 +4,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.dto.UserDTO;
+import com.lmlasmo.tasklist.dto.create.UpdatePasswordDTO;
 import com.lmlasmo.tasklist.security.AuthenticatedTool;
 import com.lmlasmo.tasklist.service.UserService;
 
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
@@ -24,8 +26,8 @@ public class UserController {
 	
 	@PutMapping("/")	
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Void updatePassword(@RequestParam String password) {		
-		userService.updatePassword(AuthenticatedTool.getUserId(), password);
+	public Void updatePassword(@RequestBody @Valid UpdatePasswordDTO update) {		
+		userService.updatePassword(AuthenticatedTool.getUserId(), update.getPassword());
 		return null;
 	}
 	
