@@ -45,6 +45,7 @@ public class SubtaskDTO {
 	public SubtaskDTO(Subtask subtask) {
 		this.id = subtask.getId();
 		this.name = subtask.getName();
+		this.summary = subtask.getSummary();
 		this.durationMinutes = subtask.getDurationMinutes();
 		this.status = subtask.getStatus();
 		this.position = subtask.getPosition();
