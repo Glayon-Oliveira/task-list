@@ -9,6 +9,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -48,7 +49,7 @@ public class BadRequestAdviceController {
 			errors.put(f.getField(), fieldValue);
 		});
 		
-		return AdviceWrapper.wrapper(ex.getMessage(), req, Map.of("fieldErrors", errors));
+		return AdviceWrapper.wrapper(req, Map.of("fieldErrors", errors));
 	}
 	
 	@ExceptionHandler(ConstraintViolationException.class)
@@ -79,6 +80,11 @@ public class BadRequestAdviceController {
 	
 	@ExceptionHandler(TypeMismatchException.class)	
 	public Map<String, Object> exceptionResponse(TypeMismatchException ex, HttpServletRequest req){
+		return AdviceWrapper.wrapper(ex.getMessage(), req);
+	}
+	
+	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+	public Map<String, Object> exceptionResponse(HttpMediaTypeNotSupportedException ex, HttpServletRequest req){
 		return AdviceWrapper.wrapper(ex.getMessage(), req);
 	}
 
