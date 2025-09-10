@@ -2,7 +2,7 @@ package com.lmlasmo.tasklist.dto;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
+import java.time.ZoneId;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.model.Task;
@@ -52,8 +52,8 @@ public class TaskDTO {
 		this.updatedAt = task.getUpdatedAt();
 		this.status = task.getStatus();
 		this.userId = task.getUser().getId();
-		this.deadline = task.getDeadline().atOffset(ZoneOffset.UTC).withSecond(0).withNano(0);
 		this.deadlineZone = task.getDeadlineZone();
+		this.deadline = task.getDeadline().atZone(ZoneId.of(deadlineZone)).toOffsetDateTime();
 	}
 
 }
