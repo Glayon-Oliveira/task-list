@@ -37,6 +37,8 @@ public class UserService {
 		if(repository.existsByUsername(username)) throw new EntityNotUpdateException(username + " already used");
 		
 		user.setUsername(username);
+		
+		repository.save(user);
 	}
 	
 	public void updatePassword(int id, String password) {		
@@ -46,6 +48,8 @@ public class UserService {
 		if(encoder.matches(password, user.getPassword())) throw new EntityNotUpdateException("Password already used");
 		
 		user.setPassword(encoder.encode(password));		
+		
+		repository.save(user);
 	}
 	
 	public void delete(int id) {
