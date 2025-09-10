@@ -34,5 +34,9 @@ public class CreateTaskDTO {
 	@NotBlank
 	@ValidZoneId
 	private String deadlineZone;
+		
+	public void setDeadline(OffsetDateTime deadline) {
+		this.deadline = deadline.withSecond(0).withNano(0);
+	}
 	
 }
