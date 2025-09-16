@@ -1,0 +1,22 @@
+services:
+ task-list:
+   build:
+    target: dev
+   networks:
+    - task-list-dev-network
+   volumes:
+    - ~/.m2:/root/.m2
+    - ./src:/usr/local/app/src
+    - ./pom.xml:/usr/local/app/pom.xml
+   command: ["./wait-for-it.sh", "task-list-db:3306", "--timeout=300", "--strict", "--", "sh", "-c", "./mvnw verify && ./mvnw spring-boot:run"]
+
+ task-list-db:  
+  networks:
+   - task-list-dev-network  
+  volumes:
+   - task-list-dev-mysql-data:/var/lib/mysql
+
+networks:
+ task-list-dev-network:
+volumes:
+ task-list-dev-mysql-data:
