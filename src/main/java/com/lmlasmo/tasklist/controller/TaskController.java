@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateDeadlineTaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateDescriptionTaskDTO;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.security.AuthenticatedTool;
 import com.lmlasmo.tasklist.service.TaskService;
@@ -50,17 +52,38 @@ public class TaskController {
 		return null;
 	}
 	
-	@PutMapping(params = {"taskId", "status"})
+	@PutMapping("/{taskId}/description")
+	@ResponseStatus(code = HttpStatus.OK)
+	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
+	public TaskDTO updateDescription(@PathVariable @Min(1) int taskId, @RequestBody UpdateDescriptionTaskDTO update) {
+		return taskService.updateDescription(taskId, update);
+	}
+	
+	@PutMapping("/{taskId}/deadline")
+	@ResponseStatus(code = HttpStatus.OK)
+	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
+	public TaskDTO updateDeadline(@PathVariable @Min(1) int taskId, @RequestBody UpdateDeadlineTaskDTO update) {
+		return taskService.updateDeadline(taskId, update);
+	}
+	
+	@PutMapping(path = "/{taskId}", params = {"status"})
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
-	public Void updateTaskStatus(@RequestParam @Min(1) int taskId, @RequestParam @NotNull TaskStatusType status) {
+	public Void updateTaskStatus(@PathVariable @Min(1) int taskId, @RequestParam @NotNull TaskStatusType status) {
 		taskStatusService.updateTaskStatus(taskId, status);
 		return null;
 	}
 	
-	@GetMapping("/")
-	public Page<TaskDTO> findAllByI(Pageable pageable){
-		return taskService.findByUser(AuthenticatedTool.getUserId(), pageable);
+	@GetMapping(path ="/")
+	public Page<TaskDTO> findAllByI(Pageable pageable, @RequestParam(required = false) boolean withSubtasks){
+		return taskService.findByUser(AuthenticatedTool.getUserId(), withSubtasks, pageable);
+	}
+	
+	@GetMapping(path = "/{taskId}")
+	@ResponseStatus(code = HttpStatus.OK)
+	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
+	public TaskDTO findById(@PathVariable @Min(1) int taskId, @RequestParam(required = false) boolean withSubtasks) {
+		return taskService.findById(taskId, withSubtasks);
 	}
 	
 }

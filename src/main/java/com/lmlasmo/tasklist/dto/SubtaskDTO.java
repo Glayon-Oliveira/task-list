@@ -39,9 +39,6 @@ public class SubtaskDTO {
 	@JsonProperty
 	private Instant updatedAt;
 	
-	@JsonProperty	
-	private int taskId;
-	
 	public SubtaskDTO(Subtask subtask) {
 		this.id = subtask.getId();
 		this.name = subtask.getName();
@@ -51,7 +48,6 @@ public class SubtaskDTO {
 		this.position = subtask.getPosition();
 		this.createdAt = subtask.getCreatedAt();
 		this.updatedAt = subtask.getUpdatedAt();
-		this.taskId = subtask.getTask().getId();
 	}
 
 }

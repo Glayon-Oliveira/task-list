@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
@@ -27,9 +29,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.SubtaskController;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.param.subtask.CreateSubtaskSource;
@@ -50,6 +54,9 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 
 	@MockitoBean(name = "resourceAccessService")
 	private ResourceAccessService accessService;
+
+	@Autowired
+	private ObjectMapper mapper;
 
 	private final String baseUri = "/api/subtask";
 
@@ -72,13 +79,13 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 	@MethodSource("com.lmlasmo.tasklist.param.subtask.CreateSubtaskSource#source")
 	public void createSubtask(CreateSubtaskSource.CreateSubtaskData data) throws Exception {
 		String createFormat = """
-			{
-					"name": "%s",
-					"summary": "%s",
-					"durationMinutes": %d,
-					"taskId": %d
-			}
-		""";
+					{
+							"name": "%s",
+							"summary": "%s",
+							"durationMinutes": %d,
+							"taskId": %d
+					}
+				""";
 
 		String create = String.format(createFormat, data.getName(), data.getSummary(), data.getDurationMinutes(), subtask.getTask().getId());
 
@@ -100,20 +107,55 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 
 		resultActions.andExpect(MockMvcResultMatchers.jsonPath("$.name").value(data.getName()))
 		.andExpect(MockMvcResultMatchers.jsonPath("$.summary").value(data.getSummary()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.durationMinutes").value(data.getDurationMinutes()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.taskId").value(subtask.getTask().getId()));
+		.andExpect(MockMvcResultMatchers.jsonPath("$.durationMinutes").value(data.getDurationMinutes()));
 	}
 
 	@Test
-	public void getSubtask() throws Exception {
-		when(accessService.canAccessTask(1, 1)).thenReturn(true);
+	public void getSubtasksByTask() throws Exception {
+		when(accessService.canAccessTask(eq(1), eq(getDefaultUser().getId()))).thenReturn(true);
 		when(subtaskService.findByTask(eq(1), any())).thenReturn(new PageImpl<>(List.of(new SubtaskDTO(subtask))));
 
 		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
 				.param("taskId", "1")
 				.header("Authorization", "Bearer " + getDefaultJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(200))
-		.andExpect(result -> VerifyResolvedException.verify(result, null));
+		.andExpect(MockMvcResultMatchers.jsonPath("$.size").value(1));
+	}
+
+	@Test
+	public void getSubtaskById() throws Exception {
+		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
+		when(subtaskService.findById(subtask.getId())).thenReturn(new SubtaskDTO(subtask));
+
+		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + "/" + subtask.getId())
+				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+		.andExpect(MockMvcResultMatchers.status().is(200))
+		.andExpect(MockMvcResultMatchers.jsonPath("$.id").value(subtask.getId()));
+	}
+
+	@Test
+	public void update() throws Exception {
+		UpdateSubtaskDTO update = new UpdateSubtaskDTO();
+		update.setName(UUID.randomUUID().toString());
+		update.setSummary(UUID.randomUUID().toString());
+		update.setDurationMinutes(5);
+
+		SubtaskDTO subtaskDTO = new SubtaskDTO(subtask);
+		subtaskDTO.setName(update.getName());
+		subtaskDTO.setSummary(update.getSummary());
+		subtaskDTO.setDurationMinutes(update.getDurationMinutes());
+
+		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
+		when(subtaskService.update(eq(subtask.getId()), any())).thenReturn(subtaskDTO);
+
+		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + subtask.getId())
+				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(mapper.writeValueAsString(update)))
+		.andExpect(MockMvcResultMatchers.status().isOk())
+		.andExpect(MockMvcResultMatchers.jsonPath("$.name").value(subtaskDTO.getName()))
+		.andExpect(MockMvcResultMatchers.jsonPath("$.summary").value(subtaskDTO.getSummary()))
+		.andExpect(MockMvcResultMatchers.jsonPath("$.durationMinutes").value(subtaskDTO.getDurationMinutes()));
 	}
 
 	@Test
@@ -125,7 +167,6 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 				.collect(Collectors.joining(","));
 
 
-
 		MultiValueMap<String, String> baseParams = new LinkedMultiValueMap<>();
 		baseParams.add("subtaskIds", strIds);
 
@@ -134,8 +175,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
 				.params(baseParams)
 				.header("Authorization", "Bearer " + getDefaultJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(204))
-		.andExpect(result -> VerifyResolvedException.verify(result, null));
+		.andExpect(MockMvcResultMatchers.status().is(204));
 	}
 
 	@RepeatedTest(10)

@@ -66,11 +66,11 @@ public class FailureAuthenticationControllerTest extends AbstractControllerTest 
 	void signIn() throws Exception {
 		String baseUri = "/api/sign/in";
 		String signInFormat = """
-			{
-					"username": "%s",
-					"password": "%s"
-			}
-		""";
+					{
+							"username": "%s",
+							"password": "%s"
+					}
+				""";
 
 		List<Entry<String, String>> credentials = List.of(
 				Map.entry(getDefaultUser().getUsername(), UUID.randomUUID().toString()),

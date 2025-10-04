@@ -42,11 +42,11 @@ public class UserControllerTest extends AbstractControllerTest {
 	@MethodSource("com.lmlasmo.tasklist.param.user.SignInAndUpSource#source")
 	void signUp(SignInAndUpSource.SignInAndUpData data) throws Exception {
 		String createFormat = """
-			{
-					"username": "%s",
-					"password": "%s"
-			}
-		""";
+					{
+							"username": "%s",
+							"password": "%s"
+					}
+				""";
 
 		String create = String.format(createFormat, data.getUsername(), data.getPassword());
 		String signUpUri = "/api/sign/up";
@@ -69,11 +69,11 @@ public class UserControllerTest extends AbstractControllerTest {
 	void signIn(SignInAndUpSource.SignInAndUpData data) throws Exception {
 		String baseUri = "/api/sign/in";
 		String signInFormat = """
-			{
-					"username": "%s",
-					"password": "%s"
-			}
-		""";
+					{
+							"username": "%s",
+							"password": "%s"
+					}
+				""";
 
 		assumeTrue(data.getStatus() < 200 || data.getStatus() >= 300);
 
@@ -90,11 +90,11 @@ public class UserControllerTest extends AbstractControllerTest {
 	void successSignIn() throws UnsupportedEncodingException, Exception {
 		String baseUri = "/api/sign/in";
 		String signInFormat = """
-			{
-					"username": "%s",
-					"password": "%s"
-			}
-		""";
+					{
+							"username": "%s",
+							"password": "%s"
+					}
+				""";
 
 		String signIn = String.format(signInFormat, getDefaultUser().getUsername(), getDefaultPassword());
 
@@ -115,11 +115,11 @@ public class UserControllerTest extends AbstractControllerTest {
 	@Test
 	void signUpConflitedWithDefaultUser() throws Exception {
 		String signupFormat = """
-			{
-					"username": "%s",
-					"password": "%s"
-			}
-		""";
+					{
+							"username": "%s",
+							"password": "%s"
+					}
+				""";
 
 		String signup = String.format(signupFormat, getDefaultUser().getUsername(), getDefaultPassword());
 		String signUpUri = "/api/sign/up";
@@ -146,10 +146,10 @@ public class UserControllerTest extends AbstractControllerTest {
 	@MethodSource("com.lmlasmo.tasklist.param.user.UpdatePasswordOfDefaultUserSource#source")
 	void updatePasswordOfDefaultUser(UpdatePasswordOfDefaultUserSource.UpdatePasswordOfDefaultUserData data) throws Exception {
 		String updateFormat = """
-			{
-					"password": "%s"
-			}
-		""";
+					{
+							"password": "%s"
+					}
+				""";
 
 		String update = String.format(updateFormat, data.getPassword());
 		String updateUri = "/api/user/";

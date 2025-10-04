@@ -51,7 +51,7 @@ public class TaskMapperTest {
 		task.setUpdatedAt(updateAt);
 		task.setUser(user);
 
-		TaskDTO dto = new TaskDTO(task);
+		TaskDTO dto = new TaskDTO(task, true);
 
 		assertTrue(task.getName().equals(dto.getName()));
 		assertTrue(task.getSummary().equals(dto.getSummary()));
@@ -59,7 +59,7 @@ public class TaskMapperTest {
 		assertTrue(task.getDeadlineZone().equals(dto.getDeadlineZone()));
 		assertTrue(task.getCreatedAt().equals(dto.getCreatedAt()));
 		assertTrue(task.getUpdatedAt().equals(dto.getUpdatedAt()));
-		assertTrue(task.getUser().getId().equals(dto.getUserId()));
+		assertTrue(task.getSubtasks().size() == dto.getSubtasks().size());
 	}
 
 }

@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.IdPosition;
@@ -50,6 +51,16 @@ public class SubtaskService {
 		if(count < subtaskIds.size()) throw new EntityNotFoundException("Subtask not found");
 		
 		subtaskRepository.deleteAllByIdInBatch(subtaskIds);
+	}
+	
+	public SubtaskDTO update(int subtaskId, UpdateSubtaskDTO update) {
+		Subtask subtask = subtaskRepository.findById(subtaskId).orElseThrow(() -> new EntityNotFoundException("Subtask not found for id equals " + subtaskId));
+		
+		if(update.getName() != null) subtask.setName(update.getName());
+		if(update.getSummary() != null) subtask.setSummary(update.getSummary());
+		if(update.getDurationMinutes() != null) subtask.setDurationMinutes(update.getDurationMinutes());
+		
+		return new SubtaskDTO(subtaskRepository.save(subtask));
 	}
 	
 	@Transactional
@@ -112,6 +123,11 @@ public class SubtaskService {
 	
 	public Page<SubtaskDTO> findByTask(int taskId, Pageable pageable){		
 		return subtaskRepository.findByTaskId(taskId, pageable).map(SubtaskDTO::new);
-	}	
+	}
+
+	public SubtaskDTO findById(int subtaskId) {
+		return subtaskRepository.findById(subtaskId).map(SubtaskDTO::new)
+				.orElseThrow(() -> new EntityNotFoundException("Subtask not found for id equals " + subtaskId));
+	}
 	
 }

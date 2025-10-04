@@ -1,4 +1,4 @@
-package com.lmlasmo.tasklist.dto.create;
+package com.lmlasmo.tasklist.dto.update;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
