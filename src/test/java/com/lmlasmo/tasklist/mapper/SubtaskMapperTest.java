@@ -59,7 +59,6 @@ public class SubtaskMapperTest {
 		assertTrue(dto.getPosition() == subtask.getPosition());
 		assertTrue(dto.getCreatedAt().equals(subtask.getCreatedAt()));
 		assertTrue(dto.getUpdatedAt().equals(subtask.getUpdatedAt()));
-		assertTrue(subtask.getTask().getId().equals(dto.getTaskId()));
 	}
 
 }

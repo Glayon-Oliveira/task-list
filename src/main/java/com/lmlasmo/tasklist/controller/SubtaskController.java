@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
@@ -51,6 +52,12 @@ public class SubtaskController {
 		return null;
 	}
 	
+	@PutMapping("/{subtaskId}")
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, authentication.principal)")
+	public SubtaskDTO update(@PathVariable @Min(1) int subtaskId, @RequestBody UpdateSubtaskDTO update) {
+		return subtaskService.update(subtaskId, update);
+	}
+	
 	@PutMapping(path = "/{subtaskId}", params = "position")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, authentication.principal)")
@@ -67,10 +74,16 @@ public class SubtaskController {
 		return null;
 	}
 
-	@GetMapping(params = "taskId")
+	@GetMapping(params = {"taskId"})
 	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
 	public Page<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId, Pageable pageable){
 		return subtaskService.findByTask(taskId, pageable);
+	}
+	
+	@GetMapping("/{subtaskId}")
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, authentication.principal)")
+	public SubtaskDTO findById(@PathVariable @Min(1) int subtaskId) {
+		return subtaskService.findById(subtaskId);
 	}
 	
 }

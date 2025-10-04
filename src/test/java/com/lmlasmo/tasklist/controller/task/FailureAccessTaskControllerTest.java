@@ -1,9 +1,11 @@
 package com.lmlasmo.tasklist.controller.task;
 
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.UUID;
 
@@ -11,16 +13,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.TaskController;
+import com.lmlasmo.tasklist.dto.update.UpdateDeadlineTaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateDescriptionTaskDTO;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
@@ -37,6 +42,9 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 
 	@MockitoBean
 	private TaskStatusService statusService;
+
+	@Autowired
+	private ObjectMapper mapper;
 
 	@MockitoBean(name = "resourceAccessService")
 	private ResourceAccessService accessService;
@@ -59,12 +67,12 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 		task.setDeadlineZone(ZoneId.systemDefault().toString());
 		task.setCreatedAt(Instant.now());
 		task.setUpdatedAt(task.getCreatedAt());
+
+		when(accessService.canAccessTask(anyInt(), eq(getDefaultUser().getId()))).thenReturn(false);
 	}
 
 	@Test
-	public void deleteDefaultTask() throws Exception {
-		when(accessService.canAccessTask(anyInt(), anyInt())).thenReturn(false);
-
+	public void delete() throws Exception {
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri + task.getId()+1)
 				.header("Authorization", "Bearer " + getDefaultJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
@@ -72,15 +80,46 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 	}
 
 	@Test
-	public void updateStatusOfDefaultTask() throws Exception {
-		when(accessService.canAccessTask(anyInt(), anyInt())).thenReturn(false);
+	public void updateStatus() throws Exception {
+		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + task.getId())
+				.param("status", TaskStatusType.COMPLETED.name())
+				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+		.andExpect(MockMvcResultMatchers.status().is(403))
+		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
+	}
 
-		MultiValueMap<String, String> baseParams = new LinkedMultiValueMap<>();
-		baseParams.add("taskId", String.valueOf(task.getId()+1));
-		baseParams.add("status", TaskStatusType.COMPLETED.name());
+	@Test
+	public void updateDescription() throws Exception {
+		UpdateDescriptionTaskDTO update = new UpdateDescriptionTaskDTO();
+		update.setName(UUID.randomUUID().toString());
+		update.setSummary(UUID.randomUUID().toString());
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri.substring(0, baseUri.lastIndexOf("/")))
-				.params(baseParams)
+		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + task.getId() + "/description")
+				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(mapper.writeValueAsString(update)))
+		.andExpect(MockMvcResultMatchers.status().is(403))
+		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
+	}
+
+	@Test
+	public void updateDeadline() throws Exception {
+		UpdateDeadlineTaskDTO update = new UpdateDeadlineTaskDTO();
+		update.setDeadline(OffsetDateTime.now().plusMinutes(1));
+		update.setDeadlineZone("UTC");
+
+		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + task.getId() + "/deadline")
+				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(mapper.writeValueAsString(update)))
+		.andExpect(MockMvcResultMatchers.status().is(403))
+		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
+	}
+
+	@Test
+	public void getTaskById() throws Exception {
+		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + task.getId())
+				.param("withSubtasks", "true")
 				.header("Authorization", "Bearer " + getDefaultJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
 		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
