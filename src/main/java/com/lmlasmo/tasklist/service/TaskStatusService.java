@@ -9,7 +9,7 @@ import com.lmlasmo.tasklist.exception.TaskHasSubtasksException;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.TaskRepository;
-import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.IdStatusTask;
+import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.StatusSummary;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
@@ -31,11 +31,19 @@ public class TaskStatusService {
 
 	@Transactional
 	public void updateSubtaskStatus(TaskStatusType status, List<Integer> subtaskIds) {		
-		List<IdStatusTask> stIdStatusTasks = subtaskRepository.findAllIdAndStatusAndTaskById(subtaskIds);
+		List<StatusSummary> stIdStatusTasks = subtaskRepository.findStatusSummaryByIds(subtaskIds);
 		
 		if(stIdStatusTasks.size() < subtaskIds.size()) throw new EntityNotFoundException("Subtasks not found");
 		
-		stIdStatusTasks.forEach(s -> subtaskRepository.updateStatus(s.getId(), status));
+		stIdStatusTasks = stIdStatusTasks.stream()
+				.filter(s -> s.getStatus().equals(status))
+				.toList();
+		
+		if(stIdStatusTasks.size() > 1) {
+			subtaskRepository.updateStatus(subtaskIds, status);
+		}else {
+			subtaskRepository.updateStatus(stIdStatusTasks.get(0).getId(), status);
+		}
 		
 		stIdStatusTasks.stream()
 			.map(s -> s.getTaskId())

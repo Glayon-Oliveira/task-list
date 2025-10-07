@@ -41,6 +41,7 @@ public class AbstractSubtaskRepositoryTest extends AbstractTaskRepositoryTest {
 				subtask.setSummary(summary);
 				subtask.setPosition(subtasks.size()+1);
 				subtask.setTask(new Task(t.getId()));
+				t.getSubtasks().add(subtask);
 
 				subtask = subtaskRepository.save(subtask);
 				subtasks.add(subtask);

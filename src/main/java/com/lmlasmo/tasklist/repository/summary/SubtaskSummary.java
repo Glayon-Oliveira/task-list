@@ -1,18 +1,25 @@
 package com.lmlasmo.tasklist.repository.summary;
 
+import com.lmlasmo.tasklist.model.TaskStatusType;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
 public interface SubtaskSummary {
 	
-	public static interface IdPosition{		
-		
-		public int getId();
-		public int getPosition();
-		
+	@Getter
+	@RequiredArgsConstructor
+	public static class PositionSummary{
+		private final int id;
+		private final int position;	
 	}
 	
-	public static interface IdStatusTask{
-		public int getId();
-		public int getStatus();
-		public int getTaskId();
+	@Getter
+	@RequiredArgsConstructor
+	public static class StatusSummary{
+		private final int id;
+		private final TaskStatusType status;
+		private final int taskId;
 	}
 
 }
