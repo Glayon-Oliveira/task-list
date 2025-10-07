@@ -37,7 +37,7 @@ public class TaskController {
 	private TaskService taskService;
 	private TaskStatusService taskStatusService;
 	
-	@PostMapping("/")
+	@PostMapping
 	@ResponseStatus(code = HttpStatus.CREATED)	
 	public TaskDTO create(@RequestBody @Valid CreateTaskDTO create) {
 		int userId = AuthenticatedTool.getUserId();
@@ -74,12 +74,12 @@ public class TaskController {
 		return null;
 	}
 	
-	@GetMapping(path ="/")
+	@GetMapping
 	public Page<TaskDTO> findAllByI(Pageable pageable, @RequestParam(required = false) boolean withSubtasks){
 		return taskService.findByUser(AuthenticatedTool.getUserId(), withSubtasks, pageable);
 	}
 	
-	@GetMapping(path = "/{taskId}")
+	@GetMapping("/{taskId}")
 	@ResponseStatus(code = HttpStatus.OK)
 	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
 	public TaskDTO findById(@PathVariable @Min(1) int taskId, @RequestParam(required = false) boolean withSubtasks) {

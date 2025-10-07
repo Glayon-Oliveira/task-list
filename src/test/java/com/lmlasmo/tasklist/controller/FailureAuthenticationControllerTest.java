@@ -64,7 +64,7 @@ public class FailureAuthenticationControllerTest extends AbstractControllerTest 
 	@ParameterizedTest
 	@MethodSource("com.lmlasmo.tasklist.param.FailureAuthenticateEndpointSource#source")
 	void signIn() throws Exception {
-		String baseUri = "/api/sign/in";
+		String baseUri = "/api/auth/login";
 		String signInFormat = """
 					{
 							"username": "%s",

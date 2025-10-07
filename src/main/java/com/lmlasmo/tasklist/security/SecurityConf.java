@@ -25,7 +25,7 @@ public class SecurityConf {
 		return http.csrf(c -> c.disable())
 				.formLogin(c -> c.disable())
 				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				.authorizeHttpRequests(a -> a.requestMatchers("/api/sign/**").permitAll()
+				.authorizeHttpRequests(a -> a.requestMatchers("/api/auth/**").permitAll()
 						.anyRequest().authenticated())
 				.exceptionHandling(e -> e.authenticationEntryPoint(entryPoint))
 				.addFilterBefore(jwtFilter, BasicAuthenticationFilter.class)

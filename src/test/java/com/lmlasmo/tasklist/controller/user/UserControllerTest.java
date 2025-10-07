@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
-import com.lmlasmo.tasklist.controller.SignController;
+import com.lmlasmo.tasklist.controller.AuthController;
 import com.lmlasmo.tasklist.controller.UserController;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO;
@@ -31,7 +31,7 @@ import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
 import jakarta.persistence.EntityExistsException;
 
-@WebMvcTest(controllers = {SignController.class, UserController.class})
+@WebMvcTest(controllers = {AuthController.class, UserController.class})
 @TestInstance(Lifecycle.PER_CLASS)
 public class UserControllerTest extends AbstractControllerTest {
 
@@ -49,7 +49,7 @@ public class UserControllerTest extends AbstractControllerTest {
 				""";
 
 		String create = String.format(createFormat, data.getUsername(), data.getPassword());
-		String signUpUri = "/api/sign/up";
+		String signUpUri = "/api/auth/signup";
 
 		when(getUserService().save(any(SignupDTO.class))).thenReturn(new UserDTO(getDefaultUser()));
 
@@ -67,7 +67,7 @@ public class UserControllerTest extends AbstractControllerTest {
 	@ParameterizedTest
 	@MethodSource("com.lmlasmo.tasklist.param.user.SignInAndUpSource#source")
 	void signIn(SignInAndUpSource.SignInAndUpData data) throws Exception {
-		String baseUri = "/api/sign/in";
+		String baseUri = "/api/auth/login";
 		String signInFormat = """
 					{
 							"username": "%s",
@@ -88,7 +88,7 @@ public class UserControllerTest extends AbstractControllerTest {
 
 	@Test
 	void successSignIn() throws UnsupportedEncodingException, Exception {
-		String baseUri = "/api/sign/in";
+		String baseUri = "/api/auth/login";
 		String signInFormat = """
 					{
 							"username": "%s",
@@ -122,7 +122,7 @@ public class UserControllerTest extends AbstractControllerTest {
 				""";
 
 		String signup = String.format(signupFormat, getDefaultUser().getUsername(), getDefaultPassword());
-		String signUpUri = "/api/sign/up";
+		String signUpUri = "/api/auth/signup";
 
 		when(getUserService().save(any())).thenThrow(EntityExistsException.class);
 
@@ -135,7 +135,7 @@ public class UserControllerTest extends AbstractControllerTest {
 
 	@Test
 	void deleteDefaultUser() throws Exception {
-		String baseUri = "/api/user/";
+		String baseUri = "/api/user/i";
 
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
 				.header("Authorization", "Bearer " + getDefaultJwtToken()))
@@ -152,7 +152,7 @@ public class UserControllerTest extends AbstractControllerTest {
 				""";
 
 		String update = String.format(updateFormat, data.getPassword());
-		String updateUri = "/api/user/";
+		String updateUri = "/api/user/i";
 
 		getMockMvc().perform(MockMvcRequestBuilders.put(updateUri)
 				.header("Authorization", "Bearer " + getDefaultJwtToken())

@@ -24,14 +24,14 @@ public class UserController {
 
 	private UserService userService;	
 	
-	@PutMapping("/")	
+	@PutMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Void updatePassword(@RequestBody @Valid UpdatePasswordDTO update) {		
 		userService.updatePassword(AuthenticatedTool.getUserId(), update.getPassword());
 		return null;
 	}
 	
-	@DeleteMapping("/")	
+	@DeleteMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Void delete() {		
 		userService.delete(AuthenticatedTool.getUserId());

@@ -60,7 +60,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 	@Autowired
 	private ObjectMapper mapper;
 
-	private final String baseUri = "/api/task/";
+	private final String baseUri = "/api/task";
 
 	private Task task;
 
@@ -133,7 +133,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
 		when(taskService.findById(task.getId(), true)).thenReturn(new TaskDTO(task, true));
 
-		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + task.getId())
+		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + "/" + task.getId())
 				.param("withSubtasks", "true")
 				.header("Authorization", "Bearer " + getDefaultJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(200))
@@ -145,7 +145,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 	public void deleteDefaultTask() throws Exception {
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
 
-		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri + task.getId())
+		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri + "/" + task.getId())
 				.header("Authorization", "Bearer " + getDefaultJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(204))
 		.andExpect(result -> VerifyResolvedException.verify(result, null));
@@ -162,7 +162,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
 		when(taskService.updateDescription(eq(task.getId()), any())).thenReturn(fullTaskDTO);
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + task.getId() + "/description")
+		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId() + "/description")
 				.header("Authorization", "Bearer " + getDefaultJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)))
@@ -185,7 +185,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
 		when(taskService.updateDeadline(eq(task.getId()), any())).thenReturn(taskDTO);
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + task.getId() + "/deadline")
+		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId() + "/deadline")
 				.header("Authorization", "Bearer " + getDefaultJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)))

@@ -24,14 +24,14 @@ import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 @RestController
-@RequestMapping("/api/sign")
-public class SignController {
+@RequestMapping("/api/auth")
+public class AuthController {
 	
 	private UserService userService;
 	private JwtService jwtService;
 	private AuthenticationManager manager;	
 	
-	@PostMapping("/in")	
+	@PostMapping("/login")
 	public JWTTokenDTO inByJson(@RequestBody @Valid LoginDTO login) {		
 		Authentication auth = new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPassword());		
 		auth = manager.authenticate(auth);
@@ -42,7 +42,7 @@ public class SignController {
 		return new JWTTokenDTO(token);
 	}	
 	
-	@PostMapping("/up")	
+	@PostMapping("/signup")	
 	@ResponseStatus(code = HttpStatus.CREATED)
 	public UserDTO upByJson(@RequestBody @Valid SignupDTO signup) {
 		return userService.save(signup);		
