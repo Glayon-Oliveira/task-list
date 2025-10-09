@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.lmlasmo.tasklist.model.TaskStatusType;
+import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 
@@ -15,14 +16,14 @@ public interface SubtaskRepositoryCustom {
 		
 	public List<PositionSummary> findPositionSummaryByRelatedSubtaskId(int subtaskId);
 	
-	public void updatePriority(int subtaskId, int position);
+	public void updatePriority(BasicSummary basic, int position);
 	
 	public Optional<SubtaskSummary.StatusSummary> findStatusSummaryById(int subtaskId);
 	
 	public List<SubtaskSummary.StatusSummary> findStatusSummaryByIds(Iterable<Integer> subtaskIds);
 	
-	public void updateStatus(int subtaskId, TaskStatusType status);
+	public void updateStatus(BasicSummary basic, TaskStatusType status);
 	
-	public void updateStatus(Iterable<Integer> subtaskIds, TaskStatusType status);
+	public void updateStatus(Iterable<? extends BasicSummary> basics, TaskStatusType status);
 	
 }

@@ -21,6 +21,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -63,6 +64,10 @@ public class Task {
 	@Enumerated(EnumType.STRING)
 	@Column	
 	private TaskStatusType status = TaskStatusType.PENDING;
+	
+	@Column(name = "row_version")
+	@Version
+	private long version;
 	
 	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "user_id")

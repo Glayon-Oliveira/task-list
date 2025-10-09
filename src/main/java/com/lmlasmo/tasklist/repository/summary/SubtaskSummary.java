@@ -3,23 +3,29 @@ package com.lmlasmo.tasklist.repository.summary;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
-public interface SubtaskSummary {
+public interface SubtaskSummary {	
 	
 	@Getter
-	@RequiredArgsConstructor
-	public static class PositionSummary{
-		private final int id;
-		private final int position;	
+	public static class PositionSummary extends BasicSummary{
+		private final int position;
+		
+		public PositionSummary(int id, long version, int position) {
+			super(id, version);
+			this.position = position;
+		}
 	}
 	
-	@Getter
-	@RequiredArgsConstructor
-	public static class StatusSummary{
-		private final int id;
+	@Getter	
+	public static class StatusSummary extends BasicSummary{		
 		private final TaskStatusType status;
 		private final int taskId;
+		
+		public StatusSummary(int id, long version, TaskStatusType status, int taskId) {
+			super(id, version);
+			this.status = status;
+			this.taskId = taskId;
+		}
 	}
 
 }

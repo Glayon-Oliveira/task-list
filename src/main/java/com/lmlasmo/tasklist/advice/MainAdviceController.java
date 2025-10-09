@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.jpa.JpaOptimisticLockingFailureException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -38,7 +39,13 @@ public class MainAdviceController {
 	@ResponseStatus(code = HttpStatus.CONFLICT)
 	public Map<String, Object> exceptionResponse(EntityExistsException exception, HttpServletRequest request){		
 		return AdviceWrapper.wrapper(HttpStatus.CONFLICT, exception.getMessage(), request);
-	}	
+	}
+	
+	@ExceptionHandler(JpaOptimisticLockingFailureException.class)
+	@ResponseStatus(code = HttpStatus.CONFLICT)
+	public Map<String, Object> exceptionResponse(JpaOptimisticLockingFailureException exception, HttpServletRequest request) {
+		return AdviceWrapper.wrapper(HttpStatus.CONFLICT, "The entity has been modified by another process. Please update the data and try again", request);
+	}
 	
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
 	@ResponseStatus(code = HttpStatus.METHOD_NOT_ALLOWED)

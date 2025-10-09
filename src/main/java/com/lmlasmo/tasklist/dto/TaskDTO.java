@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -41,7 +42,10 @@ public class TaskDTO {
 	private Instant updatedAt;
 	
 	@JsonProperty	
-	private TaskStatusType status;	
+	private TaskStatusType status;
+	
+	@JsonIgnore
+	private long version;
 	
 	@JsonProperty
 	@JsonInclude(content = Include.NON_NULL)
@@ -54,8 +58,9 @@ public class TaskDTO {
 		this.createdAt = task.getCreatedAt();
 		this.updatedAt = task.getUpdatedAt();
 		this.status = task.getStatus();
+		this.version = task.getVersion();
 		this.deadlineZone = task.getDeadlineZone();
-		this.deadline = task.getDeadline().atZone(ZoneId.of(deadlineZone)).toOffsetDateTime();
+		this.deadline = task.getDeadline().atZone(ZoneId.of(deadlineZone)).toOffsetDateTime();		
 	}
 	
 	public TaskDTO(Task task, boolean withSubtasks) {

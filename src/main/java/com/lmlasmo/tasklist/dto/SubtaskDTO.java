@@ -2,6 +2,7 @@ package com.lmlasmo.tasklist.dto;
 
 import java.time.Instant;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
@@ -39,6 +40,9 @@ public class SubtaskDTO {
 	@JsonProperty
 	private Instant updatedAt;
 	
+	@JsonIgnore
+	private long version;
+	
 	public SubtaskDTO(Subtask subtask) {
 		this.id = subtask.getId();
 		this.name = subtask.getName();
@@ -48,6 +52,7 @@ public class SubtaskDTO {
 		this.position = subtask.getPosition();
 		this.createdAt = subtask.getCreatedAt();
 		this.updatedAt = subtask.getUpdatedAt();
+		this.version = subtask.getVersion();
 	}
 
 }

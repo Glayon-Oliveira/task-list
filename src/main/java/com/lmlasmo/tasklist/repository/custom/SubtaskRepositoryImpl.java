@@ -10,11 +10,13 @@ import org.springframework.transaction.annotation.Transactional;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
+import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.StatusSummary;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.CriteriaUpdate;
@@ -38,6 +40,7 @@ public class SubtaskRepositoryImpl implements SubtaskRepositoryCustom{
 		criteriaQuery.select(criteriaBuilder.construct(
 				PositionSummary.class,
 				root.get("id"),
+				root.get("version"),
 				root.get("position")
 				))
 		.where(criteriaBuilder.equal(root.get("task").get("id"), taskId));
@@ -55,6 +58,7 @@ public class SubtaskRepositoryImpl implements SubtaskRepositoryCustom{
 		criteriaQuery.select(criteriaBuilder.construct(
 				PositionSummary.class,
 				root.get("id"),
+				root.get("version"),
 				root.get("position")))
 			.where(criteriaBuilder.equal(root.get("id"), subtaskId));
 		
@@ -81,6 +85,7 @@ public class SubtaskRepositoryImpl implements SubtaskRepositoryCustom{
 		criteriaQuery.select(criteriaBuilder.construct(
 				PositionSummary.class,
 				root.get("id"),
+				root.get("version"),
 				root.get("position")
 				))
 		.where(criteriaBuilder.and(
@@ -93,15 +98,21 @@ public class SubtaskRepositoryImpl implements SubtaskRepositoryCustom{
 
 	@Override
 	@Transactional
-	public void updatePriority(int subtaskId, int position) {
+	public void updatePriority(BasicSummary basic, int position) {
 		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
 		CriteriaUpdate<Subtask> criteriaUpdate = criteriaBuilder.createCriteriaUpdate(Subtask.class);
 		Root<Subtask> root = criteriaUpdate.from(Subtask.class);
 		
 		criteriaUpdate.set(root.get("position"), position)
-			.where(criteriaBuilder.equal(root.get("id"), subtaskId));
+			.set(root.get("version"), basic.getVersion()+1)
+			.where(criteriaBuilder.and(
+					criteriaBuilder.equal(root.get("id"), basic.getId()),
+					criteriaBuilder.equal(root.get("version"), basic.getVersion())
+					));
 		
-		entityManager.createQuery(criteriaUpdate).executeUpdate();
+		int rows = entityManager.createQuery(criteriaUpdate).executeUpdate();
+		
+		if(rows == 0) throw new OptimisticLockException("Row was updated or deleted by another transaction");
 	}
 
 	@Override
@@ -114,6 +125,7 @@ public class SubtaskRepositoryImpl implements SubtaskRepositoryCustom{
 		criteriaQuery.select(criteriaBuilder.construct(
 				StatusSummary.class,
 				root.get("id"),
+				root.get("version"),
 				root.get("status"),
 				root.get("task").get("id")
 				))
@@ -139,6 +151,7 @@ public class SubtaskRepositoryImpl implements SubtaskRepositoryCustom{
 		criteriaQuery.select(criteriaBuilder.construct(
 				StatusSummary.class,
 				root.get("id"),
+				root.get("version"),
 				root.get("status"),
 				root.get("task").get("id")
 				))
@@ -149,32 +162,43 @@ public class SubtaskRepositoryImpl implements SubtaskRepositoryCustom{
 
 	@Override
 	@Transactional
-	public void updateStatus(int subtaskId, TaskStatusType status) {
+	public void updateStatus(BasicSummary basic, TaskStatusType status) {
 		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
 		CriteriaUpdate<Subtask> criteriaUpdate = criteriaBuilder.createCriteriaUpdate(Subtask.class);
 		Root<Subtask> root = criteriaUpdate.from(Subtask.class);
 		
 		criteriaUpdate.set(root.get("status"), status)
-			.where(criteriaBuilder.equal(root.get("id"), subtaskId));
+			.set(root.get("version"), basic.getVersion()+1)
+			.where(criteriaBuilder.and(
+					criteriaBuilder.equal(root.get("id"), basic.getId()),
+					criteriaBuilder.equal(root.get("version"), basic.getVersion())
+					));
 		
-		entityManager.createQuery(criteriaUpdate).executeUpdate();
+		int rows = entityManager.createQuery(criteriaUpdate).executeUpdate();
+		
+		if(rows == 0) throw new OptimisticLockException("Row was updated or deleted by another transaction");
 	}
 
 	@Override
 	@Transactional
-	public void updateStatus(Iterable<Integer> subtaskIds, TaskStatusType status) {
+	public void updateStatus(Iterable<? extends BasicSummary> basics, TaskStatusType status) {
 		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaUpdate<Subtask> criteriaUpdate = criteriaBuilder.createCriteriaUpdate(Subtask.class);
-		Root<Subtask> root = criteriaUpdate.from(Subtask.class);
 		
-		List<Integer> ids = new ArrayList<>();
-		subtaskIds.forEach(ids::add);
-		
-		criteriaUpdate.set(root.get("status"), status)
-			.where(root.get("id").in(ids));
-		
-		entityManager.createQuery(criteriaUpdate)
-			.executeUpdate();
+		for(BasicSummary basic: basics) {
+			CriteriaUpdate<Subtask> criteriaUpdate = criteriaBuilder.createCriteriaUpdate(Subtask.class);
+			Root<Subtask> root = criteriaUpdate.from(Subtask.class);
+			
+			criteriaUpdate.set(root.get("status"), status)
+				.set(root.get("version"), basic.getVersion()+1)
+				.where(criteriaBuilder.and(
+						criteriaBuilder.equal(root.get("id"), basic.getId()),
+						criteriaBuilder.equal(root.get("version"), basic.getVersion())
+						));
+			
+			int rows = entityManager.createQuery(criteriaUpdate).executeUpdate();
+			
+			if(rows == 0) throw new OptimisticLockException("Row with id " + basic.getId() + " was updated or deleted by another transaction");
+		}
 	}
 
 }

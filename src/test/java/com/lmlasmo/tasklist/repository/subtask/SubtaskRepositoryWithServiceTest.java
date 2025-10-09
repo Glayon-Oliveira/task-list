@@ -29,13 +29,13 @@ public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryT
 	@RepeatedTest(maxSubtaskPerTask)
 	void updatePosition(RepetitionInfo info) {
 		getSubtasks().forEach(s -> {
-			em.refresh(s);
+			em.refresh(s);			
 
 			int newPosition = new Random().nextInt(1, maxSubtaskPerTask+1);
 
 			if(newPosition == s.getPosition()) {
 				newPosition = (s.getPosition() == maxSubtaskPerTask) ? newPosition-1 : maxSubtaskPerTask;
-			}
+			}			
 
 			final int originalPosition = s.getPosition();
 

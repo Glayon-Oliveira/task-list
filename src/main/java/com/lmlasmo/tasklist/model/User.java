@@ -22,6 +22,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -60,6 +61,10 @@ public class User implements UserDetails{
 	@UpdateTimestamp
 	@Column(name = "updated_at")
 	private Instant updatedAt;
+	
+	@Column(name = "row_version")
+	@Version
+	private long version;
 	
 	@OneToMany(mappedBy = "user")
 	private Set<Task> tasks;

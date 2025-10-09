@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.repository.subtask;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -16,10 +17,12 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.jpa.JpaOptimisticLockingFailureException;
 
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
+import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.StatusSummary;
 
@@ -114,16 +117,42 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		Subtask lastSubtask = sortedSubtasks.get(subtaskIndex == sortedSubtasks.size()-1 ? 0 : sortedSubtasks.size()-1);
 		final int lastPosition = lastSubtask.getPosition();
 		
-		getSubtaskRepository().updatePriority(subtask.getId(), lastPosition > position ? lastPosition+1 : position+1);
+		getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), subtask.getVersion()), lastPosition > position ? lastPosition+1 : position+1);
 		entityManager.refresh(subtask);		
 		assertEquals(subtask.getPosition(), lastPosition > position ? lastPosition+1 : position+1);
 		
-		getSubtaskRepository().updatePriority(lastSubtask.getId(), position);
+		getSubtaskRepository().updatePriority(new BasicSummary(lastSubtask.getId(), lastSubtask.getVersion()), position);
 		getSubtaskRepository().flush();
 		entityManager.refresh(lastSubtask);
 		assertEquals(lastSubtask.getPosition(), position);
 		
-		assertThrows(DataIntegrityViolationException.class, () -> getSubtaskRepository().updatePriority(subtask.getId(), position));						
+		assertThrows(DataIntegrityViolationException.class, () -> getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), subtask.getVersion()), position));						
+	}
+	
+	@Test
+	void updatePriorityWithVersion() {
+	    Task task = getTasks().get(0);
+	    Subtask subtask = task.getSubtasks().stream().findFirst().orElseThrow();
+
+	    long initialVersion = subtask.getVersion();
+	    int newPosition = subtask.getPosition() + task.getSubtasks().size() + 1;
+ 
+	    getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), initialVersion), newPosition);
+
+	    entityManager.refresh(subtask);
+
+	    assertEquals(initialVersion + 1, subtask.getVersion());
+	    assertEquals(newPosition, subtask.getPosition());
+
+	    assertThrows(JpaOptimisticLockingFailureException.class, 
+	    		() -> getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), initialVersion), newPosition + 1)
+	    );
+
+	    getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), subtask.getVersion()), newPosition + 2);
+
+	    entityManager.refresh(subtask);
+	    assertEquals(2, subtask.getVersion());
+	    assertEquals(newPosition + 2, subtask.getPosition());
 	}
 	
 	@Test
@@ -169,12 +198,15 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		int index = new Random().nextInt(0, getSubtasks().size());
 		Subtask subtask = getSubtasks().get(index);
 		
-		List<Integer> ids = getSubtasks().stream()
-				.map(Subtask::getId)
+		List<BasicSummary> ids = getSubtasks().stream()
+				.map(s -> new BasicSummary(s.getId(), s.getVersion()))
 				.toList();
 		
-		getSubtaskRepository().updateStatus(subtask.getId(), TaskStatusType.COMPLETED);
+		getSubtaskRepository().updateStatus(new BasicSummary(subtask.getId(), subtask.getVersion()), TaskStatusType.COMPLETED);
 		entityManager.refresh(subtask);
+		
+		ids = new ArrayList<>(ids);
+		ids.set(index, new BasicSummary(subtask.getId(), subtask.getVersion()));
 		
 		assertEquals(subtask.getStatus(), TaskStatusType.COMPLETED);
 		
@@ -184,5 +216,29 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		long count = getSubtasks().stream().filter(s -> s.getStatus().equals(TaskStatusType.COMPLETED)).count();		
 		assertEquals(count, getSubtasks().size());
 	}
+	
+	@Test
+	void updateStatusWithVersion() {
+	    int index = new Random().nextInt(0, getSubtasks().size());
+	    Subtask subtask = getSubtasks().get(index);
+	    	    
+	    getSubtaskRepository().updateStatus(new BasicSummary(subtask.getId(), subtask.getVersion()), TaskStatusType.COMPLETED);
+	    entityManager.refresh(subtask);
+	    
+	    assertEquals(TaskStatusType.COMPLETED, subtask.getStatus());	    
+	    assertThrows(JpaOptimisticLockingFailureException.class, 
+	    		() -> getSubtaskRepository().updateStatus(new BasicSummary(subtask.getId(), subtask.getVersion() - 1), TaskStatusType.COMPLETED)
+	    		);
+	    
+	    entityManager.refresh(subtask);
+	    assertEquals(TaskStatusType.COMPLETED, subtask.getStatus());
+
+	    List<BasicSummary> basics = getSubtasks().stream()
+	            .map(s -> new BasicSummary(s.getId(), s.getVersion()))
+	            .toList();
+
+	    assertDoesNotThrow(() -> getSubtaskRepository().updateStatus(basics, TaskStatusType.COMPLETED));
+	}
+
 
 }

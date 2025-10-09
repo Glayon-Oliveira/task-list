@@ -72,10 +72,11 @@ public class SubtaskService {
 		
 		List<PositionSummary> sublingSubtasks = subtaskRepository.findPositionSummaryByRelatedSubtaskId(subtaskId);
 		
-		subtaskRepository.updatePriority(subtask.getId(), 0);
+		subtaskRepository.updatePriority(subtask, 0);
+		subtask = new PositionSummary(subtask.getId(), subtask.getVersion()+1, subtask.getPosition());
 		
 		normalizePositions(sublingSubtasks, subtask, position)
-			.forEach(s -> subtaskRepository.updatePriority(s.getId(), s.getPosition()));
+			.forEach(s -> subtaskRepository.updatePriority(s, s.getPosition()));
 	}
 
 	private List<PositionSummary> normalizePositions(List<PositionSummary> siblingSubtasks, PositionSummary subtaskToMove, int targetPosition){
@@ -85,7 +86,7 @@ public class SubtaskService {
 		
 		boolean isAscRasult = (finalPosition >= subtaskToMove.getPosition());
 				
-		subtaskToMove = new PositionSummary(subtaskToMove.getId(), finalPosition);
+		subtaskToMove = new PositionSummary(subtaskToMove.getId(), subtaskToMove.getVersion(), finalPosition);
 		
 		siblingSubtasks.sort(Comparator.comparingInt(PositionSummary::getPosition));
 		Iterator<PositionSummary> siblingIt = siblingSubtasks.iterator();
@@ -96,7 +97,7 @@ public class SubtaskService {
 				PositionSummary subtask = siblingIt.next();
 				siblingIt.remove();
 				
-				if(subtask.getPosition() != pos) resultList.add(new PositionSummary(subtask.getId(), pos));
+				if(subtask.getPosition() != pos) resultList.add(new PositionSummary(subtask.getId(), subtask.getVersion(), pos));
 			}
 		}
 		

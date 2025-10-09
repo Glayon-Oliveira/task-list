@@ -45,7 +45,7 @@ public class SubtaskServiceTest {
 
 		Subtask subtask = new Subtask(create);
 
-		List<PositionSummary> idPositions = List.of(new PositionSummary(1, 1));
+		List<PositionSummary> idPositions = List.of(new PositionSummary(1, 0, 1));
 
 		when(subtaskRepository.findPositionSummaryByTaskId(taskId)).thenReturn(idPositions);
 		when(subtaskRepository.save(any(Subtask.class))).thenReturn(subtask);
@@ -78,7 +78,7 @@ public class SubtaskServiceTest {
 		int maxId = 10;
 
 		for(int cc = 1; cc <= maxId; cc++) {
-			PositionSummary idPosition = new PositionSummary(cc, cc);
+			PositionSummary idPosition = new PositionSummary(cc, 0, cc);
 			idPositions.add(idPosition);
 		}
 
