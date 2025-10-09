@@ -19,7 +19,7 @@ public interface AdviceWrapper {
 		map.put("timestamp", Instant.now());
 		map.put("status", status.value());
 		map.put("error", status.getReasonPhrase());
-		map.put("path", req.getServletPath());
+		map.put("path", req.getRequestURI());
 		return map;
 	}
 	
