@@ -12,4 +12,8 @@ public interface TaskRepositoryCustom {
 
 	public void updateStatus(BasicSummary basic, TaskStatusType status);
 	
+	public long sumVersionByids(Iterable<Integer> ids);
+	
+	public long sumVersionByUser(int userId);
+	
 }

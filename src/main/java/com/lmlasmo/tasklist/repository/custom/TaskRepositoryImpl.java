@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
@@ -64,7 +65,29 @@ public class TaskRepositoryImpl implements TaskRepositoryCustom{
 		
 		if(rows == 0) throw new OptimisticLockException("Row with id " + basic.getId() + " was updated or deleted by another transaction");
 	}
-	
-	
+
+	@Override
+	public long sumVersionByids(Iterable<Integer> ids) {
+		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
+		Root<Subtask> root = criteriaQuery.from(Subtask.class);
+		
+		criteriaQuery.select(criteriaBuilder.sum(root.get("version")))
+			.where(root.get("id").in(ids));
+		
+		return entityManager.createQuery(criteriaQuery).getSingleResult();
+	}
+
+	@Override
+	public long sumVersionByUser(int userId) {
+		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
+		Root<Subtask> root = criteriaQuery.from(Subtask.class);
+		
+		criteriaQuery.select(criteriaBuilder.sum(root.get("version")))
+			.where(criteriaBuilder.equal(root.get("user").get("id"), userId));
+		
+		return entityManager.createQuery(criteriaQuery).getSingleResult();
+	}
 	
 }

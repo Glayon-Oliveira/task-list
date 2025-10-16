@@ -6,10 +6,9 @@ import java.time.ZoneId;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 
@@ -18,7 +17,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class TaskDTO {
+public class TaskDTO implements VersionedDTO {
 	
 	@JsonProperty	
 	private int id;
@@ -44,7 +43,7 @@ public class TaskDTO {
 	@JsonProperty	
 	private TaskStatusType status;
 	
-	@JsonIgnore
+	@JsonProperty
 	private long version;
 	
 	@JsonProperty

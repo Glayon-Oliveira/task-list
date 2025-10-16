@@ -109,7 +109,19 @@ public class SubtaskService {
 		resultList.add(subtaskToMove);
 		
 		return Collections.unmodifiableList(resultList);
-	}	
+	}
+	
+	public boolean existsByIdAndVersion(int id, long version) {
+		return subtaskRepository.existsByIdAndVersion(id, version);
+	}
+	
+	public long sumVersionByIds(Iterable<Integer> ids) {
+		return subtaskRepository.sumVersionByids(ids);
+	}
+	
+	public long sumVersionByTask(int taskId) {
+		return subtaskRepository.sumVersionByTask(taskId);
+	}
 	
 	public Page<SubtaskDTO> findByTask(int taskId, Pageable pageable){		
 		return subtaskRepository.findByTaskId(taskId, pageable).map(SubtaskDTO::new);
@@ -118,6 +130,6 @@ public class SubtaskService {
 	public SubtaskDTO findById(int subtaskId) {
 		return subtaskRepository.findById(subtaskId).map(SubtaskDTO::new)
 				.orElseThrow(() -> new EntityNotFoundException("Subtask not found for id equals " + subtaskId));
-	}
+	}	
 	
 }

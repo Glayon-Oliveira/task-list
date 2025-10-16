@@ -13,6 +13,7 @@ services:
     MYSQL_USERNAME: ${MYSQL_USERNAME}
     MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     MYSQL_DATABASE: tasklist
+    ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
    restart: on-failure
    depends_on:
     - task-list-db

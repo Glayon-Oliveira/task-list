@@ -12,5 +12,7 @@ public interface TaskRepository extends JpaRepository<Task, Integer>, TaskReposi
 	public Page<Task> findByUserId(int id, Pageable pageable);
 
 	public boolean existsByIdAndUserId(int taskId, int userId);
+
+	public boolean existsByIdAndVersion(int id, long version);
 	
 }

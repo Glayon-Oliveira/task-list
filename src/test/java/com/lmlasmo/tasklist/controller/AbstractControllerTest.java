@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Random;
 import java.util.UUID;
 
 import org.assertj.core.util.Arrays;
@@ -67,6 +68,7 @@ public abstract class AbstractControllerTest {
 		defaultUser = new User(1);
 		defaultUser.setUsername(username);
 		defaultUser.setPassword(encoder.encode(defaultPassword));
+		defaultUser.setVersion(new Random().nextLong(Long.MAX_VALUE));
 		defaultUser.setCreatedAt(Instant.now());
 		defaultUser.setUpdatedAt(defaultUser.getCreatedAt());
 

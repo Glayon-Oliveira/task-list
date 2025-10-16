@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.io.UnsupportedEncodingException;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -13,6 +14,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -160,6 +162,60 @@ public class UserControllerTest extends AbstractControllerTest {
 				.content(update))
 		.andExpect(MockMvcResultMatchers.status().is(data.getStatus()))
 		.andExpect(result -> VerifyResolvedException.verify(result, data.getExpectedException()));
+	}
+	
+	@Test
+	void updatePasswordOfDefaultUser() throws Exception {
+		String updateFormat = """
+					{
+							"password": "%s"
+					}
+				""";
+
+		String update = String.format(updateFormat, UUID.randomUUID().toString());
+		String updateUri = "/api/user/i";
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setIfNoneMatch(Long.toString(getDefaultUser().getVersion()));
+				
+		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);		
+
+		getMockMvc().perform(MockMvcRequestBuilders.put(updateUri)
+				.headers(headers)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(update))
+		.andExpect(MockMvcResultMatchers.status().isNoContent());
+		
+		headers.setIfNoneMatch(Long.toString(getDefaultUser().getVersion()+1));
+		
+		getMockMvc().perform(MockMvcRequestBuilders.put(updateUri)
+				.headers(headers)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(update))
+		.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
+	}
+	
+	@Test
+	void getI() throws Exception {
+		String baseUri = "/api/user/i";
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());
+				
+		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);
+		
+		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
+				.headers(headers))
+		.andExpect(MockMvcResultMatchers.status().isOk())
+		.andExpect(MockMvcResultMatchers.header().exists("ETag"))
+		.andExpect(MockMvcResultMatchers.jsonPath("$.version").value(getDefaultUser().getVersion()));
+		
+		headers.setIfNoneMatch(Long.toString(getDefaultUser().getVersion()));
+		
+		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
+				.headers(headers))
+		.andExpect(MockMvcResultMatchers.status().isNotModified());
 	}
 
 }
