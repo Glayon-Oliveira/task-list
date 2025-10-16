@@ -26,4 +26,8 @@ public interface SubtaskRepositoryCustom {
 	
 	public void updateStatus(Iterable<? extends BasicSummary> basics, TaskStatusType status);
 	
+	public long sumVersionByids(Iterable<Integer> ids);
+	
+	public long sumVersionByTask(int taskId);
+	
 }

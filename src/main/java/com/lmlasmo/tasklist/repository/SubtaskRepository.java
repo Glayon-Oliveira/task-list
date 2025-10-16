@@ -16,7 +16,9 @@ public interface SubtaskRepository extends JpaRepository<Subtask, Integer>, Subt
 	
 	public boolean existsByTaskIdAndStatus(int taskId, TaskStatusType status);
 	
-	public boolean existsByIdAndTaskUserId(int subtaskId, int userId);	
+	public boolean existsByIdAndTaskUserId(int subtaskId, int userId);
+	
+	public boolean existsByIdAndVersion(int id, long version);
 		
 	public long countByTaskId(int taskId);	
 

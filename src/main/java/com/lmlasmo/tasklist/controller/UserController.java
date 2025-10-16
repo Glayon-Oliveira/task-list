@@ -9,11 +9,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.lmlasmo.tasklist.controller.util.ETagCheck;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.update.UpdatePasswordDTO;
 import com.lmlasmo.tasklist.security.AuthenticatedTool;
 import com.lmlasmo.tasklist.service.UserService;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 
@@ -26,7 +29,11 @@ public class UserController {
 	
 	@PutMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Void updatePassword(@RequestBody @Valid UpdatePasswordDTO update) {		
+	public Void updatePassword(@RequestBody @Valid UpdatePasswordDTO update, HttpServletRequest req, HttpServletResponse res) {
+		int id = AuthenticatedTool.getUserId();
+		
+		ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et));
+		
 		userService.updatePassword(AuthenticatedTool.getUserId(), update.getPassword());
 		return null;
 	}
@@ -39,8 +46,12 @@ public class UserController {
 	}
 		
 	@GetMapping("/i")	
-	public UserDTO findByI() {				
-		return userService.findById(AuthenticatedTool.getUserId());		
+	public UserDTO findByI(HttpServletRequest req, HttpServletResponse res) {
+		int id = AuthenticatedTool.getUserId();
+		
+		if(ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et))) return null;
+		
+		return userService.findById(id);
 	}
 	
 }

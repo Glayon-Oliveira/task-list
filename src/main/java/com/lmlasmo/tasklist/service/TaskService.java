@@ -54,6 +54,18 @@ public class TaskService {
 		return new TaskDTO(repository.save(task));
 	}
 	
+	public boolean existsByIdAndVersion(int id, long version) {
+		return repository.existsByIdAndVersion(id, version);
+	}
+	
+	public long sumVersionByIds(Iterable<Integer> ids) {
+		return repository.sumVersionByids(ids);
+	}
+	
+	public long sumVersionByUser(int userId) {
+		return repository.sumVersionByUser(userId);
+	}
+	
 	public Page<TaskDTO> findByUser(int id, boolean withSubtasks, Pageable pageable) {
 		return repository.findByUserId(id, pageable).map(t -> new TaskDTO(t, withSubtasks));
 	}
@@ -65,6 +77,6 @@ public class TaskService {
 	public TaskDTO findById(int taskId, boolean withSubtasks) {
 		return repository.findById(taskId).map(t -> new TaskDTO(t, withSubtasks))
 				.orElseThrow(() -> new EntityNotFoundException("Task not found for id equals " + taskId));
-	}
+	}	
 
 }

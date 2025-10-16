@@ -1,4 +1,4 @@
-package com.lmlasmo.tasklist.advice;
+package com.lmlasmo.tasklist.advice.exception;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.lmlasmo.tasklist.advice.util.AdviceWrapper;
+import com.lmlasmo.tasklist.advice.exception.util.AdviceWrapper;
 import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
 import com.lmlasmo.tasklist.exception.TaskHasSubtasksException;
 

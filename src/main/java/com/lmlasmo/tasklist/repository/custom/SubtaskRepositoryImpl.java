@@ -200,5 +200,29 @@ public class SubtaskRepositoryImpl implements SubtaskRepositoryCustom{
 			if(rows == 0) throw new OptimisticLockException("Row with id " + basic.getId() + " was updated or deleted by another transaction");
 		}
 	}
+	
+	@Override
+	public long sumVersionByids(Iterable<Integer> ids) {
+		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
+		Root<Task> root = criteriaQuery.from(Task.class);
+		
+		criteriaQuery.select(criteriaBuilder.sum(root.get("version")))
+			.where(root.get("id").in(ids));
+		
+		return entityManager.createQuery(criteriaQuery).getSingleResult();
+	}
+
+	@Override
+	public long sumVersionByTask(int taskId) {
+		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+		CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
+		Root<Task> root = criteriaQuery.from(Task.class);
+		
+		criteriaQuery.select(criteriaBuilder.sum(root.get("version")))
+			.where(criteriaBuilder.equal(root.get("task").get("id"), taskId));
+		
+		return entityManager.createQuery(criteriaQuery).getSingleResult();
+	}
 
 }

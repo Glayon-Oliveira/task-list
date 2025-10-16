@@ -11,9 +11,12 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
@@ -22,6 +25,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
@@ -78,6 +82,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		task.setDeadlineZone(ZoneId.systemDefault().toString());
 		task.setCreatedAt(Instant.now());
 		task.setUpdatedAt(task.getCreatedAt());
+		task.setVersion(new Random().nextLong(Long.MAX_VALUE));
 		task.setUser(getDefaultUser());
 	}
 
@@ -115,30 +120,59 @@ public class TaskControllerTest extends AbstractControllerTest{
 		.andExpect(MockMvcResultMatchers.jsonPath("$.deadlineZone").value(task.getDeadlineZone()));
 	}
 
-	@Test
-	public void getTasksByUser() throws Exception {
+	@RepeatedTest(2)
+	public void getTasksByUser(RepetitionInfo info) throws Exception {
 		when(taskService.findByUser(eq(getDefaultUser().getId()), eq(true), any())).thenReturn(new PageImpl<>(List.of(new TaskDTO(task, true))));
-
-		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());
+		
+		if(info.getCurrentRepetition() == 2) {
+			headers.setIfNoneMatch(Long.toString(task.getVersion()));
+			when(taskService.sumVersionByUser(getDefaultUser().getId())).thenReturn(task.getVersion());
+		}
+		
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
 				.param("withSubtasks", "true")
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(200))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.size").value(1))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.content[*].summary").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.content[*].subtasks").exists());
+				.headers(headers));		
+		
+		if(info.getCurrentRepetition() == 2) {
+			result.andExpect(MockMvcResultMatchers.status().isNotModified());			
+		}else if(info.getCurrentRepetition() == 1) {
+			result.andExpect(MockMvcResultMatchers.status().is(200))
+			.andExpect(MockMvcResultMatchers.jsonPath("$.size").value(1))
+			.andExpect(MockMvcResultMatchers.jsonPath("$.content[*].summary").exists())
+			.andExpect(MockMvcResultMatchers.jsonPath("$.content[*].subtasks").exists())
+			.andExpect(MockMvcResultMatchers.header().exists("ETag"));
+		}
+		
 	}
 
-	@Test
-	public void getTaskById() throws Exception {
+	@RepeatedTest(2)
+	public void getTaskById(RepetitionInfo info) throws Exception {
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());
+		
+		if(info.getCurrentRepetition() == 2) {
+			headers.setIfNoneMatch(Long.toString(task.getVersion()));
+		}
+		
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
 		when(taskService.findById(task.getId(), true)).thenReturn(new TaskDTO(task, true));
+		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
 
-		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + "/" + task.getId())
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + "/" + task.getId())
 				.param("withSubtasks", "true")
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(200))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.summary").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.subtasks").exists());
+				.headers(headers));
+				
+		if(info.getCurrentRepetition() == 2) {
+			result.andExpect(MockMvcResultMatchers.status().isNotModified());			
+		}else {
+			result.andExpect(MockMvcResultMatchers.status().isOk())
+			.andExpect(MockMvcResultMatchers.jsonPath("$.summary").exists())
+			.andExpect(MockMvcResultMatchers.jsonPath("$.subtasks").exists())
+			.andExpect(MockMvcResultMatchers.header().exists("ETag"));
+		}
 	}
 
 	@Test
@@ -151,29 +185,44 @@ public class TaskControllerTest extends AbstractControllerTest{
 		.andExpect(result -> VerifyResolvedException.verify(result, null));
 	}
 
-	@Test
-	public void updateDescription() throws Exception {
+	@RepeatedTest(3)
+	public void updateDescription(RepetitionInfo info) throws Exception {
 		UpdateDescriptionTaskDTO update = new UpdateDescriptionTaskDTO();
 		update.setName(UUID.randomUUID().toString());
 		update.setSummary(UUID.randomUUID().toString());
 
 		TaskDTO fullTaskDTO = new TaskDTO(task, true);
-
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());
+		
+		if(info.getCurrentRepetition() == 2) {
+			headers.setIfNoneMatch(Long.toString(task.getVersion()));
+		}else if(info.getCurrentRepetition() == 3) {
+			headers.setIfNoneMatch(Long.toString(task.getVersion()/2+1));
+		}
+		
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
 		when(taskService.updateDescription(eq(task.getId()), any())).thenReturn(fullTaskDTO);
+		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId() + "/description")
-				.header("Authorization", "Bearer " + getDefaultJwtToken())
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId() + "/description")
+				.headers(headers)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(mapper.writeValueAsString(update)))
-		.andExpect(MockMvcResultMatchers.status().isOk())
-		.andExpect(result -> VerifyResolvedException.verify(result, null))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.name").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.summary").exists());
+				.content(mapper.writeValueAsString(update)));
+		
+		if(info.getCurrentRepetition() == 3) {
+			result.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());			
+		}else {
+			result.andExpect(MockMvcResultMatchers.status().isOk())
+			.andExpect(r -> VerifyResolvedException.verify(r, null))
+			.andExpect(MockMvcResultMatchers.jsonPath("$.name").exists())
+			.andExpect(MockMvcResultMatchers.jsonPath("$.summary").exists());
+		}
 	}
 
-	@Test
-	public void updateDeadline() throws Exception {
+	@RepeatedTest(3)
+	public void updateDeadline(RepetitionInfo info) throws Exception {
 		UpdateDeadlineTaskDTO update = new UpdateDeadlineTaskDTO();
 		update.setDeadline(OffsetDateTime.now().plusMinutes(1));
 		update.setDeadlineZone("UTC");
@@ -181,34 +230,66 @@ public class TaskControllerTest extends AbstractControllerTest{
 		TaskDTO taskDTO = new TaskDTO(task);
 		taskDTO.setDeadline(update.getDeadline());
 		taskDTO.setDeadlineZone(ZoneId.of(update.getDeadlineZone()).toString());
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());
+		
+		if(info.getCurrentRepetition() == 2) {
+			headers.setIfNoneMatch(Long.toString(task.getVersion()));
+		}else if(info.getCurrentRepetition() == 3) {
+			headers.setIfNoneMatch(Long.toString(task.getVersion()/2+1));
+		}
 
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
 		when(taskService.updateDeadline(eq(task.getId()), any())).thenReturn(taskDTO);
+		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId() + "/deadline")
-				.header("Authorization", "Bearer " + getDefaultJwtToken())
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId() + "/deadline")
+				.headers(headers)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(mapper.writeValueAsString(update)))
-		.andExpect(MockMvcResultMatchers.status().isOk())
-		.andExpect(result -> VerifyResolvedException.verify(result, null))
-		.andExpect(result -> {
-			String deadline = JsonPath.read(result.getResponse().getContentAsString(), "$.deadline");
-			assertEquals(OffsetDateTime.parse(deadline), update.getDeadline());
-		})
-		.andExpect(MockMvcResultMatchers.jsonPath("$.deadlineZone").value(update.getDeadlineZone()));
+				.content(mapper.writeValueAsString(update)));
+				
+		if(info.getCurrentRepetition() == 3) {
+			result.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
+		}else {
+			result.andExpect(MockMvcResultMatchers.status().isOk())
+			.andExpect(r -> VerifyResolvedException.verify(r, null))
+			.andExpect(r -> {
+				String deadline = JsonPath.read(r.getResponse().getContentAsString(), "$.deadline");
+				assertEquals(OffsetDateTime.parse(deadline), update.getDeadline());
+			})
+			.andExpect(MockMvcResultMatchers.jsonPath("$.deadlineZone").value(update.getDeadlineZone()));
+		}		
 	}
 
-	@Test
-	public void updateStatusOfDefaultTask() throws Exception {
+	@RepeatedTest(3)
+	public void updateStatusOfDefaultTask(RepetitionInfo info) throws Exception {
 		String baseUri = "/api/task";
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());
+		
+		if(info.getCurrentRepetition() == 2) {
+			headers.setIfNoneMatch(Long.toString(task.getVersion()));
+		}else if(info.getCurrentRepetition() == 3) {			
+			headers.setIfNoneMatch(Long.toString(task.getVersion()/2+1));
+		}
 
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
+		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
+		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion()+1)).thenReturn(false);
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId())
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId())
 				.param("status", TaskStatusType.COMPLETED.name())
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(204))
-		.andExpect(result -> VerifyResolvedException.verify(result, null));
+				.headers(headers));
+		
+		if(info.getCurrentRepetition() == 3) {
+			result.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
+		}else {
+			result.andExpect(MockMvcResultMatchers.status().isNoContent())
+			.andExpect(r -> VerifyResolvedException.verify(r, null));
+		}
+		
 	}
 
 }

@@ -64,6 +64,10 @@ public class UserService {
 		return repository.existsById(id);
 	}
 	
+	public boolean existsByIdAndVersion(int id, long version) {
+		return repository.existsByIdAndVersion(id, version);
+	}
+	
 	public UserDTO findById(int id) {		
 		UserDTO user = repository.findById(id)
 				.map(UserDTO::new)

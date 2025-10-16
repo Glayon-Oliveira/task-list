@@ -2,7 +2,6 @@ package com.lmlasmo.tasklist.dto;
 
 import java.time.Instant;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
@@ -14,7 +13,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class SubtaskDTO {
+public class SubtaskDTO implements VersionedDTO {
 	
 	@JsonProperty	
 	private int id;
@@ -40,7 +39,7 @@ public class SubtaskDTO {
 	@JsonProperty
 	private Instant updatedAt;
 	
-	@JsonIgnore
+	@JsonProperty
 	private long version;
 	
 	public SubtaskDTO(Subtask subtask) {
