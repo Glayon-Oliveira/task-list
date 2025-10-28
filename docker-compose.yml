@@ -6,8 +6,6 @@ services:
     - 8080:8080
    networks:
     - task-list-network
-   volumes:
-    - ./wait-for-it.sh:/opt/app/wait-for-it.sh
    environment:
     MYSQL_HOST: task-list-db
     MYSQL_USERNAME: ${MYSQL_USERNAME}

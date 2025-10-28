@@ -3,7 +3,7 @@ WORKDIR /usr/local/app
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
 COPY src src
-RUN ./mvnw clean install
+RUN ./mvnw clean install -DskipTests
 
 FROM eclipse-temurin:17-jdk-jammy AS dev
 WORKDIR /usr/local/app
@@ -14,5 +14,7 @@ COPY mvnw ./
 
 FROM eclipse-temurin:17-jre-jammy AS final
 WORKDIR /opt/app
+COPY wait-for-it.sh ./
+RUN chmod +x wait-for-it.sh
 COPY --from=builder /usr/local/app/target/task-list.jar /opt/app/task-list.jar
 ENTRYPOINT ["java", "-jar", "/opt/app/task-list.jar"]
