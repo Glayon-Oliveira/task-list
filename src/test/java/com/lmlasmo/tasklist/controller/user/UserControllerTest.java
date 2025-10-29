@@ -138,10 +138,22 @@ public class UserControllerTest extends AbstractControllerTest {
 	@Test
 	void deleteDefaultUser() throws Exception {
 		String baseUri = "/api/user/i";
-
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());		
+		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()));
+		
+		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);
+		
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(204));
+				.headers(headers))
+		.andExpect(MockMvcResultMatchers.status().isNoContent());
+		
+		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()/2+1));
+		
+		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
+				.headers(headers))
+		.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
 	}
 
 	@ParameterizedTest
@@ -177,7 +189,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultJwtToken());
-		headers.setIfNoneMatch(Long.toString(getDefaultUser().getVersion()));
+		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()));
 				
 		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);		
 
@@ -187,7 +199,7 @@ public class UserControllerTest extends AbstractControllerTest {
 				.content(update))
 		.andExpect(MockMvcResultMatchers.status().isNoContent());
 		
-		headers.setIfNoneMatch(Long.toString(getDefaultUser().getVersion()+1));
+		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()+1));
 		
 		getMockMvc().perform(MockMvcRequestBuilders.put(updateUri)
 				.headers(headers)

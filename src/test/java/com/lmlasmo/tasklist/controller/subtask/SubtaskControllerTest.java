@@ -181,9 +181,9 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		headers.setBearerAuth(getDefaultJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
-			headers.setIfNoneMatch(Long.toString(subtask.getVersion()));			
+			headers.setIfMatch(Long.toString(subtask.getVersion()));			
 		}else if(info.getCurrentRepetition() == 3) {
-			headers.setIfNoneMatch(Long.toString(subtask.getVersion()/2+1));
+			headers.setIfMatch(Long.toString(subtask.getVersion()/2+1));
 		}
 
 		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
@@ -213,17 +213,32 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		String strIds = ids.stream()
 				.map(String::valueOf)
 				.collect(Collectors.joining(","));
-
+		
+		long sumIds = ids.stream()
+				.mapToInt(Integer::intValue)
+				.sum();
 
 		MultiValueMap<String, String> baseParams = new LinkedMultiValueMap<>();
 		baseParams.add("subtaskIds", strIds);
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setIfMatch(Long.toString(sumIds));
 
 		when(accessService.canAccessSubtask(ids, getDefaultUser().getId())).thenReturn(true);
+		when(subtaskService.sumVersionByIds(ids)).thenReturn(sumIds);
 
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
 				.params(baseParams)
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(204));
+				.headers(headers))
+		.andExpect(MockMvcResultMatchers.status().isNoContent());
+		
+		headers.setIfMatch(Long.toString(sumIds/2+1));
+		
+		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
+				.params(baseParams)
+				.headers(headers))
+		.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
 	}
 
 	@RepeatedTest(10)
@@ -237,9 +252,9 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		headers.setBearerAuth(getDefaultJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
-			headers.setIfNoneMatch(Long.toString(subtask.getVersion()));			
+			headers.setIfMatch(Long.toString(subtask.getVersion()));			
 		}else if(info.getCurrentRepetition() == 3) {
-			headers.setIfNoneMatch(Long.toString(subtask.getVersion()/2+1));
+			headers.setIfMatch(Long.toString(subtask.getVersion()/2+1));
 		}
 
 		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);

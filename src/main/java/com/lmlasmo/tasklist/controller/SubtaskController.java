@@ -50,7 +50,8 @@ public class SubtaskController {
 	@DeleteMapping(params = "subtaskIds")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskIds, authentication.principal)")
-	public Void delete(@RequestParam List<@Min(1) Integer> subtaskIds) {
+	public Void delete(@RequestParam List<@Min(1) Integer> subtaskIds, HttpServletRequest req, HttpServletResponse res) {
+		ETagCheck.check(req, res, et -> subtaskService.sumVersionByIds(subtaskIds) == et);
 		subtaskService.delete(subtaskIds);
 		return null;
 	}

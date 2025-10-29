@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.controller.util;
 
+import java.util.Set;
 import java.util.function.Function;
 
 import com.lmlasmo.tasklist.exception.PreconditionFailedException;
@@ -7,42 +8,53 @@ import com.lmlasmo.tasklist.exception.PreconditionFailedException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-public interface ETagCheck {		
+public interface ETagCheck {
+	
+	private static Set<String> getIfMatchMathods() {
+		return Set.of("PUT", "PATCH", "DELETE");
+	}
 	
 	public static boolean check(HttpServletRequest req, HttpServletResponse res, Function<Long, Boolean> check) {
 		long etag = ETagCheck.extractEtag(req);
 		
 		if(etag <= 0) return false;
 		
-		if(req.getMethod().equals("PUT")) {
-			checkForPut(etag, check);
-			return true;
-		}else {
-			return check(etag, res, check);
+		if(getIfMatchMathods().contains(req.getMethod())) {
+			return checkPrecondition(etag, check);
+		}else if(req.getMethod().equals("GET")) {
+			return checkIfModified(etag, res, check);
 		}
+		
+		return false;
 	}
 	
-	private static void checkForPut(long etag, Function<Long, Boolean> check) {
-		if (!check.apply(etag)) {
-            throw new PreconditionFailedException("");
-        }
+	private static boolean checkPrecondition(long etag, Function<Long, Boolean> check) {
+		if (!check.apply(etag)) throw new PreconditionFailedException("");
+		
+		return true;
 	}
 
-	private static boolean check(Long etag, HttpServletResponse res, Function<Long, Boolean> check) {
+	private static boolean checkIfModified(Long etag, HttpServletResponse res, Function<Long, Boolean> check) {
 		boolean valid = check.apply(etag);
 		if (valid) res.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
 		return valid;
     }
 	
-	private static long extractEtag(HttpServletRequest request) {
-		String ifNoneMatch = request.getHeader("If-None-Match");
+	private static long extractEtag(HttpServletRequest req) {
+		String match = null;
 		
-		if(ifNoneMatch == null) return -1;
+		if(getIfMatchMathods().contains(req.getMethod())) {
+			match = req.getHeader("If-Match");
+		}else if(req.getMethod().equals("GET")) {
+			match = req.getHeader("If-None-Match");
+		}		
 		
-		if(ifNoneMatch.contains("\"")) ifNoneMatch = ifNoneMatch.replace("\"", "");
+		if(match == null) return -1;
+		
+		if(match.contains("\"")) match = match.replace("\"", "").trim();
 		
 		try {
-			return Long.parseLong(ifNoneMatch);
+			return Long.parseLong(match);
 		}catch(Exception e) {
 			return -1;
 		}

@@ -40,8 +40,12 @@ public class UserController {
 	
 	@DeleteMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Void delete() {		
-		userService.delete(AuthenticatedTool.getUserId());
+	public Void delete(HttpServletRequest req, HttpServletResponse res) {
+		int id = AuthenticatedTool.getUserId();
+				
+		ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et));		
+		userService.delete(id);
+		
 		return null;
 	}
 		

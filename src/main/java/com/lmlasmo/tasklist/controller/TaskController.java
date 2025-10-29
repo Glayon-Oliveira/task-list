@@ -50,7 +50,8 @@ public class TaskController {
 	@DeleteMapping("/{id}")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccessService.canAccessTask(#id, authentication.principal)")
-	public Void delete(@PathVariable int id) {
+	public Void delete(@PathVariable int id, HttpServletRequest req, HttpServletResponse res) {
+		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(id, et));
 		taskService.delete(id);
 		return null;
 	}

@@ -40,6 +40,7 @@ import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateDeadlineTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateDescriptionTaskDTO;
+import com.lmlasmo.tasklist.exception.PreconditionFailedException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.param.task.CreateTaskSource;
@@ -178,11 +179,24 @@ public class TaskControllerTest extends AbstractControllerTest{
 	@Test
 	public void deleteDefaultTask() throws Exception {
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
-
+		
+		HttpHeaders headers = new HttpHeaders();
+		headers.setBearerAuth(getDefaultJwtToken());		
+		headers.setIfMatch(Long.toString(task.getVersion()));
+		
+		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
+		
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri + "/" + task.getId())
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+				.headers(headers))
 		.andExpect(MockMvcResultMatchers.status().is(204))
 		.andExpect(result -> VerifyResolvedException.verify(result, null));
+		
+		headers.setIfMatch(Long.toString(task.getVersion()/2+1));
+		
+		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri + "/" + task.getId())
+				.headers(headers))
+		.andExpect(MockMvcResultMatchers.status().isPreconditionFailed())
+		.andExpect(result -> VerifyResolvedException.verify(result, PreconditionFailedException.class));
 	}
 
 	@RepeatedTest(3)
@@ -197,9 +211,9 @@ public class TaskControllerTest extends AbstractControllerTest{
 		headers.setBearerAuth(getDefaultJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
-			headers.setIfNoneMatch(Long.toString(task.getVersion()));
+			headers.setIfMatch(Long.toString(task.getVersion()));
 		}else if(info.getCurrentRepetition() == 3) {
-			headers.setIfNoneMatch(Long.toString(task.getVersion()/2+1));
+			headers.setIfMatch(Long.toString(task.getVersion()/2+1));
 		}
 		
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
@@ -235,9 +249,9 @@ public class TaskControllerTest extends AbstractControllerTest{
 		headers.setBearerAuth(getDefaultJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
-			headers.setIfNoneMatch(Long.toString(task.getVersion()));
+			headers.setIfMatch(Long.toString(task.getVersion()));
 		}else if(info.getCurrentRepetition() == 3) {
-			headers.setIfNoneMatch(Long.toString(task.getVersion()/2+1));
+			headers.setIfMatch(Long.toString(task.getVersion()/2+1));
 		}
 
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
@@ -270,9 +284,9 @@ public class TaskControllerTest extends AbstractControllerTest{
 		headers.setBearerAuth(getDefaultJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
-			headers.setIfNoneMatch(Long.toString(task.getVersion()));
+			headers.setIfMatch(Long.toString(task.getVersion()));
 		}else if(info.getCurrentRepetition() == 3) {			
-			headers.setIfNoneMatch(Long.toString(task.getVersion()/2+1));
+			headers.setIfMatch(Long.toString(task.getVersion()/2+1));
 		}
 
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
