@@ -190,7 +190,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		when(subtaskService.update(eq(subtask.getId()), any())).thenReturn(subtaskDTO);
 		when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(true);
 
-		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + subtask.getId())
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + subtask.getId())
 				.headers(headers)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)));
@@ -260,7 +260,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
 		when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(true);
 
-		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + subtask.getId())
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + subtask.getId())
 				.params(baseParams)
 				.headers(headers));
 		

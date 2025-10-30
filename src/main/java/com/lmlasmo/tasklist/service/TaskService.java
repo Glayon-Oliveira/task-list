@@ -6,15 +6,14 @@ import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
-import com.lmlasmo.tasklist.dto.update.UpdateDeadlineTaskDTO;
-import com.lmlasmo.tasklist.dto.update.UpdateDescriptionTaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.repository.TaskRepository;
+import com.lmlasmo.tasklist.service.applier.UpdateTaskApplier;
 
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
@@ -36,23 +35,13 @@ public class TaskService {
 		if(repository.existsById(id)) throw new EntityNotDeleteException("Task not delete");
 	}
 	
-	public TaskDTO updateDescription(@Min(1) int taskId, UpdateDescriptionTaskDTO update) {
+	public TaskDTO update(int taskId, UpdateTaskDTO update) {
 		Task task = repository.findById(taskId).orElseThrow(() -> new EntityNotFoundException("Task not found for id equals " + taskId));
 		
-		if(update.getName() != null) task.setName(update.getName());
-		if(update.getSummary() != null) task.setSummary(update.getSummary());
-		
-		return new TaskDTO(repository.save(task));		
-	}
-	
-	public TaskDTO updateDeadline(@Min(1) int taskId, UpdateDeadlineTaskDTO update) {
-		Task task = repository.findById(taskId).orElseThrow(() -> new EntityNotFoundException("Task not found for id equals " + taskId));
-		
-		task.setDeadline(update.getDeadline().toInstant());
-		task.setDeadlineZone(update.getDeadlineZone());
+		UpdateTaskApplier.apply(update, task);
 		
 		return new TaskDTO(repository.save(task));
-	}
+	}	
 	
 	public boolean existsByIdAndVersion(int id, long version) {
 		return repository.existsByIdAndVersion(id, version);

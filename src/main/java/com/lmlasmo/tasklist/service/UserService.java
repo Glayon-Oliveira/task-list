@@ -9,6 +9,7 @@ import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.repository.UserRepository;
+import com.lmlasmo.tasklist.service.applier.UpdateUserApplier;
 
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
@@ -36,8 +37,7 @@ public class UserService {
 		
 		if(repository.existsByUsername(username)) throw new EntityNotUpdateException(username + " already used");
 		
-		user.setUsername(username);
-		
+		user.setUsername(username);		
 		repository.save(user);
 	}
 	
@@ -45,10 +45,7 @@ public class UserService {
 		User user = repository.findById(id)
 				.orElseThrow(() -> new EntityNotFoundException("User not found"));
 		
-		if(encoder.matches(password, user.getPassword())) throw new EntityNotUpdateException("Password already used");
-		
-		user.setPassword(encoder.encode(password));		
-		
+		UpdateUserApplier.applyPassword(password, user, encoder);		
 		repository.save(user);
 	}
 	

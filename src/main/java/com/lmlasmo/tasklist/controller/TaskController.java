@@ -6,9 +6,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,8 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.lmlasmo.tasklist.controller.util.ETagCheck;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
-import com.lmlasmo.tasklist.dto.update.UpdateDeadlineTaskDTO;
-import com.lmlasmo.tasklist.dto.update.UpdateDescriptionTaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.security.AuthenticatedTool;
 import com.lmlasmo.tasklist.service.TaskService;
@@ -56,29 +55,18 @@ public class TaskController {
 		return null;
 	}
 	
-	@PutMapping("/{taskId}/description")
+	@PatchMapping("/{taskId}")
 	@ResponseStatus(code = HttpStatus.OK)
 	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
-	public TaskDTO updateDescription(@PathVariable @Min(1) int taskId, @RequestBody UpdateDescriptionTaskDTO update, 
+	public TaskDTO update(@PathVariable @Min(1) int taskId, @RequestBody UpdateTaskDTO update, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
 		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(taskId, et));
 		
-		return taskService.updateDescription(taskId, update);
+		return taskService.update(taskId, update);
 	}
 	
-	@PutMapping("/{taskId}/deadline")
-	@ResponseStatus(code = HttpStatus.OK)
-	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
-	public TaskDTO updateDeadline(@PathVariable @Min(1) int taskId, @RequestBody UpdateDeadlineTaskDTO update, 
-			HttpServletRequest req, HttpServletResponse res) {
-		
-		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(taskId, et));
-		
-		return taskService.updateDeadline(taskId, update);
-	}
-	
-	@PutMapping(path = "/{taskId}", params = {"status"})
+	@PatchMapping(path = "/{taskId}", params = {"status"})
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
 	public Void updateTaskStatus(@PathVariable @Min(1) int taskId, @RequestParam @NotNull TaskStatusType status, 

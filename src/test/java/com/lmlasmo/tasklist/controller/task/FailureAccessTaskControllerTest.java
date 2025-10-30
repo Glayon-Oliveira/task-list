@@ -24,8 +24,7 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.TaskController;
-import com.lmlasmo.tasklist.dto.update.UpdateDeadlineTaskDTO;
-import com.lmlasmo.tasklist.dto.update.UpdateDescriptionTaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
@@ -81,7 +80,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 
 	@Test
 	public void updateStatus() throws Exception {
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + task.getId())
+		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + task.getId())
 				.param("status", TaskStatusType.COMPLETED.name())
 				.header("Authorization", "Bearer " + getDefaultJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
@@ -90,11 +89,11 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 
 	@Test
 	public void updateDescription() throws Exception {
-		UpdateDescriptionTaskDTO update = new UpdateDescriptionTaskDTO();
+		UpdateTaskDTO update = new UpdateTaskDTO();
 		update.setName(UUID.randomUUID().toString());
 		update.setSummary(UUID.randomUUID().toString());
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + task.getId() + "/description")
+		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + task.getId())
 				.header("Authorization", "Bearer " + getDefaultJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)))
@@ -104,11 +103,11 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 
 	@Test
 	public void updateDeadline() throws Exception {
-		UpdateDeadlineTaskDTO update = new UpdateDeadlineTaskDTO();
+		UpdateTaskDTO update = new UpdateTaskDTO();
 		update.setDeadline(OffsetDateTime.now().plusMinutes(1));
 		update.setDeadlineZone("UTC");
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + task.getId() + "/deadline")
+		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + task.getId())
 				.header("Authorization", "Bearer " + getDefaultJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)))

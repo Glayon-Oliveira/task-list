@@ -19,8 +19,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
-import com.lmlasmo.tasklist.dto.update.UpdateDeadlineTaskDTO;
-import com.lmlasmo.tasklist.dto.update.UpdateDescriptionTaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.User;
@@ -77,7 +76,7 @@ public class TaskServiceTest {
 		task.setDeadline(Instant.now());
 		task.setDeadlineZone(ZoneId.of("UTC").toString());
 
-		UpdateDescriptionTaskDTO update = new UpdateDescriptionTaskDTO();
+		UpdateTaskDTO update = new UpdateTaskDTO();
 		update.setName(UUID.randomUUID().toString());
 		update.setSummary(UUID.randomUUID().toString());
 
@@ -85,15 +84,15 @@ public class TaskServiceTest {
 		when(taskRepository.findById(nId)).thenReturn(Optional.empty());
 		when(taskRepository.save(task)).thenReturn(task);
 
-		assertDoesNotThrow(() -> taskService.updateDescription(id, update));
-		assertThrows(EntityNotFoundException.class, () -> taskService.updateDescription(nId, update));
+		assertDoesNotThrow(() -> taskService.update(id, update));
+		assertThrows(EntityNotFoundException.class, () -> taskService.update(nId, update));
 
 		task.setName(update.getName());
 		task.setSummary(update.getSummary());
 		when(taskRepository.save(task)).thenReturn(task);
 
-		assertEquals(update.getName(), taskService.updateDescription(id, update).getName());
-		assertEquals(update.getSummary(), taskService.updateDescription(id, update).getSummary());
+		assertEquals(update.getName(), taskService.update(id, update).getName());
+		assertEquals(update.getSummary(), taskService.update(id, update).getSummary());
 	}
 
 	@Test
@@ -108,7 +107,7 @@ public class TaskServiceTest {
 		task.setDeadline(Instant.now());
 		task.setDeadlineZone(ZoneId.of("UTC").toString());
 
-		UpdateDeadlineTaskDTO update = new UpdateDeadlineTaskDTO();
+		UpdateTaskDTO update = new UpdateTaskDTO();
 		update.setDeadline(OffsetDateTime.now().plusHours(1));
 		update.setDeadlineZone(ZoneId.getAvailableZoneIds().iterator().next());
 
@@ -119,15 +118,15 @@ public class TaskServiceTest {
 		when(taskRepository.save(any())).thenReturn(task);
 		when(taskRepository.findById(nId)).thenReturn(Optional.empty());
 
-		assertDoesNotThrow(() -> taskService.updateDeadline(id, update));
-		assertThrows(EntityNotFoundException.class, () -> taskService.updateDeadline(nId, update));
+		assertDoesNotThrow(() -> taskService.update(id, update));
+		assertThrows(EntityNotFoundException.class, () -> taskService.update(nId, update));
 
 		task.setDeadline(update.getDeadline().toInstant());
 		task.setDeadlineZone(update.getDeadlineZone());
 		when(taskRepository.save(task)).thenReturn(task);
 
-		assertEquals(update.getDeadline().toInstant().atZone(ZoneId.of(update.getDeadlineZone())).toOffsetDateTime(), taskService.updateDeadline(id, update).getDeadline());
-		assertEquals(update.getDeadlineZone(), taskService.updateDeadline(id, update).getDeadlineZone());
+		assertEquals(update.getDeadline().toInstant().atZone(ZoneId.of(update.getDeadlineZone())).toOffsetDateTime(), taskService.update(id, update).getDeadline());
+		assertEquals(update.getDeadlineZone(), taskService.update(id, update).getDeadlineZone());
 	}
 
 }

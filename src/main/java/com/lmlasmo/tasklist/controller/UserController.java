@@ -3,7 +3,7 @@ package com.lmlasmo.tasklist.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -27,7 +27,7 @@ public class UserController {
 
 	private UserService userService;	
 	
-	@PutMapping("/i")
+	@PatchMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Void updatePassword(@RequestBody @Valid UpdatePasswordDTO update, HttpServletRequest req, HttpServletResponse res) {
 		int id = AuthenticatedTool.getUserId();

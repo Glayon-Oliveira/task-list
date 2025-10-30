@@ -8,9 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -56,7 +56,7 @@ public class SubtaskController {
 		return null;
 	}
 	
-	@PutMapping("/{subtaskId}")
+	@PatchMapping("/{subtaskId}")
 	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, authentication.principal)")
 	public SubtaskDTO update(@PathVariable @Min(1) int subtaskId, @RequestBody UpdateSubtaskDTO update, 
 			HttpServletRequest req, HttpServletResponse res) {
@@ -66,7 +66,7 @@ public class SubtaskController {
 		return subtaskService.update(subtaskId, update);
 	}
 	
-	@PutMapping(path = "/{subtaskId}", params = "position")
+	@PatchMapping(path = "/{subtaskId}", params = "position")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, authentication.principal)")
 	public Void updateSubtaskPosition(@PathVariable @Min(1) int subtaskId, @RequestParam @Min(1) int position,
@@ -78,7 +78,7 @@ public class SubtaskController {
 		return null;
 	}
 	
-	@PutMapping(params = {"subtaskIds", "status"})
+	@PatchMapping(params = {"subtaskIds", "status"})
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskIds, authentication.principal)")
 	public Void updateSubtaskStatus(@RequestParam List<@Min(1) Integer> subtaskIds, @RequestParam @NotNull TaskStatusType status, 

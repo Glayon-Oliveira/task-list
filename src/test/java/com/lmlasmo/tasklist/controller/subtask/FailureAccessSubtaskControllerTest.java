@@ -122,7 +122,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 		update.setSummary(UUID.randomUUID().toString());
 		update.setDurationMinutes(5);
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + subtask.getId())
+		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + subtask.getId())
 				.header("Authorization", "Bearer " + getDefaultJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)))
@@ -155,7 +155,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 		MultiValueMap<String, String> baseParams = new LinkedMultiValueMap<>();
 		baseParams.add("position", String.valueOf(newPosition));
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(baseUri+"/"+subtask.getId())
+		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri+"/"+subtask.getId())
 				.params(baseParams)
 				.header("Authorization", "Bearer " + getDefaultJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403));

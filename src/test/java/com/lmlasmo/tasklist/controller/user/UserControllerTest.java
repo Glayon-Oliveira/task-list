@@ -168,7 +168,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		String update = String.format(updateFormat, data.getPassword());
 		String updateUri = "/api/user/i";
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(updateUri)
+		getMockMvc().perform(MockMvcRequestBuilders.patch(updateUri)
 				.header("Authorization", "Bearer " + getDefaultJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(update))
@@ -193,7 +193,7 @@ public class UserControllerTest extends AbstractControllerTest {
 				
 		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);		
 
-		getMockMvc().perform(MockMvcRequestBuilders.put(updateUri)
+		getMockMvc().perform(MockMvcRequestBuilders.patch(updateUri)
 				.headers(headers)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(update))
@@ -201,7 +201,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()+1));
 		
-		getMockMvc().perform(MockMvcRequestBuilders.put(updateUri)
+		getMockMvc().perform(MockMvcRequestBuilders.patch(updateUri)
 				.headers(headers)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(update))

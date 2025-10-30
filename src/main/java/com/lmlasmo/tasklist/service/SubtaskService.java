@@ -17,6 +17,7 @@ import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
+import com.lmlasmo.tasklist.service.applier.UpdateSubtaskApplier;
 
 import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
@@ -56,9 +57,7 @@ public class SubtaskService {
 	public SubtaskDTO update(int subtaskId, UpdateSubtaskDTO update) {
 		Subtask subtask = subtaskRepository.findById(subtaskId).orElseThrow(() -> new EntityNotFoundException("Subtask not found for id equals " + subtaskId));
 		
-		if(update.getName() != null) subtask.setName(update.getName());
-		if(update.getSummary() != null) subtask.setSummary(update.getSummary());
-		if(update.getDurationMinutes() != null) subtask.setDurationMinutes(update.getDurationMinutes());
+		UpdateSubtaskApplier.apply(update, subtask);
 		
 		return new SubtaskDTO(subtaskRepository.save(subtask));
 	}

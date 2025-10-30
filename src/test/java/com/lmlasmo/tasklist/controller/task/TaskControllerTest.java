@@ -38,8 +38,7 @@ import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.TaskController;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
-import com.lmlasmo.tasklist.dto.update.UpdateDeadlineTaskDTO;
-import com.lmlasmo.tasklist.dto.update.UpdateDescriptionTaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.exception.PreconditionFailedException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
@@ -201,7 +200,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 
 	@RepeatedTest(3)
 	public void updateDescription(RepetitionInfo info) throws Exception {
-		UpdateDescriptionTaskDTO update = new UpdateDescriptionTaskDTO();
+		UpdateTaskDTO update = new UpdateTaskDTO();
 		update.setName(UUID.randomUUID().toString());
 		update.setSummary(UUID.randomUUID().toString());
 
@@ -217,10 +216,10 @@ public class TaskControllerTest extends AbstractControllerTest{
 		}
 		
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(taskService.updateDescription(eq(task.getId()), any())).thenReturn(fullTaskDTO);
+		when(taskService.update(eq(task.getId()), any())).thenReturn(fullTaskDTO);
 		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
 
-		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId() + "/description")
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + task.getId())
 				.headers(headers)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)));
@@ -237,7 +236,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 
 	@RepeatedTest(3)
 	public void updateDeadline(RepetitionInfo info) throws Exception {
-		UpdateDeadlineTaskDTO update = new UpdateDeadlineTaskDTO();
+		UpdateTaskDTO update = new UpdateTaskDTO();
 		update.setDeadline(OffsetDateTime.now().plusMinutes(1));
 		update.setDeadlineZone("UTC");
 
@@ -255,10 +254,10 @@ public class TaskControllerTest extends AbstractControllerTest{
 		}
 
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(taskService.updateDeadline(eq(task.getId()), any())).thenReturn(taskDTO);
+		when(taskService.update(eq(task.getId()), any())).thenReturn(taskDTO);
 		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
 
-		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId() + "/deadline")
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + task.getId())
 				.headers(headers)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)));
@@ -293,7 +292,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
 		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion()+1)).thenReturn(false);
 
-		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.put(baseUri + "/" + task.getId())
+		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + task.getId())
 				.param("status", TaskStatusType.COMPLETED.name())
 				.headers(headers));
 		
