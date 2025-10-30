@@ -29,9 +29,7 @@ services:
    MYSQL_USER: ${MYSQL_USERNAME}
    MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
    MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-   MYSQL_DATABASE: tasklist
-   MYSQL_CHARSET: utf8mb4
-   MYSQL_COLLATION: utf8mb4_unicode_ci
+   MYSQL_DATABASE: tasklist   
 
 networks:
  task-list-network:
