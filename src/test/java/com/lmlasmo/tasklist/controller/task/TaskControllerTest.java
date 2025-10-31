@@ -103,7 +103,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		when(taskService.save(any(CreateTaskDTO.class), anyInt())).thenReturn(new TaskDTO(task, true));
 
 		ResultActions resultActions = getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
-				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(create))
 				.andExpect(MockMvcResultMatchers.status().is(data.getStatus()))
@@ -125,7 +125,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		when(taskService.findByUser(eq(getDefaultUser().getId()), eq(true), any())).thenReturn(new PageImpl<>(List.of(new TaskDTO(task, true))));
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfNoneMatch(Long.toString(task.getVersion()));
@@ -151,7 +151,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 	@RepeatedTest(2)
 	public void getTaskById(RepetitionInfo info) throws Exception {
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfNoneMatch(Long.toString(task.getVersion()));
@@ -180,7 +180,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());		
+		headers.setBearerAuth(getDefaultAccessJwtToken());		
 		headers.setIfMatch(Long.toString(task.getVersion()));
 		
 		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
@@ -207,7 +207,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		TaskDTO fullTaskDTO = new TaskDTO(task, true);
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfMatch(Long.toString(task.getVersion()));
@@ -245,7 +245,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		taskDTO.setDeadlineZone(ZoneId.of(update.getDeadlineZone()).toString());
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfMatch(Long.toString(task.getVersion()));
@@ -280,7 +280,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		String baseUri = "/api/task";
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfMatch(Long.toString(task.getVersion()));

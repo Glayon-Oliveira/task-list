@@ -14,9 +14,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -27,16 +27,17 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConf {
 	
 	@Bean
-	public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter,
-			AuthenticationEntryPoint entryPoint) throws Exception {
+	public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationEntryPoint entryPoint,
+			JwtAuthenticationConverter authenticationConverter) throws Exception {
 		return http.csrf(c -> c.disable())
 				.cors(cors -> {})
 				.formLogin(c -> c.disable())
 				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(a -> a.requestMatchers("/api/auth/**").permitAll()
 						.anyRequest().authenticated())
+				.oauth2ResourceServer(auth2 -> auth2
+						.jwt(jwt -> jwt.jwtAuthenticationConverter(authenticationConverter)))
 				.exceptionHandling(e -> e.authenticationEntryPoint(entryPoint))
-				.addFilterBefore(jwtFilter, BasicAuthenticationFilter.class)
 				.build();
 	}
 	

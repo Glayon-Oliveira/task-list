@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.lmlasmo.tasklist.controller.util.ETagCheck;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.update.UpdatePasswordDTO;
-import com.lmlasmo.tasklist.security.AuthenticatedTool;
+import com.lmlasmo.tasklist.security.AuthenticatedTool.DirectAuthenticatedTool;
 import com.lmlasmo.tasklist.service.UserService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,18 +30,18 @@ public class UserController {
 	@PatchMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Void updatePassword(@RequestBody @Valid UpdatePasswordDTO update, HttpServletRequest req, HttpServletResponse res) {
-		int id = AuthenticatedTool.getUserId();
+		int id = DirectAuthenticatedTool.getUserId();
 		
 		ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et));
 		
-		userService.updatePassword(AuthenticatedTool.getUserId(), update.getPassword());
+		userService.updatePassword(DirectAuthenticatedTool.getUserId(), update.getPassword());
 		return null;
 	}
 	
 	@DeleteMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Void delete(HttpServletRequest req, HttpServletResponse res) {
-		int id = AuthenticatedTool.getUserId();
+		int id = DirectAuthenticatedTool.getUserId();
 				
 		ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et));		
 		userService.delete(id);
@@ -51,7 +51,7 @@ public class UserController {
 		
 	@GetMapping("/i")	
 	public UserDTO findByI(HttpServletRequest req, HttpServletResponse res) {
-		int id = AuthenticatedTool.getUserId();
+		int id = DirectAuthenticatedTool.getUserId();
 		
 		if(ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et))) return null;
 		

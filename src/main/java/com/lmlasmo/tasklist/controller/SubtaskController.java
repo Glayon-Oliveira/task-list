@@ -42,14 +42,14 @@ public class SubtaskController {
 	
 	@PostMapping
 	@ResponseStatus(code = HttpStatus.CREATED)
-	@PreAuthorize("@resourceAccessService.canAccessTask(#create.taskId, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessTask(#create.taskId, @authTool.getUserId())")
 	public SubtaskDTO create(@RequestBody @Valid CreateSubtaskDTO create) {
 		return subtaskService.save(create);
 	}
 	
 	@DeleteMapping(params = "subtaskIds")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskIds, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskIds, @authTool.getUserId())")
 	public Void delete(@RequestParam List<@Min(1) Integer> subtaskIds, HttpServletRequest req, HttpServletResponse res) {
 		ETagCheck.check(req, res, et -> subtaskService.sumVersionByIds(subtaskIds) == et);
 		subtaskService.delete(subtaskIds);
@@ -57,7 +57,7 @@ public class SubtaskController {
 	}
 	
 	@PatchMapping("/{subtaskId}")
-	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, @authTool.getUserId())")
 	public SubtaskDTO update(@PathVariable @Min(1) int subtaskId, @RequestBody UpdateSubtaskDTO update, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
@@ -68,7 +68,7 @@ public class SubtaskController {
 	
 	@PatchMapping(path = "/{subtaskId}", params = "position")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, @authTool.getUserId())")
 	public Void updateSubtaskPosition(@PathVariable @Min(1) int subtaskId, @RequestParam @Min(1) int position,
 			HttpServletRequest req, HttpServletResponse res) {
 		
@@ -80,7 +80,7 @@ public class SubtaskController {
 	
 	@PatchMapping(params = {"subtaskIds", "status"})
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskIds, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskIds, @authTool.getUserId())")
 	public Void updateSubtaskStatus(@RequestParam List<@Min(1) Integer> subtaskIds, @RequestParam @NotNull TaskStatusType status, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
@@ -91,7 +91,7 @@ public class SubtaskController {
 	}
 
 	@GetMapping(params = {"taskId"})
-	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, @authTool.getUserId())")
 	public Page<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId, Pageable pageable, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
@@ -101,7 +101,7 @@ public class SubtaskController {
 	}
 	
 	@GetMapping("/{subtaskId}")
-	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, @authTool.getUserId())")
 	public SubtaskDTO findById(@PathVariable @Min(1) int subtaskId, HttpServletRequest req, HttpServletResponse res) {
 		if(ETagCheck.check(req, res, et -> subtaskService.existsByIdAndVersion(subtaskId, et))) return null;
 		

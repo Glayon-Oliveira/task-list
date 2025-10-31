@@ -91,7 +91,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 		when(accessService.canAccessTask(subtask.getTask().getId(), getDefaultUser().getId())).thenReturn(false);
 
 		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
-				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(create))
 		.andExpect(MockMvcResultMatchers.status().is(403))
@@ -102,7 +102,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 	void getSubtasksByTask() throws Exception {
 		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
 				.param("taskId", String.valueOf(subtask.getTask().getId()))
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
 		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
 	}
@@ -110,7 +110,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 	@Test
 	void getSubtaskById() throws Exception {
 		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + "/" + subtask.getId())
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
 		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
 	}
@@ -123,7 +123,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 		update.setDurationMinutes(5);
 
 		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + subtask.getId())
-				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)))
 		.andExpect(MockMvcResultMatchers.status().is(403))
@@ -143,7 +143,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
 				.params(baseParams)
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
 		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
 	}
@@ -157,7 +157,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 
 		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri+"/"+subtask.getId())
 				.params(baseParams)
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403));
 	}
 

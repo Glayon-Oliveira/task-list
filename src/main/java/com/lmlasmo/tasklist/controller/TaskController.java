@@ -20,7 +20,7 @@ import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.model.TaskStatusType;
-import com.lmlasmo.tasklist.security.AuthenticatedTool;
+import com.lmlasmo.tasklist.security.AuthenticatedTool.DirectAuthenticatedTool;
 import com.lmlasmo.tasklist.service.TaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
 
@@ -42,13 +42,13 @@ public class TaskController {
 	@PostMapping
 	@ResponseStatus(code = HttpStatus.CREATED)	
 	public TaskDTO create(@RequestBody @Valid CreateTaskDTO create) {
-		int userId = AuthenticatedTool.getUserId();
+		int userId = DirectAuthenticatedTool.getUserId();
 		return taskService.save(create, userId);
 	}	
 	
 	@DeleteMapping("/{id}")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	@PreAuthorize("@resourceAccessService.canAccessTask(#id, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessTask(#id, @authTool.getUserId())")
 	public Void delete(@PathVariable int id, HttpServletRequest req, HttpServletResponse res) {
 		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(id, et));
 		taskService.delete(id);
@@ -57,7 +57,7 @@ public class TaskController {
 	
 	@PatchMapping("/{taskId}")
 	@ResponseStatus(code = HttpStatus.OK)
-	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, @authTool.getUserId())")
 	public TaskDTO update(@PathVariable @Min(1) int taskId, @RequestBody UpdateTaskDTO update, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
@@ -68,7 +68,7 @@ public class TaskController {
 	
 	@PatchMapping(path = "/{taskId}", params = {"status"})
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, @authTool.getUserId())")
 	public Void updateTaskStatus(@PathVariable @Min(1) int taskId, @RequestParam @NotNull TaskStatusType status, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
@@ -81,7 +81,7 @@ public class TaskController {
 	@GetMapping
 	public Page<TaskDTO> findAllByI(Pageable pageable, @RequestParam(required = false) boolean withSubtasks, 
 			HttpServletRequest req, HttpServletResponse res) {
-		int userId = AuthenticatedTool.getUserId();
+		int userId = DirectAuthenticatedTool.getUserId();
 		
 		if(ETagCheck.check(req, res, et -> taskService.sumVersionByUser(userId) == et)) return null;
 		
@@ -89,7 +89,7 @@ public class TaskController {
 	}
 	
 	@GetMapping("/{taskId}")
-	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, authentication.principal)")
+	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, @authTool.getUserId())")
 	public TaskDTO findById(@PathVariable @Min(1) int taskId, @RequestParam(required = false) boolean withSubtasks, 
 			HttpServletRequest req, HttpServletResponse res) {
 		

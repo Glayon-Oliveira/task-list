@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.lmlasmo.tasklist.advice.exception.util.AdviceWrapper;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestControllerAdvice
 public class SecurityAdviceController {
 
-	@ExceptionHandler(exception = {AuthenticationException.class, JWTVerificationException.class})		
+	@ExceptionHandler(exception = {AuthenticationException.class})		
 	@ResponseStatus(code = HttpStatus.UNAUTHORIZED)
 	public Map<String, Object> exceptionResponse(AuthenticationException exception, HttpServletRequest request) {
 		return AdviceWrapper.wrapper(HttpStatus.UNAUTHORIZED, exception.getMessage(), request);		

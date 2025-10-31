@@ -73,7 +73,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 	@Test
 	public void delete() throws Exception {
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri + task.getId()+1)
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
 		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
 	}
@@ -82,7 +82,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 	public void updateStatus() throws Exception {
 		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + task.getId())
 				.param("status", TaskStatusType.COMPLETED.name())
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
 		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
 	}
@@ -94,7 +94,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 		update.setSummary(UUID.randomUUID().toString());
 
 		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + task.getId())
-				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)))
 		.andExpect(MockMvcResultMatchers.status().is(403))
@@ -108,7 +108,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 		update.setDeadlineZone("UTC");
 
 		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + task.getId())
-				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(mapper.writeValueAsString(update)))
 		.andExpect(MockMvcResultMatchers.status().is(403))
@@ -119,7 +119,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 	public void getTaskById() throws Exception {
 		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + task.getId())
 				.param("withSubtasks", "true")
-				.header("Authorization", "Bearer " + getDefaultJwtToken()))
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
 		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
 	}

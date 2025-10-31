@@ -56,8 +56,7 @@ public class FailureAuthenticationControllerTest extends AbstractControllerTest 
 	void authenticateEndpoint(FailureAuthenticateEndpointSource.FailureAuthenticateEndpointData data) throws Exception {
 		for(HttpMethod method: data.getMethods()) {
 			getMockMvc().perform(MockMvcRequestBuilders.request(method, data.getEndpoint()))
-			.andExpect(MockMvcResultMatchers.status().is(401))
-			.andExpect(result -> VerifyResolvedException.verify(result, null));
+			.andExpect(MockMvcResultMatchers.status().is(401));
 		}
 	}
 

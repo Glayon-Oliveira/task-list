@@ -1,63 +1,181 @@
 package com.lmlasmo.tasklist.service;
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.text.ParseException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
+import com.lmlasmo.tasklist.dto.UserDTO;
+import com.lmlasmo.tasklist.exception.ExpiredTokenException;
+import com.lmlasmo.tasklist.exception.InvalidTokenException;
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JOSEObjectType;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.RSASSASigner;
+import com.nimbusds.jose.crypto.RSASSAVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTClaimsSet.Builder;
+import com.nimbusds.jwt.SignedJWT;
 
-import jakarta.annotation.PostConstruct;
+import lombok.Getter;
 
+@Getter
 @Service
 public class JwtService {
-	
-	@Value("${app.jwt.issuer}")
-	private String issuer;
-	
-	@Value("${app.jwt.key}")
-	private String key;
-	
-	@Value("${app.jwt.duration}")
-	private Duration duration;
-	
-	private Algorithm algorithm;
-	
-	@PostConstruct
-	private void init() {
-		algorithm = Algorithm.HMAC256(key);
-	}
-	
-	public String gerateToken(int id, String[] roles) {
-		Instant issued = Instant.now();
-		Instant expires = issued.plus(duration);
 		
-		return JWT.create()
-				.withIssuer(issuer)
-				.withSubject(Integer.toString(id))
-				.withArrayClaim("roles", roles)
-				.withIssuedAt(Date.from(issued))
-				.withExpiresAt(Date.from(expires))
-				.sign(algorithm);		
-	}
+	@Value("${app.jwt.issuer}")
+	private String issuer;	
+		
+	@Value("${app.jwt.refresh-duration}")
+	private Duration refreshTokenDuration;
+		
+	@Value("${app.jwt.access-duration}")
+	private Duration accessTokenDuration;
 	
-	public void isValid(String token) {		
-		JWT.require(algorithm).build().verify(token);
-	}
-	
-	public Integer getId(String token) {
+	private SignedJWT getSignedJWT(JWTClaimsSet claimsSet, RSAPrivateKey privateKey) {
 		try {
-			return Integer.parseInt(JWT.require(algorithm).build().verify(token).getSubject());
+			JWSHeader header = new JWSHeader.Builder(JWSAlgorithm.RS256)
+					.type(JOSEObjectType.JWT)
+					.build();
+			
+			SignedJWT signed = new SignedJWT(header, claimsSet);
+			
+			RSASSASigner signer = new RSASSASigner(privateKey);
+			signed.sign(signer);
+			
+			return signed;
 		}catch(Exception e) {
-			return null;
+			throw new RuntimeException("Unknown error", e);
 		}		
 	}
 	
-	public String[] getRoles(String token) {
-		return JWT.require(algorithm).build().verify(token).getClaim("roles").asArray(String.class);
+	public SignedJWT validateRefreshToken(String refreshToken) {
+		try {
+	        SignedJWT signedJWT = SignedJWT.parse(refreshToken);
+
+	        if (!signedJWT.verify(new RSASSAVerifier(Keys.getRefreshPublicKey()))) {
+	            throw new InvalidTokenException("Invalid refresh token signature");
+	        }
+
+	        JWTClaimsSet claims = signedJWT.getJWTClaimsSet();
+	        if (claims.getExpirationTime().toInstant().isBefore(Instant.now())) {
+	            throw new ExpiredTokenException("Refresh token has expired");
+	        }
+
+	        return signedJWT;
+		} catch (ParseException | JOSEException | NullPointerException e) {
+            throw new InvalidTokenException("Malformed refresh token");
+        }
+    }
+	
+	public String generateRefreshToken(int id) {
+		return generateRefreshToken(id, null);
+	}
+	
+	public String generateRefreshToken(int id, Map<String, Object> claims) {
+		if(claims == null) claims = Map.of();
+		
+		Instant now = Instant.now();
+		Instant expires = now.plus(refreshTokenDuration);
+		
+		Builder claimsBuilder = new JWTClaimsSet.Builder();
+		
+		claims.forEach(claimsBuilder::claim);
+				
+		claimsBuilder.subject(Integer.toString(id))
+			.issuer(issuer)
+			.issueTime(Date.from(now))
+			.expirationTime(Date.from(expires));
+		
+		SignedJWT signed = getSignedJWT(claimsBuilder.build(), Keys.getRefreshPrivateKey());
+		return signed.serialize();
+	}
+	
+	public String regenerateRefreshToken(String refreshToken) {
+		SignedJWT signed = validateRefreshToken(refreshToken);
+		
+		try {
+			JWTClaimsSet claimsSet = signed.getJWTClaimsSet();
+			int sub = getSubjectIdOfToken(signed);
+			
+			return generateRefreshToken(sub, claimsSet.getClaims());		
+		}catch(ParseException e) {
+			throw new InvalidTokenException("Invalid token");
+		}
+	}
+	
+	public String generateAccessToken(SignedJWT refreshToken, UserDTO user) {
+		int id = getSubjectIdOfToken(refreshToken);
+
+		Instant now = Instant.now();
+		Instant expires = now.plus(accessTokenDuration);
+
+		Builder claimsSet = new JWTClaimsSet.Builder().subject(Integer.toString(id)).issuer(issuer)
+				.issueTime(Date.from(now)).expirationTime(Date.from(expires));
+
+		String role = user.getRole().name();
+
+		claimsSet.claim("roles", role);
+
+		SignedJWT signed = getSignedJWT(claimsSet.build(), Keys.getAccessPrivateKey());
+		return signed.serialize();
+	}
+	
+	public int getSubjectIdOfToken(SignedJWT token) {
+		try {
+			return Integer.parseInt(token.getJWTClaimsSet().getSubject());
+		}catch(NumberFormatException e) {
+			throw new InvalidTokenException("Invalid subject in token");
+		}catch(ParseException e) {
+			throw new InvalidTokenException("Malformed refresh token");
+		}
+	}
+	
+	public static abstract class Keys {
+		private static KeyPair refreshKeys;	
+		private static KeyPair accessKeys;
+		
+		static {
+			update();
+		}
+		
+		public static void update() {
+			try {
+				KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+				
+				refreshKeys = generator.generateKeyPair();
+				accessKeys = generator.generateKeyPair();			
+			} catch (NoSuchAlgorithmException e) {
+				throw new IllegalStateException("Error creating Key Pair");
+			}
+		}	
+		
+		public static RSAPublicKey getRefreshPublicKey() {
+			return (RSAPublicKey) refreshKeys.getPublic();
+		}
+		
+		public static RSAPrivateKey getRefreshPrivateKey() {
+			return (RSAPrivateKey) refreshKeys.getPrivate();
+		}
+		
+		public static RSAPublicKey getAccessPublicKey() {
+			return (RSAPublicKey) accessKeys.getPublic();
+		}
+		
+		public static RSAPrivateKey getAccessPrivateKey() {
+			return (RSAPrivateKey) accessKeys.getPrivate();
+		}
+		
 	}
 
 }

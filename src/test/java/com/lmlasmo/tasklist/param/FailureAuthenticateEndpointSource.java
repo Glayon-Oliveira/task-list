@@ -1,5 +1,13 @@
 package com.lmlasmo.tasklist.param;
 
+import static org.springframework.http.HttpMethod.DELETE;
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.HEAD;
+import static org.springframework.http.HttpMethod.OPTIONS;
+import static org.springframework.http.HttpMethod.PATCH;
+import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpMethod.PUT;
+
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -12,14 +20,13 @@ import lombok.Getter;;
 public interface FailureAuthenticateEndpointSource {
 
 	public static List<HttpMethod> getAllMethods() {
-		return List.of(
-				HttpMethod.GET,
-				HttpMethod.POST,
-				HttpMethod.DELETE,
-				HttpMethod.PUT,
-				HttpMethod.OPTIONS,
-				HttpMethod.HEAD,
-				HttpMethod.PATCH
+		return List.of(GET, POST, DELETE, PUT, OPTIONS, HEAD, PATCH);
+	}
+	
+	public static Stream<Arguments> sourceForAuth() {
+		return Stream.of(
+				Arguments.of(new FailureAuthenticateEndpointData(List.of(POST), "/api/auth/token/refresh")),
+				Arguments.of(new FailureAuthenticateEndpointData(List.of(POST), "/api/auth/token/access"))
 				);
 	}
 
@@ -48,6 +55,7 @@ public interface FailureAuthenticateEndpointSource {
 
 	public static Stream<Arguments> source(){
 		return Stream.of(
+				sourceForAuth(),
 				sourceForUser(),
 				sourceForTask(),
 				sourceForSubtask()

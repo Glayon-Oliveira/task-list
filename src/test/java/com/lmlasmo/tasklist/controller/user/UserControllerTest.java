@@ -25,7 +25,7 @@ import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.AuthController;
 import com.lmlasmo.tasklist.controller.UserController;
 import com.lmlasmo.tasklist.dto.UserDTO;
-import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO;
+import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
 import com.lmlasmo.tasklist.dto.create.SignupDTO;
 import com.lmlasmo.tasklist.param.user.SignInAndUpSource;
 import com.lmlasmo.tasklist.param.user.UpdatePasswordOfDefaultUserSource;
@@ -106,10 +106,10 @@ public class UserControllerTest extends AbstractControllerTest {
 				.andExpect(MockMvcResultMatchers.status().is(200))
 				.andReturn().getResponse().getContentAsString();
 
-		JWTTokenDTO jwtToken = oMapper.readValue(strJwtToken, JWTTokenDTO.class);
+		DoubleJWTTokensDTO doublejwtTokens = oMapper.readValue(strJwtToken, DoubleJWTTokensDTO.class);
 
 		getMockMvc().perform(MockMvcRequestBuilders.get("/api/user/i")
-				.header("Authorization", "Bearer " + jwtToken.getToken()))
+				.header("Authorization", "Bearer " + doublejwtTokens.getAccessToken().getToken()))
 		.andExpect(MockMvcResultMatchers.status().is(200))
 		.andExpect(MockMvcResultMatchers.jsonPath("$.username").value(getDefaultUser().getUsername()));
 	}
@@ -140,7 +140,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		String baseUri = "/api/user/i";
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());		
+		headers.setBearerAuth(getDefaultAccessJwtToken());		
 		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()));
 		
 		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);
@@ -169,7 +169,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		String updateUri = "/api/user/i";
 
 		getMockMvc().perform(MockMvcRequestBuilders.patch(updateUri)
-				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(update))
 		.andExpect(MockMvcResultMatchers.status().is(data.getStatus()))
@@ -188,7 +188,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		String updateUri = "/api/user/i";
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()));
 				
 		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);		
@@ -213,7 +213,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		String baseUri = "/api/user/i";
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 				
 		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);
 		

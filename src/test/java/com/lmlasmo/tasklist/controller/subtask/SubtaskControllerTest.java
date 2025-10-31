@@ -101,7 +101,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		when(subtaskService.save(any())).thenReturn(new SubtaskDTO(subtask));
 
 		ResultActions resultActions = getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
-				.header("Authorization", "Bearer " + getDefaultJwtToken())
+				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(create))
 				.andExpect(MockMvcResultMatchers.status().is(data.getStatus()))
@@ -117,7 +117,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 	@RepeatedTest(2)
 	public void getSubtasksByTask(RepetitionInfo info) throws Exception {
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfNoneMatch(Long.toString(subtask.getVersion()));
@@ -143,7 +143,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 	@RepeatedTest(2)
 	public void getSubtaskById(RepetitionInfo info) throws Exception {
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfNoneMatch(Long.toString(subtask.getVersion()));
@@ -178,7 +178,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		subtaskDTO.setDurationMinutes(update.getDurationMinutes());
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfMatch(Long.toString(subtask.getVersion()));			
@@ -222,7 +222,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		baseParams.add("subtaskIds", strIds);
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		headers.setIfMatch(Long.toString(sumIds));
 
 		when(accessService.canAccessSubtask(ids, getDefaultUser().getId())).thenReturn(true);
@@ -249,7 +249,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		baseParams.add("position", String.valueOf(newPosition));
 		
 		HttpHeaders headers = new HttpHeaders();
-		headers.setBearerAuth(getDefaultJwtToken());
+		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfMatch(Long.toString(subtask.getVersion()));			
