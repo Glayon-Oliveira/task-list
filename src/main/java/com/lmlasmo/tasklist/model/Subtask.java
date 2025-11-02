@@ -7,7 +7,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -63,7 +62,7 @@ public class Subtask {
 	@Version
 	private long version;
 	
-	@ManyToOne(fetch = FetchType.EAGER, cascade = CascadeType.REMOVE)
+	@ManyToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "task_id")
 	private Task task;
 	

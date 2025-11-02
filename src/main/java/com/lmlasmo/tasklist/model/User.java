@@ -68,7 +68,7 @@ public class User implements UserDetails{
 	@Version
 	private long version;
 	
-	@OneToMany(mappedBy = "user")
+	@OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE)
 	private Set<Task> tasks;
 	
 	@OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.REMOVE})

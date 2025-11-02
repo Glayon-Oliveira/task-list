@@ -1,0 +1,6 @@
+ALTER TABLE tasks DROP FOREIGN KEY tasks_ibfk_1;
+
+ALTER TABLE tasks
+ADD CONSTRAINT fk_tasks_user
+FOREIGN KEY (user_id) REFERENCES users(id)
+ON DELETE CASCADE;

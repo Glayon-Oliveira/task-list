@@ -9,6 +9,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -73,7 +74,7 @@ public class Task {
 	@JoinColumn(name = "user_id")
 	private User user;
 	
-	@OneToMany(mappedBy = "task")	
+	@OneToMany(mappedBy = "task", cascade = CascadeType.REMOVE)	
 	private Set<Subtask> subtasks = new HashSet<>();
 	
 	public Task(CreateTaskDTO create, User user) {
