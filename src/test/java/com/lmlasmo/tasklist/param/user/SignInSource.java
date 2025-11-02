@@ -9,27 +9,29 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
-public interface SignInAndUpSource {
+public class SignInSource {
 
 	public static Stream<Arguments> source(){
 		String randomPassword = UUID.randomUUID().toString();
 		return Stream.of(
-				Arguments.of(new SignInAndUpData("username", randomPassword, 201, null)),
-				Arguments.of(new SignInAndUpData("username", "", 400, MethodArgumentNotValidException.class)),
-				Arguments.of(new SignInAndUpData("username", "1234567", 400, MethodArgumentNotValidException.class)),
-				Arguments.of(new SignInAndUpData("", randomPassword, 400, MethodArgumentNotValidException.class))
+				Arguments.of(new SignInData("username", randomPassword, 201, null)),
+				Arguments.of(new SignInData("username", "", 400, MethodArgumentNotValidException.class)),
+				Arguments.of(new SignInData("username", "1234567", 400, MethodArgumentNotValidException.class)),
+				Arguments.of(new SignInData("test@example.com", randomPassword, 201, null)),
+				Arguments.of(new SignInData("", randomPassword, 400, MethodArgumentNotValidException.class))
 				);
 	}
 
 	@AllArgsConstructor
 	@Getter
-	static class SignInAndUpData {
+	public static class SignInData {
 
-		private String username;
+		private String login;
 		private String password;
 		private int status;
 		private Class<? extends Exception> expectedException;
 
 	}
-
+	
+	
 }

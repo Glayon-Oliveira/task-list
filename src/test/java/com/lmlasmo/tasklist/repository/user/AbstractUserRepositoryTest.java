@@ -3,6 +3,7 @@ package com.lmlasmo.tasklist.repository.user;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.lmlasmo.tasklist.model.User;
+import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.repository.UserRepository;
 
 import lombok.Getter;
@@ -46,6 +48,12 @@ public class AbstractUserRepositoryTest {
 			User user = new User();
 			user.setUsername(username);
 			user.setPassword(encoder.encode(password));
+			user.setEmails(new HashSet<>());
+			
+			UserEmail userEmail = new UserEmail("test@example.com");
+			userEmail.setUser(user);
+			
+			user.getEmails().add(userEmail);
 
 			user = userRepository.save(user);
 			users.add(user);

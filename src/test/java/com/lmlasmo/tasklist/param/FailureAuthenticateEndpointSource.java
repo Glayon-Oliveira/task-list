@@ -23,6 +23,13 @@ public interface FailureAuthenticateEndpointSource {
 		return List.of(GET, POST, DELETE, PUT, OPTIONS, HEAD, PATCH);
 	}
 	
+	public static Stream<Arguments> sourceForAccount() {
+		return Stream.of(
+				Arguments.of(new FailureAuthenticateEndpointData(List.of(POST), "/api/account/email/vincule")),
+				Arguments.of(new FailureAuthenticateEndpointData(List.of(POST), "/api/account/email/terminate"))
+				);
+	}
+	
 	public static Stream<Arguments> sourceForAuth() {
 		return Stream.of(
 				Arguments.of(new FailureAuthenticateEndpointData(List.of(POST), "/api/auth/token/refresh")),
@@ -55,6 +62,7 @@ public interface FailureAuthenticateEndpointSource {
 
 	public static Stream<Arguments> source(){
 		return Stream.of(
+				sourceForAccount(),
 				sourceForAuth(),
 				sourceForUser(),
 				sourceForTask(),

@@ -25,6 +25,7 @@ import com.lmlasmo.tasklist.param.FailureAuthenticateEndpointSource;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
+import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
 import jakarta.persistence.EntityNotFoundException;
@@ -41,6 +42,9 @@ public class FailureAuthenticationControllerTest extends AbstractControllerTest 
 
 	@MockitoBean
 	private TaskStatusService statusService;
+	
+	@MockitoBean
+	private UserEmailService userEmailService;
 
 	@Override
 	@BeforeEach
@@ -66,7 +70,7 @@ public class FailureAuthenticationControllerTest extends AbstractControllerTest 
 		String baseUri = "/api/auth/login";
 		String signInFormat = """
 					{
-							"username": "%s",
+							"login": "%s",
 							"password": "%s"
 					}
 				""";

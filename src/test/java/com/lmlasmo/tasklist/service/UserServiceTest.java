@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -105,6 +106,7 @@ public class UserServiceTest {
 		int nId = 2;
 
 		User user = new User(id);
+		user.setEmails(Set.of());
 
 		when(userRepository.findById(id)).thenReturn(Optional.ofNullable(user));
 		when(userRepository.findById(nId)).thenReturn(Optional.empty());

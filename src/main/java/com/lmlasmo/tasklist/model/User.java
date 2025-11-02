@@ -2,6 +2,7 @@ package com.lmlasmo.tasklist.model;
 
 import java.time.Instant;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -13,6 +14,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import com.lmlasmo.tasklist.dto.create.SignupDTO;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -69,9 +71,20 @@ public class User implements UserDetails{
 	@OneToMany(mappedBy = "user")
 	private Set<Task> tasks;
 	
+	@OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.REMOVE})
+	private Set<UserEmail> emails;
+	
 	public User(SignupDTO signup) {
 		this.username = signup.getUsername();
-		this.password = signup.getPassword();		
+		this.password = signup.getPassword();
+		
+		UserEmail email = new UserEmail();
+		email.setEmail(signup.getEmail());
+		email.setPrimary(true);
+		email.setUser(this);
+		
+		this.emails = new HashSet<>();
+		emails.add(email);
 	}
 
 	@Override

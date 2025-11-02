@@ -25,9 +25,11 @@ import com.lmlasmo.tasklist.dto.create.SignupDTO;
 import com.lmlasmo.tasklist.exception.InvalidTokenException;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.service.JwtService;
+import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.service.UserService;
 import com.nimbusds.jwt.SignedJWT;
 
+import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.NonNull;
@@ -38,8 +40,9 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/auth")
 public class AuthController {
 	
-	@NonNull private UserService userService;
+	@NonNull private UserService userService;	
 	@NonNull private JwtService jwtService;
+	@NonNull private UserEmailService userEmailService;
 	@NonNull private AuthenticationManager manager;
 	
 	@Value("${app.cookie.secure}")
@@ -47,7 +50,7 @@ public class AuthController {
 	
 	@PostMapping("/login")
 	public ResponseEntity<DoubleJWTTokensDTO> inByJson(@RequestBody @Valid LoginDTO login) throws Exception {		
-		Authentication auth = new UsernamePasswordAuthenticationToken(login.getUsername(), login.getPassword());		
+		Authentication auth = new UsernamePasswordAuthenticationToken(login.getLogin(), login.getPassword());		
 		auth = manager.authenticate(auth);
 		
 		User user = (User) auth.getPrincipal();
@@ -72,8 +75,10 @@ public class AuthController {
 	@PostMapping("/signup")	
 	@ResponseStatus(code = HttpStatus.CREATED)
 	public UserDTO upByJson(@RequestBody @Valid SignupDTO signup) {
+		if(userEmailService.existsByEmail(signup.getEmail())) throw new EntityExistsException("Email already used");
+		
 		return userService.save(signup);		
-	}
+	}	
 	
 	@PostMapping("/token/refresh")
 	public ResponseEntity<DoubleJWTTokensDTO> refresh(@CookieValue(value = "rt", required = false) String refreshToken, @RequestBody(required = false) TokenDTO refreshTokenDto) throws Exception {

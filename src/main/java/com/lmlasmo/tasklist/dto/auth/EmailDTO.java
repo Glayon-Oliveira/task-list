@@ -1,7 +1,6 @@
-package com.lmlasmo.tasklist.dto.create;
+package com.lmlasmo.tasklist.dto.auth;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.lmlasmo.tasklist.dto.auth.PasswordDTO;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -12,12 +11,8 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class SignupDTO extends PasswordDTO {
+public class EmailDTO {
 
-	@JsonProperty
-	@NotBlank
-	private String username;
-	
 	@JsonProperty
 	@NotBlank
 	@Email

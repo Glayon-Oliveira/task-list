@@ -5,8 +5,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
@@ -16,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
@@ -27,8 +31,11 @@ import com.lmlasmo.tasklist.controller.UserController;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
 import com.lmlasmo.tasklist.dto.create.SignupDTO;
-import com.lmlasmo.tasklist.param.user.SignInAndUpSource;
+import com.lmlasmo.tasklist.model.UserEmail;
+import com.lmlasmo.tasklist.param.user.SignInSource;
+import com.lmlasmo.tasklist.param.user.SignUpSource;
 import com.lmlasmo.tasklist.param.user.UpdatePasswordOfDefaultUserSource;
+import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
 import jakarta.persistence.EntityExistsException;
@@ -39,21 +46,26 @@ public class UserControllerTest extends AbstractControllerTest {
 
 	@Autowired
 	private ObjectMapper oMapper;
+	
+	@MockitoBean
+	private UserEmailService userEmailService;
 
 	@ParameterizedTest
-	@MethodSource("com.lmlasmo.tasklist.param.user.SignInAndUpSource#source")
-	void signUp(SignInAndUpSource.SignInAndUpData data) throws Exception {
+	@MethodSource("com.lmlasmo.tasklist.param.user.SignUpSource#source")
+	void signUp(SignUpSource.SignUpData data) throws Exception {
 		String createFormat = """
 					{
 							"username": "%s",
-							"password": "%s"
+							"password": "%s",
+							"email": "%s"
 					}
 				""";
 
-		String create = String.format(createFormat, data.getUsername(), data.getPassword());
+		String create = String.format(createFormat, data.getUsername(), data.getPassword(), data.getEmail());
 		String signUpUri = "/api/auth/signup";
 
 		when(getUserService().save(any(SignupDTO.class))).thenReturn(new UserDTO(getDefaultUser()));
+		when(userEmailService.existsByEmail(data.getEmail())).thenReturn(false);		
 
 		ResultActions resultActions = getMockMvc().perform(MockMvcRequestBuilders.post(signUpUri)
 				.contentType(MediaType.APPLICATION_JSON)
@@ -64,22 +76,24 @@ public class UserControllerTest extends AbstractControllerTest {
 		assumeTrue(data.getStatus() >= 200 && data.getStatus() < 300);
 
 		resultActions.andExpect(MockMvcResultMatchers.jsonPath("$.username").value(getDefaultUser().getUsername()));
+		resultActions.andExpect(MockMvcResultMatchers.jsonPath("$.emails[0].email").value(getDefaultUser().getEmails().iterator().next().getEmail()));
 	}
 
-	@ParameterizedTest
-	@MethodSource("com.lmlasmo.tasklist.param.user.SignInAndUpSource#source")
-	void signIn(SignInAndUpSource.SignInAndUpData data) throws Exception {
+	@ParameterizedTest	
+	@MethodSource("com.lmlasmo.tasklist.param.user.SignInSource#source")
+	void signIn(SignInSource.SignInData data) throws Exception {
 		String baseUri = "/api/auth/login";
+		
 		String signInFormat = """
-					{
-							"username": "%s",
-							"password": "%s"
-					}
-				""";
+				{
+						"login": "%s",
+						"password": "%s"
+				}
+			""";
 
 		assumeTrue(data.getStatus() < 200 || data.getStatus() >= 300);
 
-		String signIn = String.format(signInFormat, data.getUsername(), data.getPassword());
+		String signIn = String.format(signInFormat, data.getLogin(), data.getPassword());
 
 		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
 				.contentType(MediaType.APPLICATION_JSON)
@@ -88,17 +102,22 @@ public class UserControllerTest extends AbstractControllerTest {
 		.andExpect(result -> VerifyResolvedException.verify(result, data.getExpectedException()));
 	}
 
-	@Test
-	void successSignIn() throws UnsupportedEncodingException, Exception {
+	@RepeatedTest(2)
+	void successSignIn(RepetitionInfo info) throws UnsupportedEncodingException, Exception {
 		String baseUri = "/api/auth/login";
 		String signInFormat = """
 					{
-							"username": "%s",
+							"login": "%s",
 							"password": "%s"
 					}
 				""";
-
-		String signIn = String.format(signInFormat, getDefaultUser().getUsername(), getDefaultPassword());
+		
+		int current = info.getCurrentRepetition();
+		
+		List<UserEmail> emails = getDefaultUser().getEmails().stream()
+				.toList();
+		
+		String signIn = String.format(signInFormat, (current % 2 == 0) ? getDefaultUser().getUsername() : emails.get(0).getEmail(), getDefaultPassword());
 
 		String strJwtToken = getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
 				.contentType(MediaType.APPLICATION_JSON)
@@ -114,19 +133,24 @@ public class UserControllerTest extends AbstractControllerTest {
 		.andExpect(MockMvcResultMatchers.jsonPath("$.username").value(getDefaultUser().getUsername()));
 	}
 
-	@Test
-	void signUpConflitedWithDefaultUser() throws Exception {
+	@RepeatedTest(2)
+	void signUpConflitedWithDefaultUser(RepetitionInfo info) throws Exception {
 		String signupFormat = """
 					{
 							"username": "%s",
+							"email": "%s",
 							"password": "%s"
 					}
 				""";
-
-		String signup = String.format(signupFormat, getDefaultUser().getUsername(), getDefaultPassword());
+		List<UserEmail> emails = getDefaultUser().getEmails().stream()
+				.toList();
+		
+		String signup = String.format(signupFormat, getDefaultUser().getUsername(), emails.get(0).getEmail(), getDefaultPassword());
 		String signUpUri = "/api/auth/signup";
 
 		when(getUserService().save(any())).thenThrow(EntityExistsException.class);
+		
+		if(info.getCurrentRepetition() % 2 == 1) when(userEmailService.existsByEmail(emails.get(0).getEmail())).thenReturn(false); 
 
 		getMockMvc().perform(MockMvcRequestBuilders.post(signUpUri)
 				.contentType(MediaType.APPLICATION_JSON)

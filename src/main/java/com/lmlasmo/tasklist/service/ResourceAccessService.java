@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.TaskRepository;
+import com.lmlasmo.tasklist.repository.UserEmailRepository;
 
 import lombok.AllArgsConstructor;
 
@@ -13,8 +14,17 @@ import lombok.AllArgsConstructor;
 @Service
 public class ResourceAccessService {
 	
+	private UserEmailRepository emailRepository;
 	private TaskRepository taskRepository;
 	private SubtaskRepository subtaskRepository;
+	
+	public boolean canAccessEmail(int emailId, int userId) {
+		return emailRepository.existsByIdAndUserId(emailId, userId);
+	}
+	
+	public boolean canAccessEmail(String email, int userId) {
+		return emailRepository.existsByEmailAndUserId(email, userId);
+	}
 	
 	public boolean canAccessTask(int taskId, int userId) {
 		return taskRepository.existsByIdAndUserId(taskId, userId);

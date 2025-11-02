@@ -73,4 +73,12 @@ public class UserService {
 		return user;
 	}
 	
+	public UserDTO findByEmail(String email) {		
+		UserDTO user = repository.findByEmailsEmail(email)
+				.map(UserDTO::new)
+				.orElseThrow(() -> new EntityNotFoundException("User not found"));
+		
+		return user;
+	}
+	
 }
