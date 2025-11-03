@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [ $# -lt 2 ]; then
+echo "Usage: $0 {dev|main} {up|down} [VAR=value ...] [-- <docker_flags>]"
+echo "Example: $0 dev up DB_USER=root DB_PASS=123 -- -d --build"
+exit 1
+fi
+
+ENVIRONMENT=$1
+COMMAND=$2
+shift 2
+
+DOCKER_FLAGS=()
+for arg in "$@"; do
+if [[ "$arg" == "--" ]]; then
+shift
+DOCKER_FLAGS=("$@")
+break
+elif [[ "$arg" == *=* ]]; then
+export "$arg"
+else
+echo "Warning: argument '$arg' ignored (not VAR=value or '--')"
+fi
+done
+
+case "$ENVIRONMENT" in
+dev)
+DOCKER_FILE=""
+;;
+main)
+DOCKER_FILE="docker-compose.yml"
+;;
+*)
+echo "Error: invalid environment '$ENVIRONMENT'. Use 'dev' or 'main'."
+exit 1
+;;
+esac
+
+case "$COMMAND" in
+up|down)
+echo "Running 'docker compose $COMMAND' in environment '$ENVIRONMENT'..."
+if [ -n "$DOCKER_FILE" ]; then
+docker compose -f "$DOCKER_FILE" "$COMMAND" "${DOCKER_FLAGS[@]}"
+else
+docker compose "$COMMAND" "${DOCKER_FLAGS[@]}"
+fi
+;;
+*)
+echo "Error: invalid command '$COMMAND'. Use 'up' or 'down'."
+exit 1
+;;
+esac
+
