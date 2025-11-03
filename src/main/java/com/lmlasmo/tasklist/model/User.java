@@ -56,6 +56,10 @@ public class User implements UserDetails{
 	@Column
 	private RoleType role = RoleType.COMUM;
 	
+	@Enumerated(EnumType.STRING)
+	@Column
+	private UserStatusType status = UserStatusType.ACTIVE;
+	
 	@CreationTimestamp
 	@Column(name = "created_at")
 	private Instant createdAt;
@@ -63,6 +67,9 @@ public class User implements UserDetails{
 	@UpdateTimestamp
 	@Column(name = "updated_at")
 	private Instant updatedAt;
+	
+	@Column(name = "last_login")
+	private Instant lastLogin;
 	
 	@Column(name = "row_version")
 	@Version

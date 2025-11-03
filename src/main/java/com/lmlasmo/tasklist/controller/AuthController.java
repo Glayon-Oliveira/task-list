@@ -54,6 +54,7 @@ public class AuthController {
 		auth = manager.authenticate(auth);
 		
 		User user = (User) auth.getPrincipal();
+		userService.lastLoginToNow(user.getId());
 		
 		String refreshToken = jwtService.generateRefreshToken(user.getId());
 		JWTTokenDTO refreshTokenDto = new JWTTokenDTO(refreshToken, JWTTokenType.REFRESH, jwtService.getRefreshTokenDuration().getSeconds());
@@ -109,6 +110,8 @@ public class AuthController {
 		try {
 			UserDTO user = userService.findById(id);
 			String accessToken = jwtService.generateAccessToken(signed, user);
+			
+			userService.lastLoginToNow(id);
 			
 			return new JWTTokenDTO(accessToken, JWTTokenType.ACCESS, jwtService.getAccessTokenDuration().getSeconds());
 		}catch(EntityNotFoundException e) {

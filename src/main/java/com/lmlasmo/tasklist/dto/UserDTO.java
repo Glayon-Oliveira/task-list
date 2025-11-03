@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.model.RoleType;
 import com.lmlasmo.tasklist.model.User;
@@ -30,6 +32,10 @@ public class UserDTO implements VersionedDTO {
 	private Set<UserEmailDTO> emails = new HashSet<>();
 	
 	@JsonProperty
+	@JsonInclude(content = Include.NON_NULL)
+	private Instant lastLogin;
+	
+	@JsonProperty
 	private Instant createdAt;
 	
 	@JsonProperty
@@ -42,6 +48,7 @@ public class UserDTO implements VersionedDTO {
 		this.id = user.getId();
 		this.username = user.getUsername();
 		this.role = user.getRole();
+		this.lastLogin = user.getLastLogin();
 		this.createdAt = user.getCreatedAt();
 		this.updatedAt = user.getUpdatedAt();
 		this.version = user.getVersion();

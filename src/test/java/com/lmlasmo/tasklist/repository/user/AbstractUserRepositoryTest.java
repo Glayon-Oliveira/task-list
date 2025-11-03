@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.repository.user;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -49,6 +50,7 @@ public class AbstractUserRepositoryTest {
 			user.setUsername(username);
 			user.setPassword(encoder.encode(password));
 			user.setEmails(new HashSet<>());
+			user.setLastLogin(Instant.now());
 			
 			UserEmail userEmail = new UserEmail("test@example.com");
 			userEmail.setUser(user);
