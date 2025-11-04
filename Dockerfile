@@ -2,8 +2,9 @@ FROM eclipse-temurin:17-jdk-jammy AS builder
 WORKDIR /usr/local/app
 COPY .mvn .mvn
 COPY mvnw pom.xml ./
+RUN ./mvnw dependency:go-offline
 COPY src src
-RUN ./mvnw clean install -DskipTests
+RUN ./mvnw clean install
 
 FROM eclipse-temurin:17-jdk-jammy AS dev
 WORKDIR /usr/local/app
