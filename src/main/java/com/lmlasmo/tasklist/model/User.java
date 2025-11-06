@@ -12,7 +12,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import com.lmlasmo.tasklist.dto.create.SignupDTO;
+import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -81,7 +81,7 @@ public class User implements UserDetails{
 	@OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.REMOVE})
 	private Set<UserEmail> emails;
 	
-	public User(SignupDTO signup) {
+	public User(CreateUserDTO signup) {
 		this.username = signup.getUsername();
 		this.password = signup.getPassword();
 		

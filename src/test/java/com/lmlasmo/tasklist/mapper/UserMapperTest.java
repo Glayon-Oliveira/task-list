@@ -9,7 +9,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 import com.lmlasmo.tasklist.dto.UserDTO;
-import com.lmlasmo.tasklist.dto.create.SignupDTO;
+import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserEmail;
 
@@ -20,7 +20,7 @@ public class UserMapperTest {
 		String username = "Username - ID = " + UUID.randomUUID().toString();
 		String password = "Password - ID = " + UUID.randomUUID().toString();
 
-		SignupDTO signup = new SignupDTO();
+		CreateUserDTO signup = new CreateUserDTO();
 		signup.setUsername(username);
 		signup.setPassword(password);
 		signup.setEmail("test@example.com");

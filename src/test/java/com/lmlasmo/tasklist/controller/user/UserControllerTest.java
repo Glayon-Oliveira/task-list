@@ -17,6 +17,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -30,17 +31,21 @@ import com.lmlasmo.tasklist.controller.AuthController;
 import com.lmlasmo.tasklist.controller.UserController;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
-import com.lmlasmo.tasklist.dto.create.SignupDTO;
+import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
+import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.param.user.SignInSource;
 import com.lmlasmo.tasklist.param.user.SignUpSource;
 import com.lmlasmo.tasklist.param.user.UpdatePasswordOfDefaultUserSource;
+import com.lmlasmo.tasklist.service.EmailConfirmationService;
+import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
 import jakarta.persistence.EntityExistsException;
 
 @WebMvcTest(controllers = {AuthController.class, UserController.class})
+@Import(EmailConfirmationService.class)
 @TestInstance(Lifecycle.PER_CLASS)
 public class UserControllerTest extends AbstractControllerTest {
 
@@ -49,6 +54,12 @@ public class UserControllerTest extends AbstractControllerTest {
 	
 	@MockitoBean
 	private UserEmailService userEmailService;
+	
+	@MockitoBean
+	private EmailService emailService;
+	
+	@Autowired
+	private EmailConfirmationService confirmationService;
 
 	@ParameterizedTest
 	@MethodSource("com.lmlasmo.tasklist.param.user.SignUpSource#source")
@@ -57,14 +68,29 @@ public class UserControllerTest extends AbstractControllerTest {
 					{
 							"username": "%s",
 							"password": "%s",
-							"email": "%s"
+							"email": "%s",
+							"confirmation": {
+								"code": "%s",
+								"hash": "%s",
+								"timestamp": "%s"
+							}
 					}
 				""";
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(data.getEmail());
 
-		String create = String.format(createFormat, data.getUsername(), data.getPassword(), data.getEmail());
+		String create = String.format(
+				createFormat,
+				data.getUsername(),
+				data.getPassword(), 
+				data.getEmail(),
+				codeHash.getCode(),
+				codeHash.getHash(),
+				codeHash.getTimestamp());
+		
 		String signUpUri = "/api/auth/signup";
 
-		when(getUserService().save(any(SignupDTO.class))).thenReturn(new UserDTO(getDefaultUser()));
+		when(getUserService().save(any(CreateUserDTO.class))).thenReturn(new UserDTO(getDefaultUser()));
 		when(userEmailService.existsByEmail(data.getEmail())).thenReturn(false);		
 
 		ResultActions resultActions = getMockMvc().perform(MockMvcRequestBuilders.post(signUpUri)
@@ -139,13 +165,28 @@ public class UserControllerTest extends AbstractControllerTest {
 					{
 							"username": "%s",
 							"email": "%s",
-							"password": "%s"
+							"password": "%s",							
+							"confirmation": {
+								"code": "%s",
+								"hash": "%s",
+								"timestamp": "%s"
+							}
 					}
 				""";
 		List<UserEmail> emails = getDefaultUser().getEmails().stream()
 				.toList();
 		
-		String signup = String.format(signupFormat, getDefaultUser().getUsername(), emails.get(0).getEmail(), getDefaultPassword());
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail());
+		
+		String signup = String.format(
+				signupFormat,
+				getDefaultUser().getUsername(),
+				emails.get(0).getEmail(),
+				getDefaultPassword(),
+				codeHash.getCode(),
+				codeHash.getHash(),
+				codeHash.getTimestamp());
+		
 		String signUpUri = "/api/auth/signup";
 
 		when(getUserService().save(any())).thenThrow(EntityExistsException.class);

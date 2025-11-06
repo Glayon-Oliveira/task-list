@@ -12,7 +12,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class SignupDTO extends PasswordDTO {
+public class CreateUserDTO extends PasswordDTO {
 
 	@JsonProperty
 	@NotBlank

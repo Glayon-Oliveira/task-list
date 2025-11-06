@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -15,16 +16,22 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.AuthController;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenType;
+import com.lmlasmo.tasklist.service.EmailConfirmationService;
+import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.UserEmailService;
 
 import jakarta.servlet.http.Cookie;
 
 @WebMvcTest(controllers = {AuthController.class})
+@Import(EmailConfirmationService.class)
 @TestInstance(Lifecycle.PER_CLASS)
 public class TokenJwtTest extends AbstractControllerTest {
 	
 	@MockitoBean
 	private UserEmailService userEmailService;
+	
+	@MockitoBean
+	private EmailService emailService;
 	
 	@Test
 	void successRefreshToken() throws UnsupportedEncodingException, Exception {

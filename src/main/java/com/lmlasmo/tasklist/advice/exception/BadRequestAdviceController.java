@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.lmlasmo.tasklist.advice.exception.util.AdviceWrapper;
 import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
+import com.lmlasmo.tasklist.exception.InvalidEmailCodeException;
 import com.lmlasmo.tasklist.exception.TaskHasSubtasksException;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -91,6 +92,11 @@ public class BadRequestAdviceController {
 	
 	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
 	public Map<String, Object> exceptionResponse(HttpMediaTypeNotSupportedException ex, HttpServletRequest req){
+		return AdviceWrapper.wrapper(ex.getMessage(), req);
+	}
+	
+	@ExceptionHandler(InvalidEmailCodeException.class)
+	public Map<String, Object> exceptionResponse(InvalidEmailCodeException ex, HttpServletRequest req) {
 		return AdviceWrapper.wrapper(ex.getMessage(), req);
 	}
 

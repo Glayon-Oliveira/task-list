@@ -22,6 +22,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
 import com.lmlasmo.tasklist.param.FailureAuthenticateEndpointSource;
+import com.lmlasmo.tasklist.service.EmailConfirmationService;
+import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
@@ -45,6 +47,12 @@ public class FailureAuthenticationControllerTest extends AbstractControllerTest 
 	
 	@MockitoBean
 	private UserEmailService userEmailService;
+	
+	@MockitoBean
+	private EmailService emailService;
+	
+	@MockitoBean
+	private EmailConfirmationService confirmationService;
 
 	@Override
 	@BeforeEach
