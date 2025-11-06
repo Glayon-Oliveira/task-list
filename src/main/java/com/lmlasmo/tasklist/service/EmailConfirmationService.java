@@ -63,7 +63,10 @@ public class EmailConfirmationService {
 	}
 	
 	public void valideCodeHash(EmailConfirmationCodeHashDTO codeHash) {
+		Instant now = Instant.now();
 		Instant expires = codeHash.getTimestamp().plus(duration);
+		
+		if(now.isAfter(expires)) throw new InvalidEmailCodeException("Email confirmation code has expired");
 		
 		String body = String.format(hashBodyFormat, uuid.toString(), codeHash.getCode(), codeHash.getTimestamp().toString(), expires.toString());
 		
