@@ -9,6 +9,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,7 @@ import com.lmlasmo.tasklist.dto.auth.EmailWithScope;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenType;
 import com.lmlasmo.tasklist.dto.auth.LoginDTO;
+import com.lmlasmo.tasklist.dto.auth.PasswordRecoveryDTO;
 import com.lmlasmo.tasklist.dto.auth.SignupDTO;
 import com.lmlasmo.tasklist.dto.auth.TokenDTO;
 import com.lmlasmo.tasklist.exception.InvalidTokenException;
@@ -127,6 +129,14 @@ public class AuthController {
 	public EmailConfirmationHashDTO confirmEmail(@RequestBody @Valid EmailWithScope email) {
 		
 		return confirmationService.sendConfirmationEmail(email.getEmail(), email.getScope());
+	}
+	
+	@PatchMapping("/recover/password")
+	@ResponseStatus(code = HttpStatus.NO_CONTENT)
+	public Void recoverPassword(@RequestBody @Valid PasswordRecoveryDTO password) {
+		confirmationService.valideCodeHash(password.getConfirmation(), EmailConfirmationScope.RECOVERY);
+		userService.updatePassword(password);
+		return null;
 	}
 
 }
