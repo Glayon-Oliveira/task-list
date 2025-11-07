@@ -82,7 +82,7 @@ public class AuthController {
 	@PostMapping("/signup")	
 	@ResponseStatus(code = HttpStatus.CREATED)
 	public UserDTO upByJson(@RequestBody @Valid SignupDTO signup) {		
-		confirmationService.valideCodeHash(signup.getConfirmation(), EmailConfirmationScope.LINK);
+		confirmationService.valideCodeHash(signup.getConfirmation(), signup.getEmail(), EmailConfirmationScope.LINK);
 		
 		return userService.save(signup);
 	}	
@@ -127,15 +127,14 @@ public class AuthController {
 	
 	@PostMapping("/email/confirmation")
 	public EmailConfirmationHashDTO confirmEmail(@RequestBody @Valid EmailWithScope email) {
-		
 		return confirmationService.sendConfirmationEmail(email.getEmail(), email.getScope());
 	}
 	
 	@PatchMapping("/recover/password")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Void recoverPassword(@RequestBody @Valid PasswordRecoveryDTO password) {
-		confirmationService.valideCodeHash(password.getConfirmation(), EmailConfirmationScope.RECOVERY);
-		userService.updatePassword(password);
+	public Void recoverPassword(@RequestBody @Valid PasswordRecoveryDTO passwordRecovery) {
+		confirmationService.valideCodeHash(passwordRecovery.getConfirmation(), passwordRecovery.getEmail(), EmailConfirmationScope.RECOVERY);
+		userService.updatePassword(passwordRecovery);
 		return null;
 	}
 

@@ -242,7 +242,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.RECOVERY);
 
 		String update = String.format(updateFormat,
-				emails.get(0),
+				emails.get(0).getEmail(),
 				data.getPassword(),
 				codeHash.getCode(),
 				codeHash.getHash(),
@@ -277,7 +277,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.RECOVERY);
 
 		String update = String.format(updateFormat,
-				emails.get(0),
+				emails.get(0).getEmail(),
 				UUID.randomUUID(),
 				codeHash.getCode(),
 				codeHash.getHash(),
