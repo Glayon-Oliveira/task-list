@@ -31,7 +31,6 @@ public class EmailConfirmationService {
 		
 	private final Base64.Encoder B64URL = Base64.getUrlEncoder().withoutPadding();
 	private final Base64.Decoder B64URL_DEC = Base64.getUrlDecoder();
-	private final String hashBodyFormat = "uuid=%s;code=%s;scope=%s;timestamp=%s;expires=%s";
 	private UUID uuid = UUID.randomUUID();
 	private byte[] key = generateRandomKey();
 	private Duration duration = Duration.ofMinutes(5);
@@ -61,9 +60,9 @@ public class EmailConfirmationService {
 		Double randomCode = new Random().nextDouble(Math.pow(10, 5), Math.pow(10, 6));
 		
 		String code = Integer.toString(randomCode.intValue());		
-		String body = String.format(hashBodyFormat, uuid, code, scope, now, expires);
+		HashBody body = new HashBody(uuid, code, scope, now, expires);
 		
-		String hash = generateHash(body);		
+		String hash = generateHash(body.toString());		
 		
 		return new EmailConfirmationCodeHashDTO(hash, now, code);
 	}
@@ -74,9 +73,9 @@ public class EmailConfirmationService {
 		
 		if(now.isAfter(expires)) throw new InvalidEmailCodeException("Email confirmation code has expired");
 		
-		String body = String.format(hashBodyFormat, uuid.toString(), codeHash.getCode(), scope, codeHash.getTimestamp().toString(), expires.toString());
+		HashBody body = new HashBody(uuid, codeHash.getCode(), scope, codeHash.getTimestamp(), expires);
 		
-		if(!validateHash(body, codeHash.getHash())) throw new InvalidEmailCodeException("Invalid email confirmation code");
+		if(!validateHash(body.toString(), codeHash.getHash())) throw new InvalidEmailCodeException("Invalid email confirmation code");
 	}
 	
 	private String generateHash(String body) {
@@ -117,6 +116,8 @@ public class EmailConfirmationService {
 		random.nextBytes(key);
 		return key;
 	}
+	
+	private record HashBody(UUID uuid, String code, EmailConfirmationScope scope, Instant timestamp, Instant expires) {}
 	
 	public enum EmailConfirmationScope {
 		LINK,
