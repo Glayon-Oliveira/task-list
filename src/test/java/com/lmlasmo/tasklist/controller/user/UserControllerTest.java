@@ -38,6 +38,7 @@ import com.lmlasmo.tasklist.param.user.SignInSource;
 import com.lmlasmo.tasklist.param.user.SignUpSource;
 import com.lmlasmo.tasklist.param.user.UpdatePasswordOfDefaultUserSource;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
+import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
 import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
@@ -77,7 +78,7 @@ public class UserControllerTest extends AbstractControllerTest {
 					}
 				""";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(data.getEmail());
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(data.getEmail(), EmailConfirmationScope.LINK);
 
 		String create = String.format(
 				createFormat,
@@ -176,7 +177,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		List<UserEmail> emails = getDefaultUser().getEmails().stream()
 				.toList();
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail());
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.LINK);
 		
 		String signup = String.format(
 				signupFormat,

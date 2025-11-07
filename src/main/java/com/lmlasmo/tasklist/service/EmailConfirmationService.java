@@ -18,6 +18,7 @@ import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationHashDTO;
 import com.lmlasmo.tasklist.exception.InvalidEmailCodeException;
 
+import jakarta.persistence.EntityExistsException;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 
@@ -26,10 +27,11 @@ import lombok.RequiredArgsConstructor;
 public class EmailConfirmationService {
 	
 	@NonNull private EmailService emailService;
+	@NonNull private UserEmailService userEmailService;
 		
 	private final Base64.Encoder B64URL = Base64.getUrlEncoder().withoutPadding();
 	private final Base64.Decoder B64URL_DEC = Base64.getUrlDecoder();
-	private final String hashBodyFormat = "uuid=%s;code=%s;timestamp=%s;expires=%s";
+	private final String hashBodyFormat = "uuid=%s;code=%s;scope=%s;timestamp=%s;expires=%s";
 	private UUID uuid = UUID.randomUUID();
 	private byte[] key = generateRandomKey();
 	private Duration duration = Duration.ofMinutes(5);
@@ -39,8 +41,8 @@ public class EmailConfirmationService {
 		this.uuid = UUID.randomUUID();
 	}
 	
-	public EmailConfirmationHashDTO sendConfirmationEmail(String email) {
-		EmailConfirmationCodeHashDTO codeHash = createCodeHash(email);
+	public EmailConfirmationHashDTO sendConfirmationEmail(String email, EmailConfirmationScope scope) {
+		EmailConfirmationCodeHashDTO codeHash = createCodeHash(email, scope);
 		
 		String emailBody = "Code: " + codeHash.getCode();
 		emailService.send(email, "Confirmation code of email", emailBody);
@@ -48,27 +50,31 @@ public class EmailConfirmationService {
 		return new EmailConfirmationHashDTO(codeHash.getHash(), codeHash.getTimestamp());
 	}
 	
-	public EmailConfirmationCodeHashDTO createCodeHash(String email) {
+	public EmailConfirmationCodeHashDTO createCodeHash(String email, EmailConfirmationScope scope) {
+		if(scope.equals(EmailConfirmationScope.LINK) && userEmailService.existsByEmail(email)) {
+			throw new EntityExistsException("Email already used");
+		}
+		
 		Instant now = Instant.now();
 		Instant expires = now.plus(duration);
 		
 		Double randomCode = new Random().nextDouble(Math.pow(10, 5), Math.pow(10, 6));
 		
 		String code = Integer.toString(randomCode.intValue());		
-		String body = String.format(hashBodyFormat, uuid.toString(), code, now.toString(), expires.toString());
+		String body = String.format(hashBodyFormat, uuid, code, scope, now, expires);
 		
 		String hash = generateHash(body);		
 		
 		return new EmailConfirmationCodeHashDTO(hash, now, code);
 	}
 	
-	public void valideCodeHash(EmailConfirmationCodeHashDTO codeHash) {
+	public void valideCodeHash(EmailConfirmationCodeHashDTO codeHash, EmailConfirmationScope scope) {
 		Instant now = Instant.now();
 		Instant expires = codeHash.getTimestamp().plus(duration);
 		
 		if(now.isAfter(expires)) throw new InvalidEmailCodeException("Email confirmation code has expired");
 		
-		String body = String.format(hashBodyFormat, uuid.toString(), codeHash.getCode(), codeHash.getTimestamp().toString(), expires.toString());
+		String body = String.format(hashBodyFormat, uuid.toString(), codeHash.getCode(), scope, codeHash.getTimestamp().toString(), expires.toString());
 		
 		if(!validateHash(body, codeHash.getHash())) throw new InvalidEmailCodeException("Invalid email confirmation code");
 	}
@@ -110,6 +116,11 @@ public class EmailConfirmationService {
 		byte[] key = new byte[32];
 		random.nextBytes(key);
 		return key;
+	}
+	
+	public enum EmailConfirmationScope {
+		LINK,
+		RECOVERY,
 	}
 	
 }
