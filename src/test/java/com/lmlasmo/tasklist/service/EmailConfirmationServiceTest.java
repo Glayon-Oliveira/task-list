@@ -43,7 +43,7 @@ public class EmailConfirmationServiceTest {
 		
 		EmailConfirmationCodeHashDTO confirmationCodeHashDto = new EmailConfirmationCodeHashDTO(hash, timestamp, code);
 		
-		assertDoesNotThrow(() -> confirmationService.valideCodeHash(confirmationCodeHashDto, EmailConfirmationScope.LINK));
+		assertDoesNotThrow(() -> confirmationService.valideCodeHash(confirmationCodeHashDto, email, EmailConfirmationScope.LINK));
 	}
 	
 	@RepeatedTest(3)
@@ -58,7 +58,7 @@ public class EmailConfirmationServiceTest {
 		
 		EmailConfirmationCodeHashDTO confirmationCodeHashDto = new EmailConfirmationCodeHashDTO(hash, timestamp, code);
 		
-		assertThrows(InvalidEmailCodeException.class, () -> confirmationService.valideCodeHash(confirmationCodeHashDto, EmailConfirmationScope.LINK));
+		assertThrows(InvalidEmailCodeException.class, () -> confirmationService.valideCodeHash(confirmationCodeHashDto, email, EmailConfirmationScope.LINK));
 	}
 	
 	@Test

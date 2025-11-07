@@ -34,7 +34,7 @@ public class AccountController {
 	public Void linkEmail(@RequestBody @Valid EmailWithConfirmationDTO email) {
 		int id = DirectAuthenticatedTool.getUserId();
 		
-		confirmationService.valideCodeHash(email.getConfirmation(), EmailConfirmationScope.LINK);
+		confirmationService.valideCodeHash(email.getConfirmation(), email.getEmail(), EmailConfirmationScope.LINK);
 		
 		userEmailService.save(email.getEmail(), id);
 		return null;
