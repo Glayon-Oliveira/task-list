@@ -9,7 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.dto.UserDTO;
-import com.lmlasmo.tasklist.dto.create.SignupDTO;
+import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
 import com.lmlasmo.tasklist.model.User;
@@ -29,7 +29,7 @@ public class UserService {
 	private UserRepository repository;
 	private PasswordEncoder encoder;
 	
-	public UserDTO save(SignupDTO signup) {
+	public UserDTO save(CreateUserDTO signup) {
 		if(repository.existsByUsername(signup.getUsername())) throw new EntityExistsException("User already used");
 		
 		signup.setPassword(encoder.encode(signup.getPassword()));

@@ -17,19 +17,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
+import com.lmlasmo.tasklist.dto.auth.EmailConfirmationHashDTO;
+import com.lmlasmo.tasklist.dto.auth.EmailWithScope;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenType;
 import com.lmlasmo.tasklist.dto.auth.LoginDTO;
+import com.lmlasmo.tasklist.dto.auth.SignupDTO;
 import com.lmlasmo.tasklist.dto.auth.TokenDTO;
-import com.lmlasmo.tasklist.dto.create.SignupDTO;
 import com.lmlasmo.tasklist.exception.InvalidTokenException;
 import com.lmlasmo.tasklist.model.User;
+import com.lmlasmo.tasklist.service.EmailConfirmationService;
+import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
 import com.lmlasmo.tasklist.service.JwtService;
 import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.service.UserService;
 import com.nimbusds.jwt.SignedJWT;
 
-import jakarta.persistence.EntityExistsException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.NonNull;
@@ -44,6 +47,7 @@ public class AuthController {
 	@NonNull private JwtService jwtService;
 	@NonNull private UserEmailService userEmailService;
 	@NonNull private AuthenticationManager manager;
+	@NonNull private EmailConfirmationService confirmationService;
 	
 	@Value("${app.cookie.secure}")
 	private boolean secure;
@@ -75,10 +79,10 @@ public class AuthController {
 	
 	@PostMapping("/signup")	
 	@ResponseStatus(code = HttpStatus.CREATED)
-	public UserDTO upByJson(@RequestBody @Valid SignupDTO signup) {
-		if(userEmailService.existsByEmail(signup.getEmail())) throw new EntityExistsException("Email already used");
+	public UserDTO upByJson(@RequestBody @Valid SignupDTO signup) {		
+		confirmationService.valideCodeHash(signup.getConfirmation(), EmailConfirmationScope.LINK);
 		
-		return userService.save(signup);		
+		return userService.save(signup);
 	}	
 	
 	@PostMapping("/token/refresh")
@@ -117,6 +121,12 @@ public class AuthController {
 		}catch(EntityNotFoundException e) {
 			throw new InvalidTokenException("Invalid subject in token");
 		}		
+	}
+	
+	@PostMapping("/email/confirmation")
+	public EmailConfirmationHashDTO confirmEmail(@RequestBody @Valid EmailWithScope email) {
+		
+		return confirmationService.sendConfirmationEmail(email.getEmail(), email.getScope());
 	}
 
 }

@@ -19,7 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import com.lmlasmo.tasklist.dto.create.SignupDTO;
+import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
 import com.lmlasmo.tasklist.model.User;
@@ -49,7 +49,7 @@ public class UserServiceTest {
 		String username = "Username - Id = " + UUID.randomUUID().toString();
 		String password = "Password - Id = " + UUID.randomUUID().toString();
 
-		SignupDTO signup = new SignupDTO();
+		CreateUserDTO signup = new CreateUserDTO();
 		signup.setUsername(username);
 		signup.setPassword(password);
 

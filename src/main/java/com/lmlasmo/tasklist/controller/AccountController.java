@@ -11,8 +11,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.dto.auth.EmailDTO;
+import com.lmlasmo.tasklist.dto.auth.EmailWithConfirmationDTO;
 import com.lmlasmo.tasklist.model.EmailStatusType;
 import com.lmlasmo.tasklist.security.AuthenticatedTool.DirectAuthenticatedTool;
+import com.lmlasmo.tasklist.service.EmailConfirmationService;
+import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
 import com.lmlasmo.tasklist.service.UserEmailService;
 
 import jakarta.validation.Valid;
@@ -24,11 +27,14 @@ import lombok.AllArgsConstructor;
 public class AccountController {
 	
 	private UserEmailService userEmailService;
+	private EmailConfirmationService confirmationService;	
 
 	@PostMapping("/email/link")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Void linkEmail(@RequestBody @Valid EmailDTO email) {
+	public Void linkEmail(@RequestBody @Valid EmailWithConfirmationDTO email) {
 		int id = DirectAuthenticatedTool.getUserId();
+		
+		confirmationService.valideCodeHash(email.getConfirmation(), EmailConfirmationScope.LINK);
 		
 		userEmailService.save(email.getEmail(), id);
 		return null;

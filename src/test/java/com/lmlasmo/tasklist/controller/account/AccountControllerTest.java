@@ -7,7 +7,9 @@ import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -17,7 +19,11 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.AccountController;
 import com.lmlasmo.tasklist.dto.UserEmailDTO;
+import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.model.UserEmail;
+import com.lmlasmo.tasklist.service.EmailConfirmationService;
+import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
+import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
@@ -25,6 +31,7 @@ import com.lmlasmo.tasklist.util.VerifyResolvedException;
 import jakarta.persistence.EntityExistsException;
 
 @WebMvcTest(controllers = {AccountController.class})
+@Import(EmailConfirmationService.class)
 @TestInstance(Lifecycle.PER_CLASS)
 public class AccountControllerTest extends AbstractControllerTest {
 	
@@ -33,18 +40,37 @@ public class AccountControllerTest extends AbstractControllerTest {
 	
 	@MockitoBean("resourceAccess")
 	private ResourceAccessService resourceAccessService;
+	
+	@MockitoBean
+	private EmailService emailService;
+	
+	@Autowired
+	private EmailConfirmationService confirmationService;
 
 	@RepeatedTest(2)
 	public void linkEmail(RepetitionInfo info) throws Exception {
 		String emailFormat = """
 				{
-						"email": "%s"
+						"email": "%s",
+						"confirmation": {
+							 "code": "%s",
+							 "hash": "%s",
+							 "timestamp": "%s"
+						}
 				}
 			""";
 		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash("test@example.com", EmailConfirmationScope.LINK);
+		
 		int currentRept = info.getCurrentRepetition();
 
-		String email = String.format(emailFormat, currentRept % 2 == 0 ? "test@example.com" : "testexample.com");
+		String email = String.format(
+				emailFormat,
+				currentRept % 2 == 0 ? "test@example.com" : "testexample.com",
+				codeHash.getCode(),
+				codeHash.getHash(),
+				codeHash.getTimestamp());
+		
 		String baseUri = "/api/account/email/link";
 
 		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(new UserEmailDTO(new UserEmail("test@example.com")));
