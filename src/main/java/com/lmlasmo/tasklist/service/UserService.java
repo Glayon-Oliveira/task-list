@@ -9,6 +9,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.dto.UserDTO;
+import com.lmlasmo.tasklist.dto.auth.PasswordRecoveryDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
@@ -45,6 +46,15 @@ public class UserService {
 		if(repository.existsByUsername(username)) throw new EntityNotUpdateException(username + " already used");
 		
 		user.setUsername(username);		
+		repository.save(user);
+	}
+		
+	public void updatePassword(PasswordRecoveryDTO passwordRecovery) {
+		User user = repository.findByEmailsEmail(passwordRecovery.getEmail())
+				.orElseThrow(() -> new EntityNotFoundException("Email not found"));
+		
+		user.setPassword(encoder.encode(passwordRecovery.getPassword()));
+		
 		repository.save(user);
 	}
 	

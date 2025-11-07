@@ -3,21 +3,17 @@ package com.lmlasmo.tasklist.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.controller.util.ETagCheck;
 import com.lmlasmo.tasklist.dto.UserDTO;
-import com.lmlasmo.tasklist.dto.update.UpdatePasswordDTO;
 import com.lmlasmo.tasklist.security.AuthenticatedTool.DirectAuthenticatedTool;
 import com.lmlasmo.tasklist.service.UserService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
@@ -26,17 +22,6 @@ import lombok.AllArgsConstructor;
 public class UserController {
 
 	private UserService userService;	
-	
-	@PatchMapping("/i")
-	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Void updatePassword(@RequestBody @Valid UpdatePasswordDTO update, HttpServletRequest req, HttpServletResponse res) {
-		int id = DirectAuthenticatedTool.getUserId();
-		
-		ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et));
-		
-		userService.updatePassword(DirectAuthenticatedTool.getUserId(), update.getPassword());
-		return null;
-	}
 	
 	@DeleteMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
