@@ -7,7 +7,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Map;
-import java.util.Random;
 import java.util.TreeMap;
 import java.util.UUID;
 
@@ -69,9 +68,7 @@ public class EmailConfirmationService {
 		Instant now = Instant.now();
 		Instant expires = now.plus(duration);
 		
-		Double randomCode = new Random().nextDouble(Math.pow(10, 5), Math.pow(10, 6));
-		
-		String code = Integer.toString(randomCode.intValue());		
+		String code = String.format("%06d", new SecureRandom().nextInt(1_000_000));		
 		HashBody body = new HashBody(uuid, email, code, scope, now, expires, extra);
 		
 		String hash = generateHash(body.toString());		
