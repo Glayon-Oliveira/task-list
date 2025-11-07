@@ -227,12 +227,28 @@ public class UserControllerTest extends AbstractControllerTest {
 	void updatePasswordOfDefaultUser(UpdatePasswordOfDefaultUserSource.UpdatePasswordOfDefaultUserData data) throws Exception {
 		String updateFormat = """
 					{
-							"password": "%s"
+							"email": "%s",
+							"password": "%s",
+							"confirmation": {
+								"code": "%s",
+								"hash": "%s",
+								"timestamp": "%s"
+							}
 					}
 				""";
+		
+		List<UserEmail> emails = getDefaultUser().getEmails().stream().toList();
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.RECOVERY);
 
-		String update = String.format(updateFormat, data.getPassword());
-		String updateUri = "/api/user/i";
+		String update = String.format(updateFormat,
+				emails.get(0),
+				data.getPassword(),
+				codeHash.getCode(),
+				codeHash.getHash(),
+				codeHash.getTimestamp());
+		
+		String updateUri = "/api/auth/recover/password";
 
 		getMockMvc().perform(MockMvcRequestBuilders.patch(updateUri)
 				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
@@ -246,16 +262,31 @@ public class UserControllerTest extends AbstractControllerTest {
 	void updatePasswordOfDefaultUser() throws Exception {
 		String updateFormat = """
 					{
-							"password": "%s"
+							"email": "%s",
+							"password": "%s",
+							"confirmation": {
+								"code": "%s",
+								"hash": "%s",
+								"timestamp": "%s"
+							}
 					}
 				""";
+		
+		List<UserEmail> emails = getDefaultUser().getEmails().stream().toList();
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.RECOVERY);
 
-		String update = String.format(updateFormat, UUID.randomUUID().toString());
-		String updateUri = "/api/user/i";
+		String update = String.format(updateFormat,
+				emails.get(0),
+				UUID.randomUUID(),
+				codeHash.getCode(),
+				codeHash.getHash(),
+				codeHash.getTimestamp());
+		
+		String updateUri = "/api/auth/recover/password";
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
-		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()));
 				
 		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);		
 
@@ -264,14 +295,6 @@ public class UserControllerTest extends AbstractControllerTest {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(update))
 		.andExpect(MockMvcResultMatchers.status().isNoContent());
-		
-		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()+1));
-		
-		getMockMvc().perform(MockMvcRequestBuilders.patch(updateUri)
-				.headers(headers)
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(update))
-		.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
 	}
 	
 	@Test
