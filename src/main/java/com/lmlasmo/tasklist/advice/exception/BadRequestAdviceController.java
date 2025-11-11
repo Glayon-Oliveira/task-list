@@ -8,44 +8,40 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.validation.BindException;
-import org.springframework.web.HttpMediaTypeNotSupportedException;
-import org.springframework.web.bind.MissingServletRequestParameterException;
-import org.springframework.web.bind.UnsatisfiedServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.support.WebExchangeBindException;
+import org.springframework.web.server.ServerWebInputException;
+import org.springframework.web.server.UnsupportedMediaTypeStatusException;
 
 import com.lmlasmo.tasklist.advice.exception.util.AdviceWrapper;
 import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
 import com.lmlasmo.tasklist.exception.InvalidEmailCodeException;
 import com.lmlasmo.tasklist.exception.TaskHasSubtasksException;
 
-import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import reactor.core.publisher.Mono;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
 @ResponseStatus(code = HttpStatus.BAD_REQUEST)
 public class BadRequestAdviceController {
 	
-	@ExceptionHandler(UnsatisfiedServletRequestParameterException.class)
-	public Map<String, Object> exceptionResponse(UnsatisfiedServletRequestParameterException exception, HttpServletRequest request) {
-		return AdviceWrapper.wrapper(exception.getMessage(), request);
-	}
-	
 	@ExceptionHandler(EntityNotUpdateException.class)		
-	public Map<String, Object> exceptionResponse(EntityNotUpdateException exception, HttpServletRequest request) {
-		return AdviceWrapper.wrapper(exception.getMessage(), request);
+	public Mono<Map<String, Object>> exceptionResponse(EntityNotUpdateException exception, ServerHttpRequest request) {
+		return Mono.just(AdviceWrapper.wrapper(exception.getMessage(), request));
 	}
 	
 	@ExceptionHandler(TaskHasSubtasksException.class)		
-	public Map<String, Object> exceptionResponse(TaskHasSubtasksException exception, HttpServletRequest request) {
-		return AdviceWrapper.wrapper(exception.getMessage(), request);
+	public Mono<Map<String, Object>> exceptionResponse(TaskHasSubtasksException exception, ServerHttpRequest request) {
+		return Mono.just(AdviceWrapper.wrapper(exception.getMessage(), request));
 	}
 	
 	@ExceptionHandler(BindException.class)	
-	public Map<String, Object> exceptionResponse(BindException ex, HttpServletRequest req){		
+	public Mono<Map<String, Object>> exceptionResponse(BindException ex, ServerHttpRequest req){		
 		Map<String, Object> errors = new LinkedHashMap<>();
 		
 		ex.getFieldErrors().forEach(f -> {
@@ -56,11 +52,26 @@ public class BadRequestAdviceController {
 			errors.put(f.getField(), fieldValue);
 		});
 		
-		return AdviceWrapper.wrapper(req, Map.of("fieldErrors", errors));
+		return Mono.just(AdviceWrapper.wrapper(req, Map.of("fieldErrors", errors)));
+	}
+	
+	@ExceptionHandler(WebExchangeBindException.class)
+	public Mono<Map<String, Object>> exceptionResponse(WebExchangeBindException ex, ServerHttpRequest req) {
+		Map<String, Object> errors = new LinkedHashMap<>();
+		
+		ex.getFieldErrors().forEach(f -> {
+			Map<String, Object> fieldValue = new LinkedHashMap<>();
+			fieldValue.put("message", f.getDefaultMessage());
+			fieldValue.put("rejectedValue", f.getRejectedValue());
+			
+			errors.put(f.getField(), fieldValue);
+		});
+		
+		return Mono.just(AdviceWrapper.wrapper(req, Map.of("fieldErrors", errors)));
 	}
 	
 	@ExceptionHandler(ConstraintViolationException.class)
-	public Map<String, Object> exceptionResponse(ConstraintViolationException ex, HttpServletRequest req){
+	public Mono<Map<String, Object>> exceptionResponse(ConstraintViolationException ex, ServerHttpRequest req){
 		Map<String, Object> constraints = new LinkedHashMap<>();
 		
 		ex.getConstraintViolations().forEach(c -> {
@@ -71,33 +82,33 @@ public class BadRequestAdviceController {
 			constraints.put(c.getPropertyPath().toString(), fieldValue);
 		});
 		
-		return AdviceWrapper.wrapper(ex.getMessage(), req, Map.of("fieldErrors", constraints));
+		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req, Map.of("fieldErrors", constraints)));
 	}
 	
 	@ExceptionHandler(HttpMessageNotReadableException.class)
-	public Map<String, Object> exceptionResponse(HttpMessageNotReadableException ex, HttpServletRequest req){
+	public Mono<Map<String, Object>> exceptionResponse(HttpMessageNotReadableException ex, ServerHttpRequest req){
 		String message = "Request body is invalid or malformed";
-		return AdviceWrapper.wrapper(message, req);
+		return Mono.just(AdviceWrapper.wrapper(message, req));
 	}
 	
-	@ExceptionHandler(MissingServletRequestParameterException.class)	
-	public Map<String, Object> exceptionResponse(MissingServletRequestParameterException ex, HttpServletRequest req){
-		return AdviceWrapper.wrapper(ex.getMessage(), req);
+	@ExceptionHandler(ServerWebInputException.class)	
+	public Mono<Map<String, Object>> exceptionResponse(ServerWebInputException ex, ServerHttpRequest req){
+		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
 	}
 	
 	@ExceptionHandler(TypeMismatchException.class)	
-	public Map<String, Object> exceptionResponse(TypeMismatchException ex, HttpServletRequest req){
-		return AdviceWrapper.wrapper(ex.getMessage(), req);
+	public Mono<Map<String, Object>> exceptionResponse(TypeMismatchException ex, ServerHttpRequest req){
+		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
 	}
 	
-	@ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-	public Map<String, Object> exceptionResponse(HttpMediaTypeNotSupportedException ex, HttpServletRequest req){
-		return AdviceWrapper.wrapper(ex.getMessage(), req);
+	@ExceptionHandler(UnsupportedMediaTypeStatusException.class)
+	public Mono<Map<String, Object>> exceptionResponse(UnsupportedMediaTypeStatusException ex, ServerHttpRequest req){
+		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
 	}
 	
 	@ExceptionHandler(InvalidEmailCodeException.class)
-	public Map<String, Object> exceptionResponse(InvalidEmailCodeException ex, HttpServletRequest req) {
-		return AdviceWrapper.wrapper(ex.getMessage(), req);
+	public Mono<Map<String, Object>> exceptionResponse(InvalidEmailCodeException ex, ServerHttpRequest req) {
+		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
 	}
 
 }

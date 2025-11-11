@@ -8,30 +8,27 @@ import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.AccountController;
 import com.lmlasmo.tasklist.dto.UserEmailDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.model.EmailStatusType;
 import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
 import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.UserEmailService;
-import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
 import reactor.core.publisher.Mono;
 
-@WebMvcTest(controllers = {AccountController.class})
+@WebFluxTest(controllers = {AccountController.class})
 @Import(EmailConfirmationService.class)
 @TestInstance(Lifecycle.PER_CLASS)
 public class AccountControllerTest extends AbstractControllerTest {
@@ -81,13 +78,14 @@ public class AccountControllerTest extends AbstractControllerTest {
 		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(Mono.just(new UserEmailDTO(new UserEmail("test@example.com"))));
 		when(getUserService().save(any())).thenThrow(ResourceAlreadyExistsException.class);
 		when(userEmailService.existsByEmail("test@example.com")).thenReturn(Mono.just(false));
-
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
-				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(emailHc))
-		.andExpect(MockMvcResultMatchers.status().is(currentRept % 2 == 0 ? 204 : 400))
-		.andExpect(result -> VerifyResolvedException.verify(result, currentRept % 2 == 0 ? null : MethodArgumentNotValidException.class));
+		
+		getWebTestClient().post()
+			.uri(baseUri)
+			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(emailHc)
+			.exchange()
+			.expectStatus().isEqualTo(currentRept % 2 == 0 ? 204 : 400);
 	}
 	
 	@RepeatedTest(2)
@@ -102,16 +100,18 @@ public class AccountControllerTest extends AbstractControllerTest {
 
 		String email = String.format(emailFormat, currentRept % 2 == 0 ? "test@example.com" : "testexample.com");
 		String baseUri = "/api/account/email/terminate";
-
+		
+		when(userEmailService.changeEmailStatus("test@example.com", EmailStatusType.SUSPENDED)).thenReturn(Mono.just(new UserEmailDTO(new UserEmail("test@example.com"))));
 		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(Mono.just(new UserEmailDTO(new UserEmail("test@example.com"))));
-		when(resourceAccessService.canAccessEmail("test@example.com", getDefaultUser().getId())).thenReturn(true);
-
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
-				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(email))
-		.andExpect(MockMvcResultMatchers.status().is(currentRept % 2 == 0 ? 204 : 400))
-		.andExpect(result -> VerifyResolvedException.verify(result, currentRept % 2 == 0 ? null : MethodArgumentNotValidException.class));
+		when(resourceAccessService.canAccessEmail("test@example.com", getDefaultUser().getId())).thenReturn(Mono.empty());
+		
+		getWebTestClient().post()
+			.uri(baseUri)
+			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(email)
+			.exchange()
+			.expectStatus().isEqualTo(currentRept % 2 == 0 ? 204 : 400);
 	}
 	
 }

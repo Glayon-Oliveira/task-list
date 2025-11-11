@@ -1,13 +1,12 @@
 package com.lmlasmo.tasklist.service;
 
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.model.EmailStatusType;
-import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.repository.UserEmailRepository;
 import com.lmlasmo.tasklist.repository.UserRepository;
 
@@ -16,31 +15,25 @@ import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @Service
-public class UserDetailsServiceImpl implements UserDetailsService {
+public class UserDetailsServiceImpl implements ReactiveUserDetailsService {
 	
 	private UserRepository repository;
 	private UserEmailRepository emailRepository;
 
 	@Override
-	public UserDetails loadUserByUsername(String login) throws UsernameNotFoundException {
-		User user = null;
-		
+	public Mono<UserDetails> findByUsername(String login) throws UsernameNotFoundException {
 		if(login.contains("@")) {
-			user = repository.findByEmail(login)
+			return emailRepository.existsByEmailAndStatusIn(login, EmailStatusType.getAllowedStatus())
+					.filter(Boolean::booleanValue)
+					.switchIfEmpty(Mono.error(new DisabledException("Email is not active")))
+					.then(repository.findByEmail(login))
 					.switchIfEmpty(Mono.error(new UsernameNotFoundException("User not found")))
-					.block();
-			
-			emailRepository.existsByEmailAndStatusIn(login, EmailStatusType.getAllowedStatus())
-				.filter(Boolean::booleanValue)
-				.switchIfEmpty(Mono.error(new DisabledException("Email is not active")))
-				.block();
+					.map(u -> (UserDetails) u);
 		}else {
-			user = repository.findByUsername(login)
+			return repository.findByUsername(login)
 					.switchIfEmpty(Mono.error(new UsernameNotFoundException("User not found")))
-					.block();
+					.map(u -> (UserDetails) u);
 		}
-		
-		return user;
 	}
 
 }

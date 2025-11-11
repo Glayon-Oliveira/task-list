@@ -1,62 +1,81 @@
 package com.lmlasmo.tasklist.controller.util;
 
+import static org.springframework.http.HttpMethod.DELETE;
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.PATCH;
+import static org.springframework.http.HttpMethod.PUT;
+
+import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.springframework.http.HttpMethod;
+import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.web.server.ServerWebExchange;
+
 import com.lmlasmo.tasklist.exception.PreconditionFailedException;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import reactor.core.publisher.Mono;
 
 public interface ETagCheck {
 	
-	private static Set<String> getIfMatchMathods() {
-		return Set.of("PUT", "PATCH", "DELETE");
+	private static Set<HttpMethod> getIfMatchMathods() {
+		return Set.of(PUT, PATCH, DELETE);
 	}
 	
-	public static boolean check(HttpServletRequest req, HttpServletResponse res, Function<Long, Boolean> check) {
-		long etag = ETagCheck.extractEtag(req);
+	public static Mono<Boolean> check(ServerWebExchange exchange, Function<Long, Mono<Boolean>> check) {
+		ServerHttpRequest req = exchange.getRequest();
+		ServerHttpResponse res = exchange.getResponse();
 		
-		if(etag <= 0) return false;
+		Mono<Long> etag = ETagCheck.extractEtag(req);
 		
-		if(getIfMatchMathods().contains(req.getMethod())) {
-			return checkPrecondition(etag, check);
-		}else if(req.getMethod().equals("GET")) {
-			return checkIfModified(etag, res, check);
-		}
-		
-		return false;
+		return etag.filter(e -> e > 0)
+				.flatMap(e -> {
+					if(getIfMatchMathods().contains(req.getMethod())) {
+						return checkPrecondition(e, check);
+					}else if(req.getMethod().equals(GET)) {
+						return checkIfNotModified(e, res, check);
+					}
+					return Mono.empty();
+				}).defaultIfEmpty(true);
 	}
 	
-	private static boolean checkPrecondition(long etag, Function<Long, Boolean> check) {
-		if (!check.apply(etag)) throw new PreconditionFailedException("");
-		
-		return true;
+	private static Mono<Boolean> checkPrecondition(long etag, Function<Long, Mono<Boolean>> check) {
+		return Mono.just(etag)
+				.flatMap(check::apply)
+				.flatMap(c -> {
+					if(!c) return Mono.error(new PreconditionFailedException(""));
+					return Mono.just(c);
+				});
 	}
 
-	private static boolean checkIfModified(Long etag, HttpServletResponse res, Function<Long, Boolean> check) {
-		boolean valid = check.apply(etag);
-		if (valid) res.setStatus(HttpServletResponse.SC_NOT_MODIFIED);
-		return valid;
+	private static Mono<Boolean> checkIfNotModified(Long etag, ServerHttpResponse res, Function<Long, Mono<Boolean>> check) {
+		return Mono.just(etag)
+				.flatMap(check::apply)
+				.flatMap(c -> {
+					if(c) res.setRawStatusCode(304);
+					return Mono.just(!c);
+				});
     }
 	
-	private static long extractEtag(HttpServletRequest req) {
-		String match = null;
-		
-		if(getIfMatchMathods().contains(req.getMethod())) {
-			match = req.getHeader("If-Match");
-		}else if(req.getMethod().equals("GET")) {
-			match = req.getHeader("If-None-Match");
-		}		
-		
-		if(match == null) return -1;
-		
-		if(match.contains("\"")) match = match.replace("\"", "").trim();
+	private static Mono<Long> extractEtag(ServerHttpRequest req) {
+		List<String> match = null;
 		
 		try {
-			return Long.parseLong(match);
+			if(getIfMatchMathods().contains(req.getMethod())) {
+				match = req.getHeaders().getIfMatch();
+			}else if(req.getMethod().equals(GET)) {
+				match = req.getHeaders().getIfNoneMatch();
+			}
+		}catch(Exception e) {}	
+		
+		if(match == null || match.isEmpty()) return Mono.just(-1L);
+		
+		try {
+			return Mono.just(Long.parseLong(match.get(0).replace("\"", "")));
 		}catch(Exception e) {
-			return -1;
+			return Mono.just(-1L);
 		}
 	}
 	
