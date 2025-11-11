@@ -1,28 +1,33 @@
 package com.lmlasmo.tasklist.controller.auth;
 
+import static org.mockito.Mockito.when;
+
 import java.io.UnsupportedEncodingException;
 import java.util.UUID;
 
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.reactive.server.WebTestClient.RequestBodySpec;
+import org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec;
 
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.AuthController;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenType;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailService;
+import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.UserEmailService;
 
-import jakarta.servlet.http.Cookie;
+import reactor.core.publisher.Mono;
 
-@WebMvcTest(controllers = {AuthController.class})
+@WebFluxTest(controllers = {AuthController.class})
 @Import(EmailConfirmationService.class)
 @TestInstance(Lifecycle.PER_CLASS)
 public class TokenJwtTest extends AbstractControllerTest {
@@ -33,106 +38,99 @@ public class TokenJwtTest extends AbstractControllerTest {
 	@MockitoBean
 	private EmailService emailService;
 	
-	@Test
-	void successRefreshToken() throws UnsupportedEncodingException, Exception {
-		String baseUri = "/api/auth/token";
+	@MockitoBean
+	private ResourceAccessService resourceAccess;
+	
+	@RepeatedTest(2)
+	void successRefreshToken(RepetitionInfo info) throws UnsupportedEncodingException, Exception {
+		String baseUri = "/api/auth/token/refresh";
 		
-		Cookie cookie = new Cookie("rt", getDefaultRefreshJwtToken());
+		RequestBodySpec reqspec = getWebTestClient().post().uri(baseUri);
 		
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri + "/refresh")
-				.cookie(cookie))
-		.andExpect(MockMvcResultMatchers.status().isOk())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.refreshToken.token").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.refreshToken.type").value(JWTTokenType.REFRESH.name()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.refreshToken.duration").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.accessToken.token").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.accessToken.type").value(JWTTokenType.ACCESS.name()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.accessToken.duration").exists());
+		if(info.getCurrentRepetition() == 1) {
+			reqspec = reqspec.cookie("rt", getDefaultRefreshJwtToken());
+		}else if(info.getCurrentRepetition() == 2) {
+			String token = """
+					{
+						"token": "%s"
+					}
+					""";
+			
+			reqspec = (RequestBodySpec) reqspec.contentType(MediaType.APPLICATION_JSON)
+						.bodyValue(String.format(token, getDefaultRefreshJwtToken()));
+		}
 		
-		String token = """
-				{
-				"token": "%s"
-				}
-				""";
+		when(getUserService().lastLoginToNow(getDefaultUser().getId())).thenReturn(Mono.empty());
 		
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri + "/refresh")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(String.format(token, getDefaultRefreshJwtToken())))
-		.andExpect(MockMvcResultMatchers.status().isOk())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.refreshToken.token").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.refreshToken.type").value(JWTTokenType.REFRESH.name()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.refreshToken.duration").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.accessToken.token").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.accessToken.type").value(JWTTokenType.ACCESS.name()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.accessToken.duration").exists());
+		ResponseSpec respec = getWebTestClient().post()
+			.uri(baseUri)
+			.cookie("rt", getDefaultRefreshJwtToken())
+			.exchange();
+		
+		respec.expectStatus().isOk()
+			.expectBody()
+			.jsonPath("$.refreshToken.token").exists()
+			.jsonPath("$.refreshToken.type").isEqualTo(JWTTokenType.REFRESH)
+			.jsonPath("$.refreshToken.duration").exists()
+			.jsonPath("$.accessToken.token").exists()
+			.jsonPath("$.accessToken.type").isEqualTo(JWTTokenType.ACCESS)
+			.jsonPath("$.accessToken.duration").exists();
 	}
 	
 	@Test
 	void successAccessToken() throws UnsupportedEncodingException, Exception {
-		String baseUri = "/api/auth/token";
-				
-		Cookie cookie = new Cookie("rt", getDefaultRefreshJwtToken());
+		String baseUri = "/api/auth/token/access";
 		
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri + "/access")
-				.cookie(cookie))
-		.andExpect(MockMvcResultMatchers.status().isOk())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.token").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.type").value(JWTTokenType.ACCESS.name()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.duration").exists());
+		when(getUserService().lastLoginToNow(getDefaultUser().getId())).thenReturn(Mono.empty());
 		
-		String token = """
-				{
-				"token": "%s"
-				}
-				""";
-		
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri + "/refresh")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(String.format(token, getDefaultRefreshJwtToken())))
-		.andExpect(MockMvcResultMatchers.status().isOk())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.accessToken.token").exists())
-		.andExpect(MockMvcResultMatchers.jsonPath("$.accessToken.type").value(JWTTokenType.ACCESS.name()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.accessToken.duration").exists());
+		getWebTestClient().post().uri(baseUri)
+			.cookie("rt", getDefaultRefreshJwtToken())
+			.exchange()
+			.expectStatus().isOk()
+			.expectBody()
+				.jsonPath("$.token").exists()
+				.jsonPath("$.type").isEqualTo(JWTTokenType.ACCESS)
+				.jsonPath("$.duration").exists();
 	}
 	
-	@Test
-	void failureRefreshToken() throws UnsupportedEncodingException, Exception {
-		String baseUri = "/api/auth/token";
+	@RepeatedTest(2)
+	void failureRefreshToken(RepetitionInfo info) throws UnsupportedEncodingException, Exception {
+		String baseUri = "/api/auth/token/refresh";
+		String falseToken = UUID.randomUUID().toString();
 		
-		Cookie cookie = new Cookie("rt", UUID.randomUUID().toString());
+		RequestBodySpec reqspec = getWebTestClient().post().uri(baseUri);
 		
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri + "/refresh")
-				.cookie(cookie))
-		.andExpect(MockMvcResultMatchers.status().isUnauthorized());
+		if(info.getCurrentRepetition() == 1) {
+			reqspec = reqspec.cookie("rt", falseToken);
+		}else if(info.getCurrentRepetition() == 2) {
+			String token = """
+					{
+						"token": "%s"
+					}
+					""";
+			
+			reqspec = (RequestBodySpec) reqspec.contentType(MediaType.APPLICATION_JSON)
+						.bodyValue(String.format(token, falseToken));
+		}
 		
-		String token = """
-				"token": "%s"
-				""";
-		
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri + "/refresh")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(String.format(token, UUID.randomUUID().toString())))
-		.andExpect(MockMvcResultMatchers.status().isUnauthorized());
+		reqspec.exchange().expectStatus().isUnauthorized();
 	}
 	
 	@Test
 	void failureAccessToken() throws UnsupportedEncodingException, Exception {
-		String baseUri = "/api/auth/token";
-		
-		Cookie cookie = new Cookie("rt", UUID.randomUUID().toString());
-		
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri + "/access")
-				.cookie(cookie))
-		.andExpect(MockMvcResultMatchers.status().isUnauthorized());
+		String baseUri = "/api/auth/token/access";
+		String falseToken = UUID.randomUUID().toString();
 		
 		String token = """
 				"token": "%s"
 				""";
 		
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri + "/refresh")
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(String.format(token, UUID.randomUUID().toString())))
-		.andExpect(MockMvcResultMatchers.status().isUnauthorized());
+		getWebTestClient().post()
+			.uri(baseUri)
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(String.format(token, falseToken))
+			.exchange()
+			.expectStatus().isUnauthorized();
 	}
 	
 }

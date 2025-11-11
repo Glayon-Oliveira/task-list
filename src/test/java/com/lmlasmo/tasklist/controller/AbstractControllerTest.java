@@ -11,16 +11,21 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.reactive.server.WebTestClient;
+import org.springframework.web.filter.reactive.ServerWebExchangeContextFilter;
+import org.springframework.web.reactive.config.EnableWebFlux;
 
+import com.lmlasmo.tasklist.controller.AbstractControllerTest.TestWebFluxConfig;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.model.User;
-import com.lmlasmo.tasklist.security.AuthenticatedTool;
+import com.lmlasmo.tasklist.security.AuthenticatedResourceAccess;
 import com.lmlasmo.tasklist.security.AuthenticationEntryPointImpl;
 import com.lmlasmo.tasklist.security.JWTConf;
 import com.lmlasmo.tasklist.security.SecurityConf;
@@ -32,13 +37,19 @@ import com.nimbusds.jwt.SignedJWT;
 import lombok.Getter;
 import reactor.core.publisher.Mono;
 
-@AutoConfigureMockMvc
-@Import({SecurityConf.class, JWTConf.class, JwtService.class, AuthenticationEntryPointImpl.class, AuthenticatedTool.class})
+@AutoConfigureWebTestClient
+@EnableWebFlux
+@Import({SecurityConf.class,
+		JWTConf.class, 
+		JwtService.class, 
+		AuthenticationEntryPointImpl.class, 
+		AuthenticatedResourceAccess.class,
+		TestWebFluxConfig.class})
 public abstract class AbstractControllerTest {
 
 	@Getter
 	@Autowired
-	private MockMvc mockMvc;
+	private WebTestClient webTestClient;
 
 	@Autowired
 	private JwtService jwtService;
@@ -76,9 +87,9 @@ public abstract class AbstractControllerTest {
 		defaultUser.setCreatedAt(Instant.now());
 		defaultUser.setUpdatedAt(defaultUser.getCreatedAt());
 
-		when(userDetailsService.loadUserByUsername(anyString())).thenThrow(UsernameNotFoundException.class);
-		when(userDetailsService.loadUserByUsername(eq(username))).thenReturn(defaultUser);
-		when(userDetailsService.loadUserByUsername(eq("test@example.com"))).thenReturn(defaultUser);
+		when(userDetailsService.findByUsername(anyString())).thenThrow(UsernameNotFoundException.class);
+		when(userDetailsService.findByUsername(eq(username))).thenReturn(Mono.just(defaultUser));
+		when(userDetailsService.findByUsername(eq("test@example.com"))).thenReturn(Mono.just(defaultUser));
 
 		when(userService.existsById(anyInt())).thenReturn(Mono.just(true));
 		when(userService.findById(anyInt())).thenReturn(Mono.just(new UserDTO(defaultUser)));
@@ -89,5 +100,15 @@ public abstract class AbstractControllerTest {
 		
 		defaultAccessJwtToken = jwtService.generateAccessToken(refreshSigned, new UserDTO(defaultUser));
 	}
+	
+	@TestConfiguration
+	public static class TestWebFluxConfig {
+
+	    @Bean
+	    public ServerWebExchangeContextFilter exchangeFilter() {
+	        return new ServerWebExchangeContextFilter();
+	    }
+	}
+
 
 }
