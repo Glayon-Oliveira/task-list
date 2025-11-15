@@ -1,20 +1,18 @@
 package com.lmlasmo.tasklist.repository;
 
-import java.util.Optional;
-
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.repository.custom.UserRepositoryCustom;
 
-public interface UserRepository extends JpaRepository<User, Integer>, UserRepositoryCustom {
+import reactor.core.publisher.Mono;
 
-	public Optional<User> findByUsername(String username);
-	
-	public Optional<User> findByEmailsEmail(String email);
-	
-	public boolean existsByUsername(String username);
+public interface UserRepository extends ReactiveCrudRepository<User, Integer>, UserRepositoryCustom {
 
-	public boolean existsByIdAndVersion(int id, long version);
+	public Mono<User> findByUsername(String username);
+	
+	public Mono<Boolean> existsByUsername(String username);
+
+	public Mono<Boolean> existsByIdAndVersion(int id, long version);
 	
 }

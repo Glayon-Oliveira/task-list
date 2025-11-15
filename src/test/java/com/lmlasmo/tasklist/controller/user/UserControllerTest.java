@@ -2,10 +2,13 @@ package com.lmlasmo.tasklist.controller.user;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.io.UnsupportedEncodingException;
-import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.RepeatedTest;
@@ -33,7 +36,7 @@ import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
-import com.lmlasmo.tasklist.model.UserEmail;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
 import com.lmlasmo.tasklist.param.user.SignInSource;
 import com.lmlasmo.tasklist.param.user.SignUpSource;
 import com.lmlasmo.tasklist.param.user.UpdatePasswordOfDefaultUserSource;
@@ -43,7 +46,7 @@ import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
-import jakarta.persistence.EntityExistsException;
+import reactor.core.publisher.Mono;
 
 @WebMvcTest(controllers = {AuthController.class, UserController.class})
 @Import(EmailConfirmationService.class)
@@ -78,7 +81,9 @@ public class UserControllerTest extends AbstractControllerTest {
 					}
 				""";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(data.getEmail(), EmailConfirmationScope.LINK);
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(false));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(data.getEmail(), EmailConfirmationScope.LINK).block();
 
 		String create = String.format(
 				createFormat,
@@ -91,8 +96,8 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		String signUpUri = "/api/auth/signup";
 
-		when(getUserService().save(any(CreateUserDTO.class))).thenReturn(new UserDTO(getDefaultUser()));
-		when(userEmailService.existsByEmail(data.getEmail())).thenReturn(false);		
+		when(getUserService().save(any(CreateUserDTO.class))).thenReturn(Mono.just(new UserDTO(getDefaultUser())));
+		when(userEmailService.existsByEmail(data.getEmail())).thenReturn(Mono.just(false));
 
 		ResultActions resultActions = getMockMvc().perform(MockMvcRequestBuilders.post(signUpUri)
 				.contentType(MediaType.APPLICATION_JSON)
@@ -103,7 +108,6 @@ public class UserControllerTest extends AbstractControllerTest {
 		assumeTrue(data.getStatus() >= 200 && data.getStatus() < 300);
 
 		resultActions.andExpect(MockMvcResultMatchers.jsonPath("$.username").value(getDefaultUser().getUsername()));
-		resultActions.andExpect(MockMvcResultMatchers.jsonPath("$.emails[0].email").value(getDefaultUser().getEmails().iterator().next().getEmail()));
 	}
 
 	@ParameterizedTest	
@@ -141,10 +145,9 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		int current = info.getCurrentRepetition();
 		
-		List<UserEmail> emails = getDefaultUser().getEmails().stream()
-				.toList();
+		String email = "test@example.com";
 		
-		String signIn = String.format(signInFormat, (current % 2 == 0) ? getDefaultUser().getUsername() : emails.get(0).getEmail(), getDefaultPassword());
+		String signIn = String.format(signInFormat, (current % 2 == 0) ? getDefaultUser().getUsername() : email, getDefaultPassword());
 
 		String strJwtToken = getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
 				.contentType(MediaType.APPLICATION_JSON)
@@ -174,15 +177,16 @@ public class UserControllerTest extends AbstractControllerTest {
 							}
 					}
 				""";
-		List<UserEmail> emails = getDefaultUser().getEmails().stream()
-				.toList();
+		String email = "test@example.com";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.LINK);
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(false));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.LINK).block();
 		
 		String signup = String.format(
 				signupFormat,
 				getDefaultUser().getUsername(),
-				emails.get(0).getEmail(),
+				email,
 				getDefaultPassword(),
 				codeHash.getCode(),
 				codeHash.getHash(),
@@ -190,15 +194,15 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		String signUpUri = "/api/auth/signup";
 
-		when(getUserService().save(any())).thenThrow(EntityExistsException.class);
+		when(getUserService().save(any())).thenThrow(ResourceAlreadyExistsException.class);
 		
-		if(info.getCurrentRepetition() % 2 == 1) when(userEmailService.existsByEmail(emails.get(0).getEmail())).thenReturn(false); 
+		if(info.getCurrentRepetition() % 2 == 1) when(userEmailService.existsByEmail(email)).thenReturn(Mono.just(false)); 
 
 		getMockMvc().perform(MockMvcRequestBuilders.post(signUpUri)
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(signup))
 		.andExpect(MockMvcResultMatchers.status().is(409))
-		.andExpect(result -> VerifyResolvedException.verify(result, EntityExistsException.class));
+		.andExpect(result -> VerifyResolvedException.verify(result, ResourceAlreadyExistsException.class));
 	}
 
 	@Test
@@ -209,7 +213,9 @@ public class UserControllerTest extends AbstractControllerTest {
 		headers.setBearerAuth(getDefaultAccessJwtToken());		
 		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()));
 		
-		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);
+		when(getUserService().existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
+		when(getUserService().existsByIdAndVersion(eq(getDefaultUser().getId()), eq(getDefaultUser().getVersion()))).thenReturn(Mono.just(true));
+		when(getUserService().delete(anyInt())).thenReturn(Mono.empty());
 		
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
 				.headers(headers))
@@ -237,12 +243,14 @@ public class UserControllerTest extends AbstractControllerTest {
 					}
 				""";
 		
-		List<UserEmail> emails = getDefaultUser().getEmails().stream().toList();
+		String email = "test@example.com";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.RECOVERY);
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(true));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.RECOVERY).block();
 
 		String update = String.format(updateFormat,
-				emails.get(0).getEmail(),
+				email,
 				data.getPassword(),
 				codeHash.getCode(),
 				codeHash.getHash(),
@@ -272,12 +280,14 @@ public class UserControllerTest extends AbstractControllerTest {
 					}
 				""";
 		
-		List<UserEmail> emails = getDefaultUser().getEmails().stream().toList();
+		String email = "test@example.com";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.RECOVERY);
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(true));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.RECOVERY).block();
 
 		String update = String.format(updateFormat,
-				emails.get(0).getEmail(),
+				email,
 				UUID.randomUUID(),
 				codeHash.getCode(),
 				codeHash.getHash(),
@@ -288,7 +298,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
 				
-		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);		
+		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(Mono.just(true));		
 
 		getMockMvc().perform(MockMvcRequestBuilders.patch(updateUri)
 				.headers(headers)
@@ -304,7 +314,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
 				
-		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);
+		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(Mono.just(true));
 		
 		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
 				.headers(headers))

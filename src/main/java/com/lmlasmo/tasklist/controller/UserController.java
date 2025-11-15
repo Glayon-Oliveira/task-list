@@ -28,8 +28,8 @@ public class UserController {
 	public Void delete(HttpServletRequest req, HttpServletResponse res) {
 		int id = DirectAuthenticatedTool.getUserId();
 				
-		ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et));		
-		userService.delete(id);
+		ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et).block());		
+		userService.delete(id).block();
 		
 		return null;
 	}
@@ -38,9 +38,9 @@ public class UserController {
 	public UserDTO findByI(HttpServletRequest req, HttpServletResponse res) {
 		int id = DirectAuthenticatedTool.getUserId();
 		
-		if(ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et))) return null;
+		if(ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et).block())) return null;
 		
-		return userService.findById(id);
+		return userService.findById(id).block();
 	}
 	
 }

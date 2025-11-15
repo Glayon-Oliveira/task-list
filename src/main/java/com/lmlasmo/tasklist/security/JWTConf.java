@@ -36,7 +36,7 @@ public class JWTConf {
 			try {
 				int id = Integer.parseInt(jwt.getSubject());
 				
-				if(!userService.existsById(id)) return OAuth2TokenValidatorResult.failure(new OAuth2Error("Invalid user"));
+				if(!userService.existsById(id).block()) return OAuth2TokenValidatorResult.failure(new OAuth2Error("Invalid user"));
 				
 				return OAuth2TokenValidatorResult.success();
 			}catch(Exception e) {}

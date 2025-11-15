@@ -1,8 +1,6 @@
 package com.lmlasmo.tasklist.dto;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
@@ -29,9 +27,6 @@ public class UserDTO implements VersionedDTO {
 	private RoleType role;
 	
 	@JsonProperty
-	private Set<UserEmailDTO> emails = new HashSet<>();
-	
-	@JsonProperty
 	@JsonInclude(content = Include.NON_NULL)
 	private Instant lastLogin;
 	
@@ -52,10 +47,6 @@ public class UserDTO implements VersionedDTO {
 		this.createdAt = user.getCreatedAt();
 		this.updatedAt = user.getUpdatedAt();
 		this.version = user.getVersion();
-				
-		user.getEmails().stream()
-			.map(UserEmailDTO::new)
-			.forEach(emails::add);
 	}
 
 }

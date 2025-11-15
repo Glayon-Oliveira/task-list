@@ -5,11 +5,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.lmlasmo.tasklist.model.Subtask;
-import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.task.AbstractTaskRepositoryTest;
 
@@ -40,15 +40,19 @@ public class AbstractSubtaskRepositoryTest extends AbstractTaskRepositoryTest {
 				subtask.setName(name);
 				subtask.setSummary(summary);
 				subtask.setPosition(subtasks.size()+1);
-				subtask.setTask(new Task(t.getId()));
-				t.getSubtasks().add(subtask);
+				subtask.setTaskId(t.getId());
 
-				subtask = subtaskRepository.save(subtask);
+				subtask = subtaskRepository.save(subtask).block();
 				subtasks.add(subtask);
 			}
 		});
 
 		subtasks = Collections.unmodifiableList(subtasks);
+	}
+	
+	@AfterEach
+	public void setDown() {
+		subtaskRepository.deleteAll().block();
 	}
 
 }

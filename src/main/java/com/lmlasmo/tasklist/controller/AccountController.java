@@ -36,7 +36,7 @@ public class AccountController {
 		
 		confirmationService.valideCodeHash(email.getConfirmation(), email.getEmail(), EmailConfirmationScope.LINK);
 		
-		userEmailService.save(email.getEmail(), id);
+		userEmailService.save(email.getEmail(), id).block();
 		return null;
 	}
 	
@@ -44,7 +44,7 @@ public class AccountController {
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccess.canAccessEmail(#id, @authTool.getUserId())")
 	public Void changePrimaryEmail(@PathVariable int id) {
-		userEmailService.changePrimaryEmail(id, DirectAuthenticatedTool.getUserId());
+		userEmailService.changePrimaryEmail(id, DirectAuthenticatedTool.getUserId()).block();
 		return null;
 	}
 	
@@ -52,7 +52,7 @@ public class AccountController {
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("hasRole('ADMIN')")
 	public Void changeStatusEmail(@RequestBody EmailDTO email, @PathVariable EmailStatusType status) {
-		userEmailService.changeEmailStatus(email.getEmail(), status);
+		userEmailService.changeEmailStatus(email.getEmail(), status).block();
 		return null;
 	}
 		

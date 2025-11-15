@@ -1,6 +1,7 @@
 package com.lmlasmo.tasklist.controller;
 
-import org.springframework.data.domain.Page;
+import java.util.List;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,15 +44,15 @@ public class TaskController {
 	@ResponseStatus(code = HttpStatus.CREATED)	
 	public TaskDTO create(@RequestBody @Valid CreateTaskDTO create) {
 		int userId = DirectAuthenticatedTool.getUserId();
-		return taskService.save(create, userId);
+		return taskService.save(create, userId).block();
 	}	
 	
 	@DeleteMapping("/{id}")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccessService.canAccessTask(#id, @authTool.getUserId())")
 	public Void delete(@PathVariable int id, HttpServletRequest req, HttpServletResponse res) {
-		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(id, et));
-		taskService.delete(id);
+		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(id, et).block());
+		taskService.delete(id).block();
 		return null;
 	}
 	
@@ -61,9 +62,9 @@ public class TaskController {
 	public TaskDTO update(@PathVariable @Min(1) int taskId, @RequestBody UpdateTaskDTO update, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
-		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(taskId, et));
+		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(taskId, et).block());
 		
-		return taskService.update(taskId, update);
+		return taskService.update(taskId, update).block();
 	}
 	
 	@PatchMapping(path = "/{taskId}", params = {"status"})
@@ -72,30 +73,28 @@ public class TaskController {
 	public Void updateTaskStatus(@PathVariable @Min(1) int taskId, @RequestParam @NotNull TaskStatusType status, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
-		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(taskId, et));
+		ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(taskId, et).block());
 		
-		taskStatusService.updateTaskStatus(taskId, status);
+		taskStatusService.updateTaskStatus(taskId, status).block();
 		return null;
 	}
 	
 	@GetMapping
-	public Page<TaskDTO> findAllByI(Pageable pageable, @RequestParam(required = false) boolean withSubtasks, 
-			HttpServletRequest req, HttpServletResponse res) {
+	public List<TaskDTO> findAllByI(Pageable pageable, HttpServletRequest req, HttpServletResponse res) {
 		int userId = DirectAuthenticatedTool.getUserId();
 		
-		if(ETagCheck.check(req, res, et -> taskService.sumVersionByUser(userId) == et)) return null;
+		if(ETagCheck.check(req, res, et -> taskService.sumVersionByUser(userId).block().equals(et))) return null;
 		
-		return taskService.findByUser(userId, withSubtasks, pageable);
+		return taskService.findByUser(userId).collectList().block();
 	}
 	
 	@GetMapping("/{taskId}")
 	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, @authTool.getUserId())")
-	public TaskDTO findById(@PathVariable @Min(1) int taskId, @RequestParam(required = false) boolean withSubtasks, 
-			HttpServletRequest req, HttpServletResponse res) {
+	public TaskDTO findById(@PathVariable @Min(1) int taskId, HttpServletRequest req, HttpServletResponse res) {
 		
-		if(ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(taskId, et))) return null;
+		if(ETagCheck.check(req, res, et -> taskService.existsByIdAndVersion(taskId, et).block())) return null;
 		
-		return taskService.findById(taskId, withSubtasks);
+		return taskService.findById(taskId).block();
 	}
 	
 }

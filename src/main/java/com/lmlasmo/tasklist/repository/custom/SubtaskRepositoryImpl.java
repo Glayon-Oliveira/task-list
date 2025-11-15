@@ -1,228 +1,271 @@
 package com.lmlasmo.tasklist.repository.custom;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.stream.Collectors;
 
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.data.relational.core.query.Criteria;
+import org.springframework.data.relational.core.query.Query;
+import org.springframework.data.relational.core.query.Update;
+import org.springframework.data.relational.core.sql.SqlIdentifier;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.lmlasmo.tasklist.model.Subtask;
-import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.StatusSummary;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
-import jakarta.persistence.OptimisticLockException;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.CriteriaUpdate;
-import jakarta.persistence.criteria.Root;
-import jakarta.persistence.criteria.Subquery;
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @Repository
-public class SubtaskRepositoryImpl implements SubtaskRepositoryCustom{
-
-	private EntityManager entityManager;
-
+public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements SubtaskRepositoryCustom {
+	
+	private R2dbcEntityTemplate template;
+	
 	@Override
-	@Transactional(readOnly = true)
-	public List<PositionSummary> findPositionSummaryByTaskId(int taskId) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<PositionSummary> criteriaQuery = criteriaBuilder.createQuery(PositionSummary.class);		
-		Root<Subtask> root = criteriaQuery.from(Subtask.class);
+	public Mono<Boolean> existsByIdAndTaskUserId(int subtaskId, int userId) {
+		String sql = "SELECT EXISTS (%s) AS exists ";
+		sql = String.format(sql, new StringBuilder()
+				.append("SELECT 1 FROM subtasks s ")
+				.append("JOIN tasks t ON s.task_id = t.id ")
+				.append("WHERE s.id = ? ")
+				.append("AND t.user_id = ?")
+				);
 		
-		criteriaQuery.select(criteriaBuilder.construct(
-				PositionSummary.class,
-				root.get("id"),
-				root.get("version"),
-				root.get("position")
-				))
-		.where(criteriaBuilder.equal(root.get("task").get("id"), taskId));
-		
-		return entityManager.createQuery(criteriaQuery).getResultList();
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, subtaskId)
+				.bind(1, userId)
+				.map(row -> row.get("exists", Boolean.class))
+				.one();
 	}
 
 	@Override
-	@Transactional(readOnly = true)
-	public Optional<PositionSummary> findPositionSummaryById(int subtaskId) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<PositionSummary> criteriaQuery = criteriaBuilder.createQuery(PositionSummary.class);
-		Root<Subtask> root = criteriaQuery.from(Subtask.class);
+	public Mono<Long> countByIdInAndTaskUserId(Collection<Integer> subtaskIds, int userId) {
+		if(subtaskIds.isEmpty()) return Mono.just(0L);
 		
-		criteriaQuery.select(criteriaBuilder.construct(
-				PositionSummary.class,
-				root.get("id"),
-				root.get("version"),
-				root.get("position")))
-			.where(criteriaBuilder.equal(root.get("id"), subtaskId));
+		String sql = new StringBuilder("SELECT COUNT(*) AS count FROM subtasks s ")
+				.append("JOIN tasks t ON s.task_id = t.id ")
+				.append("WHERE s.id IN (?) ")
+				.append("AND t.user_id = ?")
+				.toString();
 		
-		try {
-			return Optional.of(entityManager.createQuery(criteriaQuery).getSingleResult());
-		}catch(NoResultException e) {
-			return Optional.empty();
-		}		
+		String placeholders = subtaskIds.stream()
+				.map(String::valueOf)
+				.collect(Collectors.joining(", "));
+		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, placeholders)
+				.bind(1, userId)
+				.map(row -> row.get("count", Long.class))
+				.one();
+	}
+
+	@Override	
+	public Flux<PositionSummary> findPositionSummaryByTaskId(int taskId) {
+		String sql = new StringBuilder("SELECT s.id, s.row_version, s.position FROM subtasks s ")
+				.append("JOIN tasks t ON s.task_id = t.id ")
+				.append("WHERE t.id = ?")
+				.toString();
+		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, taskId)
+				.map(row -> new PositionSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						row.get("position", Integer.class)
+						))
+				.all();
 	}
 
 	@Override
-	@Transactional(readOnly = true)
-	public List<PositionSummary> findPositionSummaryByRelatedSubtaskId(int subtaskId) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<PositionSummary> criteriaQuery = criteriaBuilder.createQuery(PositionSummary.class);
-		Root<Subtask> root = criteriaQuery.from(Subtask.class);
+	public Mono<PositionSummary> findPositionSummaryById(int subtaskId) {
+		String sql = "SELECT id, row_version, position FROM subtasks WHERE id = ?";
 		
-		Subquery<Task> subquery = criteriaQuery.subquery(Task.class);
-		Root<Subtask> subRoot = subquery.from(Subtask.class);
-		
-		subquery.select(subRoot.get("task"))
-			.where(criteriaBuilder.equal(subRoot.get("id"), subtaskId));
-		
-		criteriaQuery.select(criteriaBuilder.construct(
-				PositionSummary.class,
-				root.get("id"),
-				root.get("version"),
-				root.get("position")
-				))
-		.where(criteriaBuilder.and(
-				root.get("task").in(subquery),
-				criteriaBuilder.notEqual(root.get("id"), subtaskId)
-				));
-		
-		return entityManager.createQuery(criteriaQuery).getResultList();
+		return template.getDatabaseClient()
+				.sql(sql.toString())
+				.bind(0, subtaskId)
+				.map(row -> new PositionSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						row.get("position", Integer.class)
+						))
+				.one();
 	}
 
 	@Override
-	@Transactional
-	public void updatePriority(BasicSummary basic, int position) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaUpdate<Subtask> criteriaUpdate = criteriaBuilder.createCriteriaUpdate(Subtask.class);
-		Root<Subtask> root = criteriaUpdate.from(Subtask.class);
+	public Flux<PositionSummary> findPositionSummaryByRelatedSubtaskId(int subtaskId) {
+		String sql = new StringBuilder("SELECT s.id, s.row_version, s.position FROM subtasks s ")
+				.append("JOIN tasks t ON s.task_id = t.id ")
+				.append("WHERE t.id = (SELECT task_id FROM subtasks WHERE id = ?) ")
+				.append("AND s.id != ?")
+				.toString();
 		
-		criteriaUpdate.set(root.get("position"), position)
-			.set(root.get("version"), basic.getVersion()+1)
-			.where(criteriaBuilder.and(
-					criteriaBuilder.equal(root.get("id"), basic.getId()),
-					criteriaBuilder.equal(root.get("version"), basic.getVersion())
-					));
-		
-		int rows = entityManager.createQuery(criteriaUpdate).executeUpdate();
-		
-		if(rows == 0) throw new OptimisticLockException("Row was updated or deleted by another transaction");
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, subtaskId)
+				.bind(1, subtaskId)
+				.map(row -> new PositionSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						row.get("position", Integer.class)
+						))
+				.all();
 	}
 
 	@Override
-	@Transactional(readOnly = true)
-	public Optional<StatusSummary> findStatusSummaryById(int subtaskId) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<StatusSummary> criteriaQuery = criteriaBuilder.createQuery(StatusSummary.class);
-		Root<Subtask> root = criteriaQuery.from(Subtask.class);
-		
-		criteriaQuery.select(criteriaBuilder.construct(
-				StatusSummary.class,
-				root.get("id"),
-				root.get("version"),
-				root.get("status"),
-				root.get("task").get("id")
-				))
-		.where(criteriaBuilder.equal(root.get("id"), subtaskId));
-		
-		try {
-			return Optional.of(entityManager.createQuery(criteriaQuery).getSingleResult());
-		}catch(NoResultException e) {
-			return Optional.empty();
-		}
+	public Mono<Void> updatePriority(BasicSummary basic, int position) {
+		return template.update(
+					Query.query(
+							Criteria.where("id").is(basic.getId())
+							.and(Criteria.where("version").is(basic.getVersion()))
+							),
+					Update.from(Map.of(
+							SqlIdentifier.unquoted("position"), position,
+							SqlIdentifier.unquoted("version"), basic.getVersion()+1
+							)),
+					Subtask.class
+					)
+					.flatMap(l -> {
+						return l == 1 ? Mono.empty() 
+								: Mono.error(new OptimisticLockingFailureException("Row with id " + basic.getId() + " was updated or deleted by another transaction"));
+					})
+					.then()
+					.as(getOperator()::transactional);
 	}
 
 	@Override
-	@Transactional(readOnly = true)
-	public List<StatusSummary> findStatusSummaryByIds(Iterable<Integer> subtaskIds) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<StatusSummary> criteriaQuery = criteriaBuilder.createQuery(StatusSummary.class);
-		Root<Subtask> root = criteriaQuery.from(Subtask.class);
+	public Mono<StatusSummary> findStatusSummaryById(int subtaskId) {
+		String sql = new StringBuilder("SELECT s.id, s.row_version, s.status, s.task_id FROM subtasks s ")
+				.append("JOIN tasks t ON s.task_id = t.id ")
+				.append("WHERE s.id = ?")
+				.toString();
 		
-		List<Integer> ids = new ArrayList<>();
-		subtaskIds.forEach(ids::add);
-		
-		criteriaQuery.select(criteriaBuilder.construct(
-				StatusSummary.class,
-				root.get("id"),
-				root.get("version"),
-				root.get("status"),
-				root.get("task").get("id")
-				))
-		.where(root.get("id").in(ids));
-		
-		return entityManager.createQuery(criteriaQuery).getResultList();
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, subtaskId)
+				.map(row -> new StatusSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						TaskStatusType.valueOf(row.get("status", String.class)),
+						row.get("task_id", Integer.class)
+						))
+				.one();
 	}
 
 	@Override
-	@Transactional
-	public void updateStatus(BasicSummary basic, TaskStatusType status) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaUpdate<Subtask> criteriaUpdate = criteriaBuilder.createCriteriaUpdate(Subtask.class);
-		Root<Subtask> root = criteriaUpdate.from(Subtask.class);
+	public Flux<StatusSummary> findStatusSummaryByIds(Collection<Integer> subtaskIds) {
+		if(subtaskIds.isEmpty()) return Flux.empty();
 		
-		criteriaUpdate.set(root.get("status"), status)
-			.set(root.get("version"), basic.getVersion()+1)
-			.where(criteriaBuilder.and(
-					criteriaBuilder.equal(root.get("id"), basic.getId()),
-					criteriaBuilder.equal(root.get("version"), basic.getVersion())
-					));
+		String placeholders = subtaskIds.stream()
+				.map(i -> "?")
+				.collect(Collectors.joining(", "));
 		
-		int rows = entityManager.createQuery(criteriaUpdate).executeUpdate();
+		String sql = new StringBuilder("SELECT s.id, s.row_version, s.status, t.id AS task_id FROM subtasks s ")
+				.append("JOIN tasks t ON s.task_id = t.id ")
+				.append("WHERE s.id IN (%s)")
+				.toString()
+				.formatted(placeholders);
 		
-		if(rows == 0) throw new OptimisticLockException("Row was updated or deleted by another transaction");
+		
+		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bindValues(List.copyOf(subtaskIds))
+				.map(row -> new StatusSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						TaskStatusType.valueOf(row.get("status", String.class)),
+						row.get("task_id", Integer.class)
+						))
+				.all();
 	}
 
 	@Override
-	@Transactional
-	public void updateStatus(Iterable<? extends BasicSummary> basics, TaskStatusType status) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
+	public Mono<Void> updateStatus(BasicSummary basic, TaskStatusType status) {
+		return template.update(
+				Query.query(
+						Criteria.where("id").is(basic.getId())
+						.and(Criteria.where("version").is(basic.getVersion()))
+						),
+				Update.from(Map.of(
+						SqlIdentifier.unquoted("status"), status,
+						SqlIdentifier.unquoted("version"), basic.getVersion()+1
+						)),
+				Subtask.class
+				)
+				.flatMap(l -> {
+					return l == 1 ? Mono.empty() 
+							: Mono.error(new OptimisticLockingFailureException("Row with id " + basic.getId() + " was updated or deleted by another transaction"));
+				}).then()
+				.as(getOperator()::transactional);
+	}
+
+	@Override
+	public Mono<Void> updateStatus(Collection<? extends BasicSummary> basics, TaskStatusType status) {
+		if(basics.isEmpty()) return Mono.just(null);
 		
-		for(BasicSummary basic: basics) {
-			CriteriaUpdate<Subtask> criteriaUpdate = criteriaBuilder.createCriteriaUpdate(Subtask.class);
-			Root<Subtask> root = criteriaUpdate.from(Subtask.class);
-			
-			criteriaUpdate.set(root.get("status"), status)
-				.set(root.get("version"), basic.getVersion()+1)
-				.where(criteriaBuilder.and(
-						criteriaBuilder.equal(root.get("id"), basic.getId()),
-						criteriaBuilder.equal(root.get("version"), basic.getVersion())
-						));
-			
-			int rows = entityManager.createQuery(criteriaUpdate).executeUpdate();
-			
-			if(rows == 0) throw new OptimisticLockException("Row with id " + basic.getId() + " was updated or deleted by another transaction");
-		}
+		return Flux.fromIterable(basics)
+				.flatMap(b -> {
+					return template.update(
+							Query.query(
+									Criteria.where("id").is(b.getId())
+									.and(Criteria.where("version").is(b.getVersion()))
+									),
+							Update.from(Map.of(
+									SqlIdentifier.unquoted("status"), status,
+									SqlIdentifier.unquoted("version"), b.getVersion()+1
+									)),
+							Subtask.class
+							)
+							.flatMap(l -> {
+								return l == 1
+										? Mono.empty()
+										: Mono.error(new OptimisticLockingFailureException("Row with id " + b.getId() + " was updated or deleted by another transaction"));
+							});
+				})
+				.then()
+				.as(getOperator()::transactional);
 	}
 	
 	@Override
-	public long sumVersionByids(Iterable<Integer> ids) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
-		Root<Task> root = criteriaQuery.from(Task.class);
+	public Mono<Long> sumVersionByids(Collection<Integer> ids) {
+		if (ids.isEmpty()) return Mono.just(0L);
 		
-		criteriaQuery.select(criteriaBuilder.sum(root.get("version")))
-			.where(root.get("id").in(ids));
+		String placeholders = ids.stream()
+				.map(i -> "?")
+				.collect(Collectors.joining(", "));
 		
-		return entityManager.createQuery(criteriaQuery).getSingleResult();
+		String sql = "SELECT COALESCE(SUM(s.row_version), 0) FROM subtasks WHERE id IN (%s)"
+				.formatted(placeholders);
+		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bindValues(List.copyOf(ids))
+				.map(row -> row.get(0, Long.class))
+				.one();
 	}
 
 	@Override
-	public long sumVersionByTask(int taskId) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
-		Root<Task> root = criteriaQuery.from(Task.class);
+	public Mono<Long> sumVersionByTask(int taskId) {
+		StringBuilder sql = new StringBuilder("SELECT COALESCE(SUM(s.row_version), 0) FROM subtasks s ")
+				.append("JOIN tasks t ON s.task_id = t.id ")
+				.append("WHERE t.id = ?");
 		
-		criteriaQuery.select(criteriaBuilder.sum(root.get("version")))
-			.where(criteriaBuilder.equal(root.get("task").get("id"), taskId));
-		
-		return entityManager.createQuery(criteriaQuery).getSingleResult();
+		return template.getDatabaseClient()
+				.sql(sql.toString())
+				.bind(0, taskId)
+				.map(row -> row.get(0, Long.class))
+				.one();
 	}
 
 }

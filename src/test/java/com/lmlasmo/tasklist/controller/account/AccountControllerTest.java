@@ -20,6 +20,7 @@ import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.AccountController;
 import com.lmlasmo.tasklist.dto.UserEmailDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
 import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
@@ -28,7 +29,7 @@ import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
-import jakarta.persistence.EntityExistsException;
+import reactor.core.publisher.Mono;
 
 @WebMvcTest(controllers = {AccountController.class})
 @Import(EmailConfirmationService.class)
@@ -60,11 +61,15 @@ public class AccountControllerTest extends AbstractControllerTest {
 				}
 			""";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash("test@example.com", EmailConfirmationScope.LINK);
+		String email = "test@example.com";
+		
+		when(userEmailService.existsByEmail(email)).thenReturn(Mono.just(false));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.LINK).block();
 		
 		int currentRept = info.getCurrentRepetition();
 
-		String email = String.format(
+		String emailHc = String.format(
 				emailFormat,
 				currentRept % 2 == 0 ? "test@example.com" : "testexample.com",
 				codeHash.getCode(),
@@ -73,14 +78,14 @@ public class AccountControllerTest extends AbstractControllerTest {
 		
 		String baseUri = "/api/account/email/link";
 
-		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(new UserEmailDTO(new UserEmail("test@example.com")));
-		when(getUserService().save(any())).thenThrow(EntityExistsException.class);
-		when(userEmailService.existsByEmail("test@example.com")).thenReturn(false);		
+		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(Mono.just(new UserEmailDTO(new UserEmail("test@example.com"))));
+		when(getUserService().save(any())).thenThrow(ResourceAlreadyExistsException.class);
+		when(userEmailService.existsByEmail("test@example.com")).thenReturn(Mono.just(false));
 
 		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
 				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(email))
+				.content(emailHc))
 		.andExpect(MockMvcResultMatchers.status().is(currentRept % 2 == 0 ? 204 : 400))
 		.andExpect(result -> VerifyResolvedException.verify(result, currentRept % 2 == 0 ? null : MethodArgumentNotValidException.class));
 	}
@@ -98,7 +103,7 @@ public class AccountControllerTest extends AbstractControllerTest {
 		String email = String.format(emailFormat, currentRept % 2 == 0 ? "test@example.com" : "testexample.com");
 		String baseUri = "/api/account/email/terminate";
 
-		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(new UserEmailDTO(new UserEmail("test@example.com")));
+		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(Mono.just(new UserEmailDTO(new UserEmail("test@example.com"))));
 		when(resourceAccessService.canAccessEmail("test@example.com", getDefaultUser().getId())).thenReturn(true);
 
 		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)

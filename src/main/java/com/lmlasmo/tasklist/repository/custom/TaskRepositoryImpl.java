@@ -1,93 +1,97 @@
 package com.lmlasmo.tasklist.repository.custom;
 
-import java.util.Optional;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.data.relational.core.query.Criteria;
+import org.springframework.data.relational.core.query.Query;
+import org.springframework.data.relational.core.query.Update;
+import org.springframework.data.relational.core.sql.SqlIdentifier;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
-import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.NoResultException;
-import jakarta.persistence.OptimisticLockException;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.CriteriaUpdate;
-import jakarta.persistence.criteria.Root;
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @Repository
-public class TaskRepositoryImpl implements TaskRepositoryCustom{
+public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepositoryCustom {
 
-	private EntityManager entityManager;
+	private R2dbcEntityTemplate template;
 	
 	@Override
-	public Optional<StatusSummary> findStatusSummaryById(int taskId) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<StatusSummary> criteriaQuery = criteriaBuilder.createQuery(StatusSummary.class);
-		Root<Task> root = criteriaQuery.from(Task.class);
+	public Mono<StatusSummary> findStatusSummaryById(int taskId) {
+		String sql = "SELECT id, row_version, status FROM tasks WHERE id = ?";
 		
-		criteriaQuery.select(criteriaBuilder.construct(
-				StatusSummary.class,
-				root.get("id"),
-				root.get("version"),
-				root.get("status")
-				))
-		.where(criteriaBuilder.equal(root.get("id"), taskId));
-		
-		try {
-			return Optional.of(entityManager.createQuery(criteriaQuery).getSingleResult());
-		}catch(NoResultException e) {
-			return Optional.empty();
-		}		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, taskId)
+				.map((row, meta) -> new StatusSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						TaskStatusType.valueOf(row.get("status", String.class))
+						))
+				.one();
+	}
+
+	@Override	
+	public Mono<Void> updateStatus(BasicSummary basic, TaskStatusType status) {
+		return template.update(
+				Query.query(
+						Criteria.where("id").is(basic.getId())
+						.and(Criteria.where("version").is(basic.getVersion()))
+						),
+				Update.from(Map.of(
+						SqlIdentifier.unquoted("status"), status.toString(),
+						SqlIdentifier.unquoted("version"), basic.getVersion()+1
+						)),
+				Task.class
+				)
+				.flatMap(l -> {
+					return l > 0 ? Mono.empty() 
+							: Mono.error(new OptimisticLockingFailureException("Row with id " + basic.getId() + " was updated or deleted by another transaction"));
+				}).then()
+				.as(getOperator()::transactional);
 	}
 
 	@Override
-	@Transactional
-	public void updateStatus(BasicSummary basic, TaskStatusType status) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaUpdate<Task> criteriaUpdate = criteriaBuilder.createCriteriaUpdate(Task.class);
-		Root<Task> root = criteriaUpdate.from(Task.class);
+	public Mono<Long> sumVersionByids(Collection<Integer> ids) {
+		if(ids.isEmpty()) return Mono.just(0L);
 		
-		criteriaUpdate.set(root.get("status"), status)
-			.set(root.get("version"), basic.getVersion()+1)
-			.where(criteriaBuilder.and(
-					criteriaBuilder.equal(root.get("id"), basic.getId()),
-					criteriaBuilder.equal(root.get("version"), basic.getVersion())
-					));
+		String placeholders = ids.stream()
+				.map(i -> "?")
+				.collect(Collectors.joining(", "));
 		
-		int rows = entityManager.createQuery(criteriaUpdate).executeUpdate();
+		String sql = "SELECT COALESCE(SUM(t.row_version), 0) FROM tasks WHERE id IN (%s)"
+				.formatted(placeholders);
 		
-		if(rows == 0) throw new OptimisticLockException("Row with id " + basic.getId() + " was updated or deleted by another transaction");
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bindValues(List.copyOf(ids))
+				.map(row -> row.get(0, Long.class))
+				.one();
 	}
 
 	@Override
-	public long sumVersionByids(Iterable<Integer> ids) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
-		Root<Subtask> root = criteriaQuery.from(Subtask.class);
+	public Mono<Long> sumVersionByUser(int userId) {
+		String sql = new StringBuilder("SELECT COALESCE(SUM(t.row_version), 0) FROM tasks t ")
+				.append("JOIN users u ON t.user_id = u.id ")
+				.append("WHERE u.id = ?")
+				.toString();
 		
-		criteriaQuery.select(criteriaBuilder.sum(root.get("version")))
-			.where(root.get("id").in(ids));
-		
-		return entityManager.createQuery(criteriaQuery).getSingleResult();
-	}
-
-	@Override
-	public long sumVersionByUser(int userId) {
-		CriteriaBuilder criteriaBuilder = entityManager.getCriteriaBuilder();
-		CriteriaQuery<Long> criteriaQuery = criteriaBuilder.createQuery(Long.class);
-		Root<Subtask> root = criteriaQuery.from(Subtask.class);
-		
-		criteriaQuery.select(criteriaBuilder.sum(root.get("version")))
-			.where(criteriaBuilder.equal(root.get("user").get("id"), userId));
-		
-		return entityManager.createQuery(criteriaQuery).getSingleResult();
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, userId)
+				.map(row -> row.get(0, Long.class))
+				.one();
 	}
 	
 }

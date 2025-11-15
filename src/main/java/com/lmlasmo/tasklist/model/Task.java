@@ -1,28 +1,15 @@
 package com.lmlasmo.tasklist.model;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.Set;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.ReadOnlyProperty;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -33,12 +20,10 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @RequiredArgsConstructor
-@Entity
 @Table(name = "tasks")
 public class Task {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@NonNull
 	private Integer id;
 	
@@ -51,38 +36,33 @@ public class Task {
 	@Column
 	private Instant deadline;
 	
-	@Column(name = "deadline_zone", length = 50)
+	@Column("deadline_zone")
 	private String deadlineZone;
 	
-	@CreationTimestamp
-	@Column(name = "created_at")
+	@ReadOnlyProperty
+	@Column("created_at")
 	private Instant createdAt;
 	
-	@UpdateTimestamp
-	@Column(name = "updated_at")
+	@ReadOnlyProperty
+	@Column("updated_at")
 	private Instant updatedAt;
 	
-	@Enumerated(EnumType.STRING)
 	@Column	
 	private TaskStatusType status = TaskStatusType.PENDING;
 	
-	@Column(name = "row_version")
+	@Column("row_version")
 	@Version
 	private long version;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
-	@JoinColumn(name = "user_id")
-	private User user;
+	@Column("user_id")
+	private int userId;
 	
-	@OneToMany(mappedBy = "task", cascade = CascadeType.REMOVE)	
-	private Set<Subtask> subtasks = new HashSet<>();
-	
-	public Task(CreateTaskDTO create, User user) {
+	public Task(CreateTaskDTO create, int userId) {
 		this.name = create.getName();
 		this.summary = create.getSummary();
 		this.deadline = create.getDeadline().toInstant();
 		this.deadlineZone = create.getDeadlineZone();
-		this.user = user;
+		this.userId = userId;
 	}
 
 }

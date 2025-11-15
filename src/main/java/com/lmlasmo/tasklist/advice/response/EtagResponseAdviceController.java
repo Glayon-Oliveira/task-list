@@ -1,7 +1,8 @@
 package com.lmlasmo.tasklist.advice.response;
 
+import java.util.List;
+
 import org.springframework.core.MethodParameter;
-import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -36,8 +37,8 @@ public class EtagResponseAdviceController implements ResponseBodyAdvice<Object>{
 		if (body instanceof VersionedDTO dto) return dto.getVersion();
 	    if (body instanceof ResponseEntity<?> entity && entity.getBody() instanceof VersionedDTO dto) return dto.getVersion();
 	    
-	    if(body instanceof Page<?> page) {
-	    	return page.stream()
+	    if(body instanceof List<?> list) {
+	    	return list.stream()
 	    			.filter(o -> o instanceof VersionedDTO)
 	    			.mapToLong(o -> ((VersionedDTO) o).getVersion())
 	    			.reduce((a, b) -> a+b)

@@ -4,8 +4,8 @@ import java.util.Map;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
-import org.springframework.orm.jpa.JpaOptimisticLockingFailureException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -15,18 +15,18 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import com.lmlasmo.tasklist.advice.exception.util.AdviceWrapper;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.exception.PreconditionFailedException;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 
-import jakarta.persistence.EntityExistsException;
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
 public class MainAdviceController {
 	
-	@ExceptionHandler(EntityNotFoundException.class)
+	@ExceptionHandler(ResourceNotFoundException.class)
 	@ResponseStatus(code = HttpStatus.NOT_FOUND)
-	public Map<String, Object> exceptionResponse(EntityNotFoundException exception, HttpServletRequest request){
+	public Map<String, Object> exceptionResponse(ResourceNotFoundException exception, HttpServletRequest request){
 		return AdviceWrapper.wrapper(HttpStatus.NOT_FOUND, exception.getMessage(), request);
 	}
 	
@@ -36,15 +36,15 @@ public class MainAdviceController {
 		return AdviceWrapper.wrapper(HttpStatus.NOT_FOUND, exception.getMessage(), request);
 	}
 	
-	@ExceptionHandler(EntityExistsException.class)
+	@ExceptionHandler(ResourceAlreadyExistsException.class)
 	@ResponseStatus(code = HttpStatus.CONFLICT)
-	public Map<String, Object> exceptionResponse(EntityExistsException exception, HttpServletRequest request){		
+	public Map<String, Object> exceptionResponse(ResourceAlreadyExistsException exception, HttpServletRequest request){		
 		return AdviceWrapper.wrapper(HttpStatus.CONFLICT, exception.getMessage(), request);
 	}
 	
-	@ExceptionHandler(JpaOptimisticLockingFailureException.class)
+	@ExceptionHandler(OptimisticLockingFailureException.class)
 	@ResponseStatus(code = HttpStatus.CONFLICT)
-	public Map<String, Object> exceptionResponse(JpaOptimisticLockingFailureException exception, HttpServletRequest request) {
+	public Map<String, Object> exceptionResponse(OptimisticLockingFailureException exception, HttpServletRequest request) {
 		return AdviceWrapper.wrapper(HttpStatus.CONFLICT, "The entity has been modified by another process. Please update the data and try again", request);
 	}
 	

@@ -21,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.param.FailureAuthenticateEndpointSource;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailService;
@@ -30,7 +31,7 @@ import com.lmlasmo.tasklist.service.TaskStatusService;
 import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
-import jakarta.persistence.EntityNotFoundException;
+import reactor.core.publisher.Mono;
 
 @WebMvcTest
 @TestInstance(Lifecycle.PER_CLASS)
@@ -59,8 +60,8 @@ public class FailureAuthenticationControllerTest extends AbstractControllerTest 
 	protected void setUp() {
 		super.setUp();
 
-		when(getUserService().existsById(anyInt())).thenReturn(false);
-		when(getUserService().findById(anyInt())).thenThrow(EntityNotFoundException.class);
+		when(getUserService().existsById(anyInt())).thenReturn(Mono.just(false));
+		when(getUserService().findById(anyInt())).thenThrow(ResourceNotFoundException.class);
 	}
 
 	@ParameterizedTest

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -24,7 +25,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -47,6 +47,9 @@ import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.TaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @WebMvcTest(controllers = TaskController.class)
 @TestInstance(Lifecycle.PER_CLASS)
@@ -83,7 +86,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		task.setCreatedAt(Instant.now());
 		task.setUpdatedAt(task.getCreatedAt());
 		task.setVersion(new Random().nextLong(Long.MAX_VALUE));
-		task.setUser(getDefaultUser());
+		task.setUserId(getDefaultUser().getId());
 	}
 
 	@ParameterizedTest
@@ -100,7 +103,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 
 		String create = String.format(createFormat, data.getName(), data.getSummary(), data.getDeadline(), data.getDeadlineZone());
 
-		when(taskService.save(any(CreateTaskDTO.class), anyInt())).thenReturn(new TaskDTO(task, true));
+		when(taskService.save(any(CreateTaskDTO.class), anyInt())).thenReturn(Mono.just(new TaskDTO(task)));
 
 		ResultActions resultActions = getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
 				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
@@ -122,14 +125,14 @@ public class TaskControllerTest extends AbstractControllerTest{
 
 	@RepeatedTest(2)
 	public void getTasksByUser(RepetitionInfo info) throws Exception {
-		when(taskService.findByUser(eq(getDefaultUser().getId()), eq(true), any())).thenReturn(new PageImpl<>(List.of(new TaskDTO(task, true))));
+		when(taskService.findByUser(eq(getDefaultUser().getId()))).thenReturn(Flux.fromIterable(List.of(new TaskDTO(task))));
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfNoneMatch(Long.toString(task.getVersion()));
-			when(taskService.sumVersionByUser(getDefaultUser().getId())).thenReturn(task.getVersion());
+			when(taskService.sumVersionByUser(getDefaultUser().getId())).thenReturn(Mono.just(task.getVersion()));
 		}
 		
 		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
@@ -140,9 +143,8 @@ public class TaskControllerTest extends AbstractControllerTest{
 			result.andExpect(MockMvcResultMatchers.status().isNotModified());			
 		}else if(info.getCurrentRepetition() == 1) {
 			result.andExpect(MockMvcResultMatchers.status().is(200))
-			.andExpect(MockMvcResultMatchers.jsonPath("$.size").value(1))
-			.andExpect(MockMvcResultMatchers.jsonPath("$.content[*].summary").exists())
-			.andExpect(MockMvcResultMatchers.jsonPath("$.content[*].subtasks").exists())
+			.andExpect(MockMvcResultMatchers.jsonPath("$.length()").value(1))
+			.andExpect(MockMvcResultMatchers.jsonPath("$[*].summary").exists())
 			.andExpect(MockMvcResultMatchers.header().exists("ETag"));
 		}
 		
@@ -158,8 +160,8 @@ public class TaskControllerTest extends AbstractControllerTest{
 		}
 		
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(taskService.findById(task.getId(), true)).thenReturn(new TaskDTO(task, true));
-		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
+		when(taskService.findById(task.getId())).thenReturn(Mono.just(new TaskDTO(task)));
+		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(Mono.just(true));
 
 		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + "/" + task.getId())
 				.param("withSubtasks", "true")
@@ -170,7 +172,6 @@ public class TaskControllerTest extends AbstractControllerTest{
 		}else {
 			result.andExpect(MockMvcResultMatchers.status().isOk())
 			.andExpect(MockMvcResultMatchers.jsonPath("$.summary").exists())
-			.andExpect(MockMvcResultMatchers.jsonPath("$.subtasks").exists())
 			.andExpect(MockMvcResultMatchers.header().exists("ETag"));
 		}
 	}
@@ -183,7 +184,9 @@ public class TaskControllerTest extends AbstractControllerTest{
 		headers.setBearerAuth(getDefaultAccessJwtToken());		
 		headers.setIfMatch(Long.toString(task.getVersion()));
 		
-		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
+		when(taskService.existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
+		when(taskService.existsByIdAndVersion(eq(task.getId()), eq(task.getVersion()))).thenReturn(Mono.just(true));
+		when(taskService.delete(anyInt())).thenReturn(Mono.empty());
 		
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri + "/" + task.getId())
 				.headers(headers))
@@ -204,7 +207,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		update.setName(UUID.randomUUID().toString());
 		update.setSummary(UUID.randomUUID().toString());
 
-		TaskDTO fullTaskDTO = new TaskDTO(task, true);
+		TaskDTO fullTaskDTO = new TaskDTO(task);
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
@@ -216,8 +219,9 @@ public class TaskControllerTest extends AbstractControllerTest{
 		}
 		
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(taskService.update(eq(task.getId()), any())).thenReturn(fullTaskDTO);
-		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
+		when(taskService.update(eq(task.getId()), any())).thenReturn(Mono.just(fullTaskDTO));
+		when(taskService.existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
+		when(taskService.existsByIdAndVersion(eq(task.getId()), eq(task.getVersion()))).thenReturn(Mono.just(true));
 
 		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + task.getId())
 				.headers(headers)
@@ -254,8 +258,9 @@ public class TaskControllerTest extends AbstractControllerTest{
 		}
 
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(taskService.update(eq(task.getId()), any())).thenReturn(taskDTO);
-		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
+		when(taskService.update(eq(task.getId()), any())).thenReturn(Mono.just(taskDTO));
+		when(taskService.existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
+		when(taskService.existsByIdAndVersion(eq(task.getId()), eq(task.getVersion()))).thenReturn(Mono.just(true));
 
 		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + task.getId())
 				.headers(headers)
@@ -289,8 +294,9 @@ public class TaskControllerTest extends AbstractControllerTest{
 		}
 
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(true);
-		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion()+1)).thenReturn(false);
+		when(taskService.existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(true));
+		when(taskService.existsByIdAndVersion(eq(task.getId()), eq(task.getVersion()/2+1))).thenReturn(Mono.just(false));
+		when(statusService.updateTaskStatus(eq(task.getId()), eq(TaskStatusType.COMPLETED))).thenReturn(Mono.empty());
 
 		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + task.getId())
 				.param("status", TaskStatusType.COMPLETED.name())

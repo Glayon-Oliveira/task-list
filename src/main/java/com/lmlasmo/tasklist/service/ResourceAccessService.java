@@ -19,23 +19,23 @@ public class ResourceAccessService {
 	private SubtaskRepository subtaskRepository;
 	
 	public boolean canAccessEmail(int emailId, int userId) {
-		return emailRepository.existsByIdAndUserId(emailId, userId);
+		return emailRepository.existsByIdAndUserId(emailId, userId).block();
 	}
 	
 	public boolean canAccessEmail(String email, int userId) {
-		return emailRepository.existsByEmailAndUserId(email, userId);
+		return emailRepository.existsByEmailAndUserId(email, userId).block();
 	}
 	
 	public boolean canAccessTask(int taskId, int userId) {
-		return taskRepository.existsByIdAndUserId(taskId, userId);
+		return taskRepository.existsByIdAndUserId(taskId, userId).block();
 	}
 	
 	public boolean canAccessSubtask(int subtaskId, int userId) {
-		return subtaskRepository.existsByIdAndTaskUserId(subtaskId, userId);
+		return subtaskRepository.existsByIdAndTaskUserId(subtaskId, userId).block();
 	}
 	
 	public boolean canAccessSubtask(List<Integer> subtaskIds, int userId) {
-		long count = subtaskRepository.countByIdInAndTaskUserId(subtaskIds, userId);
+		long count = subtaskRepository.countByIdInAndTaskUserId(subtaskIds, userId).block();
 		return subtaskIds.size() == count;
 	}
 	
