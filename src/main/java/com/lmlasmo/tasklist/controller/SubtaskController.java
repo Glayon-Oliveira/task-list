@@ -2,8 +2,6 @@ package com.lmlasmo.tasklist.controller;
 
 import java.util.List;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,15 +42,15 @@ public class SubtaskController {
 	@ResponseStatus(code = HttpStatus.CREATED)
 	@PreAuthorize("@resourceAccessService.canAccessTask(#create.taskId, @authTool.getUserId())")
 	public SubtaskDTO create(@RequestBody @Valid CreateSubtaskDTO create) {
-		return subtaskService.save(create);
+		return subtaskService.save(create).block();
 	}
 	
 	@DeleteMapping(params = "subtaskIds")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskIds, @authTool.getUserId())")
 	public Void delete(@RequestParam List<@Min(1) Integer> subtaskIds, HttpServletRequest req, HttpServletResponse res) {
-		ETagCheck.check(req, res, et -> subtaskService.sumVersionByIds(subtaskIds) == et);
-		subtaskService.delete(subtaskIds);
+		ETagCheck.check(req, res, et -> subtaskService.sumVersionByIds(subtaskIds).block().equals(et));
+		subtaskService.delete(subtaskIds).block();
 		return null;
 	}
 	
@@ -61,9 +59,9 @@ public class SubtaskController {
 	public SubtaskDTO update(@PathVariable @Min(1) int subtaskId, @RequestBody UpdateSubtaskDTO update, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
-		ETagCheck.check(req, res, et -> subtaskService.existsByIdAndVersion(subtaskId, et));
+		ETagCheck.check(req, res, et -> subtaskService.existsByIdAndVersion(subtaskId, et).block());
 		
-		return subtaskService.update(subtaskId, update);
+		return subtaskService.update(subtaskId, update).block();
 	}
 	
 	@PatchMapping(path = "/{subtaskId}", params = "position")
@@ -72,9 +70,9 @@ public class SubtaskController {
 	public Void updateSubtaskPosition(@PathVariable @Min(1) int subtaskId, @RequestParam @Min(1) int position,
 			HttpServletRequest req, HttpServletResponse res) {
 		
-		ETagCheck.check(req, res, et -> subtaskService.existsByIdAndVersion(subtaskId, et));
+		ETagCheck.check(req, res, et -> subtaskService.existsByIdAndVersion(subtaskId, et).block());
 		
-		subtaskService.updatePosition(subtaskId, position);
+		subtaskService.updatePosition(subtaskId, position).block();
 		return null;
 	}
 	
@@ -84,28 +82,26 @@ public class SubtaskController {
 	public Void updateSubtaskStatus(@RequestParam List<@Min(1) Integer> subtaskIds, @RequestParam @NotNull TaskStatusType status, 
 			HttpServletRequest req, HttpServletResponse res) {
 		
-		ETagCheck.check(req, res, et -> subtaskService.sumVersionByIds(subtaskIds) == et);
+		ETagCheck.check(req, res, et -> subtaskService.sumVersionByIds(subtaskIds).block().equals(et));
 		
-		taskStatusService.updateSubtaskStatus(status, subtaskIds);
+		taskStatusService.updateSubtaskStatus(status, subtaskIds).block();
 		return null;
 	}
 
 	@GetMapping(params = {"taskId"})
 	@PreAuthorize("@resourceAccessService.canAccessTask(#taskId, @authTool.getUserId())")
-	public Page<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId, Pageable pageable, 
-			HttpServletRequest req, HttpServletResponse res) {
+	public List<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId, HttpServletRequest req, HttpServletResponse res) {
+		if(ETagCheck.check(req, res, et -> subtaskService.sumVersionByTask(taskId).block().equals(et))) return null;
 		
-		if(ETagCheck.check(req, res, et -> subtaskService.sumVersionByTask(taskId) == et)) return null;
-		
-		return subtaskService.findByTask(taskId, pageable);
+		return subtaskService.findByTask(taskId).collectList().block();
 	}
 	
 	@GetMapping("/{subtaskId}")
 	@PreAuthorize("@resourceAccessService.canAccessSubtask(#subtaskId, @authTool.getUserId())")
 	public SubtaskDTO findById(@PathVariable @Min(1) int subtaskId, HttpServletRequest req, HttpServletResponse res) {
-		if(ETagCheck.check(req, res, et -> subtaskService.existsByIdAndVersion(subtaskId, et))) return null;
+		if(ETagCheck.check(req, res, et -> subtaskService.existsByIdAndVersion(subtaskId, et).block())) return null;
 		
-		return subtaskService.findById(subtaskId);
+		return subtaskService.findById(subtaskId).block();
 	}
 	
 }

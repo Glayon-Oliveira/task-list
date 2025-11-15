@@ -30,7 +30,6 @@ import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.SubtaskController;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
-import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
@@ -64,12 +63,12 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 		subtask = new Subtask();
 		subtask.setId(1);
 		subtask.setPosition(1);
-		subtask.setTask(new Task(1));
+		subtask.setTaskId(1);
 		subtask.setCreatedAt(Instant.now());
 		subtask.setUpdatedAt(subtask.getCreatedAt());
 
 		when(accessService.canAccessTask(eq(subtask.getId()), eq(getDefaultUser().getId()))).thenReturn(false);
-		when(accessService.canAccessTask(eq(subtask.getTask().getId()), eq(getDefaultUser().getId()))).thenReturn(false);
+		when(accessService.canAccessTask(eq(subtask.getTaskId()), eq(getDefaultUser().getId()))).thenReturn(false);
 	}
 
 	@Test
@@ -86,9 +85,9 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 		String create = String.format(createFormat,
 				"Subtask Test - Name UUID = " + UUID.randomUUID().toString(),
 				"Subtask Test - Summary UUID = " + UUID.randomUUID().toString(),
-				subtask.getTask().getId());
+				subtask.getTaskId());
 
-		when(accessService.canAccessTask(subtask.getTask().getId(), getDefaultUser().getId())).thenReturn(false);
+		when(accessService.canAccessTask(subtask.getTaskId(), getDefaultUser().getId())).thenReturn(false);
 
 		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
 				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
@@ -101,7 +100,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 	@Test
 	void getSubtasksByTask() throws Exception {
 		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
-				.param("taskId", String.valueOf(subtask.getTask().getId()))
+				.param("taskId", String.valueOf(subtask.getTaskId()))
 				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
 		.andExpect(MockMvcResultMatchers.status().is(403))
 		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));

@@ -3,6 +3,8 @@ package com.lmlasmo.tasklist.controller.subtask;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -22,7 +24,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -38,12 +39,14 @@ import com.lmlasmo.tasklist.controller.SubtaskController;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
-import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.param.subtask.CreateSubtaskSource;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
 import com.lmlasmo.tasklist.util.VerifyResolvedException;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @WebMvcTest(controllers = SubtaskController.class)
 @TestInstance(Lifecycle.PER_CLASS)
@@ -73,7 +76,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		subtask = new Subtask();
 		subtask.setId(1);
 		subtask.setPosition(1);
-		subtask.setTask(new Task(1));
+		subtask.setTaskId(1);
 		subtask.setCreatedAt(Instant.now());
 		subtask.setUpdatedAt(subtask.getCreatedAt());
 		subtask.setVersion(new Random().nextLong(Long.MAX_VALUE));
@@ -91,14 +94,14 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 					}
 				""";
 
-		String create = String.format(createFormat, data.getName(), data.getSummary(), data.getDurationMinutes(), subtask.getTask().getId());
+		String create = String.format(createFormat, data.getName(), data.getSummary(), data.getDurationMinutes(), subtask.getTaskId());
 
 		subtask.setName(data.getName());
 		subtask.setSummary(data.getSummary());
 		subtask.setDurationMinutes(data.getDurationMinutes());
 
 		when(accessService.canAccessTask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.save(any())).thenReturn(new SubtaskDTO(subtask));
+		when(subtaskService.save(any())).thenReturn(Mono.just(new SubtaskDTO(subtask)));
 
 		ResultActions resultActions = getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
 				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
@@ -121,11 +124,11 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfNoneMatch(Long.toString(subtask.getVersion()));
-			when(subtaskService.sumVersionByTask(anyInt())).thenReturn(subtask.getVersion());
+			when(subtaskService.sumVersionByTask(anyInt())).thenReturn(Mono.just(subtask.getVersion()));
 		}
 		
 		when(accessService.canAccessTask(eq(1), eq(getDefaultUser().getId()))).thenReturn(true);
-		when(subtaskService.findByTask(eq(1), any())).thenReturn(new PageImpl<>(List.of(new SubtaskDTO(subtask))));
+		when(subtaskService.findByTask(eq(1))).thenReturn(Flux.fromIterable((List.of(new SubtaskDTO(subtask)))));
 
 		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
 				.param("taskId", "1")
@@ -135,9 +138,8 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 			result.andExpect(MockMvcResultMatchers.status().isNotModified());
 		}else {
 			result.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.jsonPath("$.size").value(1))
 			.andExpect(MockMvcResultMatchers.header().exists("ETag"));
-		}	
+		}
 	}
 
 	@RepeatedTest(2)
@@ -147,11 +149,11 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		
 		if(info.getCurrentRepetition() == 2) {
 			headers.setIfNoneMatch(Long.toString(subtask.getVersion()));
-			when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(true);
+			when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(Mono.just(true));
 		}
 		
 		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.findById(subtask.getId())).thenReturn(new SubtaskDTO(subtask));
+		when(subtaskService.findById(subtask.getId())).thenReturn(Mono.just(new SubtaskDTO(subtask)));
 
 		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + "/" + subtask.getId())
 				.headers(headers));
@@ -187,8 +189,9 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		}
 
 		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.update(eq(subtask.getId()), any())).thenReturn(subtaskDTO);
-		when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(true);
+		when(subtaskService.update(eq(subtask.getId()), any())).thenReturn(Mono.just(subtaskDTO));
+		when(subtaskService.existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
+		when(subtaskService.existsByIdAndVersion(eq(subtask.getId()), eq(subtask.getVersion()))).thenReturn(Mono.just(true));		
 
 		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + subtask.getId())
 				.headers(headers)
@@ -226,7 +229,8 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		headers.setIfMatch(Long.toString(sumIds));
 
 		when(accessService.canAccessSubtask(ids, getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.sumVersionByIds(ids)).thenReturn(sumIds);
+		when(subtaskService.sumVersionByIds(ids)).thenReturn(Mono.just(sumIds));
+		when(subtaskService.delete(anyList())).thenReturn(Mono.empty());
 
 		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
 				.params(baseParams)
@@ -258,7 +262,9 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		}
 
 		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(true);
+		when(subtaskService.existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
+		when(subtaskService.existsByIdAndVersion(eq(subtask.getId()), eq(subtask.getVersion()))).thenReturn(Mono.just(true));		
+		when(subtaskService.updatePosition(anyInt(), anyInt())).thenReturn(Mono.empty());
 
 		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + subtask.getId())
 				.params(baseParams)

@@ -1,33 +1,39 @@
 package com.lmlasmo.tasklist.repository.custom;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.Collection;
 
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 
-public interface SubtaskRepositoryCustom {
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+public interface SubtaskRepositoryCustom extends RepositoryCustom {
+	
+	public Mono<Boolean> existsByIdAndTaskUserId(int subtaskId, int userId);
+
+	public Mono<Long> countByIdInAndTaskUserId(Collection<Integer> subtaskIds, int userId);
 		
-	public List<SubtaskSummary.PositionSummary> findPositionSummaryByTaskId(int taskId);
+	public Flux<SubtaskSummary.PositionSummary> findPositionSummaryByTaskId(int taskId);
 		
-	public Optional<SubtaskSummary.PositionSummary> findPositionSummaryById(int subtaskId);
+	public Mono<SubtaskSummary.PositionSummary> findPositionSummaryById(int subtaskId);
 		
-	public List<PositionSummary> findPositionSummaryByRelatedSubtaskId(int subtaskId);
+	public Flux<PositionSummary> findPositionSummaryByRelatedSubtaskId(int subtaskId);
 	
-	public void updatePriority(BasicSummary basic, int position);
+	public Mono<Void> updatePriority(BasicSummary basic, int position);
 	
-	public Optional<SubtaskSummary.StatusSummary> findStatusSummaryById(int subtaskId);
+	public Mono<SubtaskSummary.StatusSummary> findStatusSummaryById(int subtaskId);
 	
-	public List<SubtaskSummary.StatusSummary> findStatusSummaryByIds(Iterable<Integer> subtaskIds);
+	public Flux<SubtaskSummary.StatusSummary> findStatusSummaryByIds(Collection<Integer> subtaskIds);
 	
-	public void updateStatus(BasicSummary basic, TaskStatusType status);
+	public Mono<Void> updateStatus(BasicSummary basic, TaskStatusType status);
 	
-	public void updateStatus(Iterable<? extends BasicSummary> basics, TaskStatusType status);
+	public Mono<Void> updateStatus(Collection<? extends BasicSummary> basics, TaskStatusType status);
 	
-	public long sumVersionByids(Iterable<Integer> ids);
+	public Mono<Long> sumVersionByids(Collection<Integer> ids);
 	
-	public long sumVersionByTask(int taskId);
+	public Mono<Long> sumVersionByTask(int taskId);
 	
 }

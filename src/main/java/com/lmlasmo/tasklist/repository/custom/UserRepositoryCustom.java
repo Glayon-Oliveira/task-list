@@ -1,17 +1,23 @@
 package com.lmlasmo.tasklist.repository.custom;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.Collection;
 
+import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserStatusType;
 import com.lmlasmo.tasklist.repository.summary.UserSummary;
 
-public interface UserRepositoryCustom {
-	
-	public List<UserSummary.StatusSummary> findStatusSummaryByStatus(UserStatusType status);
-	
-	public List<UserSummary.StatusSummary> findStatusSummaryByStatusAndLastLoginAfter(UserStatusType status, Instant after);
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-	public void changeStatusByIds(Iterable<Integer> ids, UserStatusType status);	
+public interface UserRepositoryCustom extends RepositoryCustom {
+	
+	public Mono<User> findByEmail(String email);
+	
+	public Flux<UserSummary.StatusSummary> findStatusSummaryByStatus(UserStatusType status);
+	
+	public Flux<UserSummary.StatusSummary> findStatusSummaryByStatusAndLastLoginAfter(UserStatusType status, Instant after);
+
+	public Mono<Void> changeStatusByIds(Collection<Integer> ids, UserStatusType status);	
 	
 }

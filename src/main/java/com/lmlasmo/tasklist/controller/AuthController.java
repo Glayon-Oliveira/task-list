@@ -27,6 +27,7 @@ import com.lmlasmo.tasklist.dto.auth.PasswordRecoveryDTO;
 import com.lmlasmo.tasklist.dto.auth.SignupDTO;
 import com.lmlasmo.tasklist.dto.auth.TokenDTO;
 import com.lmlasmo.tasklist.exception.InvalidTokenException;
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
@@ -35,7 +36,6 @@ import com.lmlasmo.tasklist.service.UserEmailService;
 import com.lmlasmo.tasklist.service.UserService;
 import com.nimbusds.jwt.SignedJWT;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -84,7 +84,7 @@ public class AuthController {
 	public UserDTO upByJson(@RequestBody @Valid SignupDTO signup) {		
 		confirmationService.valideCodeHash(signup.getConfirmation(), signup.getEmail(), EmailConfirmationScope.LINK);
 		
-		return userService.save(signup);
+		return userService.save(signup).block();
 	}	
 	
 	@PostMapping("/token/refresh")
@@ -114,20 +114,20 @@ public class AuthController {
 		int id = jwtService.getSubjectIdOfToken(signed);
 		
 		try {
-			UserDTO user = userService.findById(id);
+			UserDTO user = userService.findById(id).block();
 			String accessToken = jwtService.generateAccessToken(signed, user);
 			
 			userService.lastLoginToNow(id);
 			
 			return new JWTTokenDTO(accessToken, JWTTokenType.ACCESS, jwtService.getAccessTokenDuration().getSeconds());
-		}catch(EntityNotFoundException e) {
+		}catch(ResourceNotFoundException e) {
 			throw new InvalidTokenException("Invalid subject in token");
 		}		
 	}
 	
 	@PostMapping("/email/confirmation")
 	public EmailConfirmationHashDTO confirmEmail(@RequestBody @Valid EmailWithScope email) {
-		return confirmationService.sendConfirmationEmail(email.getEmail(), email.getScope());
+		return confirmationService.sendConfirmationEmail(email.getEmail(), email.getScope()).block();
 	}
 	
 	@PatchMapping("/recover/password")

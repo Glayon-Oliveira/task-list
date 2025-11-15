@@ -6,9 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.Random;
-import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +20,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.model.User;
-import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.security.AuthenticatedTool;
 import com.lmlasmo.tasklist.security.AuthenticationEntryPointImpl;
 import com.lmlasmo.tasklist.security.JWTConf;
@@ -33,6 +30,7 @@ import com.lmlasmo.tasklist.service.UserService;
 import com.nimbusds.jwt.SignedJWT;
 
 import lombok.Getter;
+import reactor.core.publisher.Mono;
 
 @AutoConfigureMockMvc
 @Import({SecurityConf.class, JWTConf.class, JwtService.class, AuthenticationEntryPointImpl.class, AuthenticatedTool.class})
@@ -72,7 +70,6 @@ public abstract class AbstractControllerTest {
 		String username = "Username - ID = " + UUID.randomUUID();
 
 		defaultUser = new User(1);
-		defaultUser.setEmails(new HashSet<>(Set.of(new UserEmail("test@example.com"))));
 		defaultUser.setUsername(username);
 		defaultUser.setPassword(encoder.encode(defaultPassword));
 		defaultUser.setVersion(new Random().nextLong(Long.MAX_VALUE));
@@ -83,8 +80,8 @@ public abstract class AbstractControllerTest {
 		when(userDetailsService.loadUserByUsername(eq(username))).thenReturn(defaultUser);
 		when(userDetailsService.loadUserByUsername(eq("test@example.com"))).thenReturn(defaultUser);
 
-		when(userService.existsById(anyInt())).thenReturn(true);
-		when(userService.findById(anyInt())).thenReturn(new UserDTO(defaultUser));
+		when(userService.existsById(anyInt())).thenReturn(Mono.just(true));
+		when(userService.findById(anyInt())).thenReturn(Mono.just(new UserDTO(defaultUser)));
 
 		defaultRefreshJwtToken = jwtService.generateRefreshToken(defaultUser.getId());
 		

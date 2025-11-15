@@ -3,7 +3,6 @@ package com.lmlasmo.tasklist.mapper;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -11,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 import com.lmlasmo.tasklist.model.User;
-import com.lmlasmo.tasklist.model.UserEmail;
 
 public class UserMapperTest {
 
@@ -29,7 +27,6 @@ public class UserMapperTest {
 
 		assertTrue(user.getUsername().equals(username));
 		assertTrue(user.getPassword().equals(password));
-		assertTrue(user.getEmails().stream().anyMatch(e -> e.getEmail().equals("test@example.com")));
 	}
 
 	@Test
@@ -41,7 +38,6 @@ public class UserMapperTest {
 		user.setUsername(username);
 		user.setCreatedAt(Instant.now());
 		user.setUpdatedAt(user.getCreatedAt());
-		user.setEmails(Set.of(new UserEmail("test@example.com")));
 		
 		UserDTO dto = new UserDTO(user);
 
@@ -49,7 +45,6 @@ public class UserMapperTest {
 		assertTrue(dto.getCreatedAt().equals(user.getCreatedAt()));
 		assertTrue(dto.getUpdatedAt().equals(user.getUpdatedAt()));
 		assertTrue(dto.getRole().equals(user.getRole()));
-		assertTrue(dto.getEmails().stream().anyMatch(e -> e.getEmail().equals("test@example.com")));
 	}
 
 }

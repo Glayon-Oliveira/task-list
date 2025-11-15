@@ -35,7 +35,7 @@ public class SubtaskMapperTest {
 		assertTrue(subtask.getName().equals(create.getName()));
 		assertTrue(subtask.getSummary().equals(create.getSummary()));
 		assertTrue(subtask.getDurationMinutes() == create.getDurationMinutes());
-		assertTrue(subtask.getTask().getId().equals(create.getTaskId()));
+		assertTrue(subtask.getTaskId() == create.getTaskId());
 	}
 
 	@Test
@@ -48,7 +48,7 @@ public class SubtaskMapperTest {
 		subtask.setPosition(position);
 		subtask.setCreatedAt(createdAt);
 		subtask.setUpdatedAt(updatedAt);
-		subtask.setTask(task);
+		subtask.setTaskId(task.getId());
 
 		SubtaskDTO dto = new SubtaskDTO(subtask);
 

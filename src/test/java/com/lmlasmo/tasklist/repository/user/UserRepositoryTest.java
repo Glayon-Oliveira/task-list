@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.repository.user;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.OffsetDateTime;
@@ -8,18 +9,13 @@ import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import com.lmlasmo.tasklist.model.User;
+import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.model.UserStatusType;
 
-import jakarta.persistence.EntityManager;
-
 public class UserRepositoryTest extends AbstractUserRepositoryTest {
-
-	@Autowired
-	private EntityManager em;
 
 	private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
@@ -28,28 +24,29 @@ public class UserRepositoryTest extends AbstractUserRepositoryTest {
 		String newPassword = encoder.encode(UUID.randomUUID().toString());
 
 		getUsers().forEach(u -> {
-			em.detach(u);
-
 			u.setPassword(newPassword);
-			getUserRepository().save(u);
+			getUserRepository().save(u).block();
 
-			String password = getUserRepository().findById(u.getId())
-					.orElseThrow().getPassword();
+			String password = getUserRepository().findById(u.getId()).block().getPassword();
 
 			assertTrue(password.equals(newPassword));
 		});
 	}
 	
 	@Test
-	void finds() {
-		int size = getUserRepository().findStatusSummaryByStatus(UserStatusType.ACTIVE).size();
+	void findByStatus() {
+		int size = getUserRepository().findStatusSummaryByStatus(UserStatusType.ACTIVE)
+				.collectList().block()
+				.size();
 		
 		assertTrue(size > 0);
 		
 		OffsetDateTime after = OffsetDateTime.now();
 		after = after.withSecond(0).withNano(0).minusMonths(5);
 		
-		size = getUserRepository().findStatusSummaryByStatusAndLastLoginAfter(UserStatusType.ACTIVE, after.toInstant()).size();
+		size = getUserRepository().findStatusSummaryByStatusAndLastLoginAfter(UserStatusType.ACTIVE, after.toInstant())
+				.collectList().block()
+				.size();
 		
 		assertTrue(size > 0);
 	}
@@ -62,12 +59,10 @@ public class UserRepositoryTest extends AbstractUserRepositoryTest {
 		
 		ids = new ArrayList<>(ids);
 		
-		getUsers().forEach(em::detach);
-		
 		getUserRepository().changeStatusByIds(ids, UserStatusType.INACTIVE);
 		
 		getUserRepository().findAll()
-			.forEach(u -> assertTrue(u.getStatus().equals(UserStatusType.INACTIVE)));
+			.doOnNext(u -> assertTrue(u.getStatus().equals(UserStatusType.INACTIVE)));
 	}
 
 	@Test
@@ -83,7 +78,21 @@ public class UserRepositoryTest extends AbstractUserRepositoryTest {
 				.map(User::getId)
 				.toList();
 		
-		getUserRepository().deleteAllByIdInBatch(ids);
+		getUserRepository().deleteAllById(ids);
+	}
+	
+	@Test
+	void findBy() {
+		getUsers().forEach(u -> {
+			User user = getUserRepository().findByUsername(u.getUsername()).block();
+			
+			assertEquals(user.getUsername(), u.getUsername());
+			
+			UserEmail email = getEmails().get(u.getId());			
+			user = getUserRepository().findByEmail(email.getEmail()).block();
+			
+			assertEquals(user.getId(), email.getUserId());
+		});
 	}
 
 }

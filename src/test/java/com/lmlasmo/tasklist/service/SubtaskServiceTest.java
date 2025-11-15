@@ -3,11 +3,11 @@ package com.lmlasmo.tasklist.service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 
@@ -16,20 +16,26 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.reactive.TransactionalOperator;
 
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 
-import jakarta.persistence.EntityExistsException;
-import jakarta.persistence.EntityNotFoundException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 public class SubtaskServiceTest {
 
 	@Mock
 	private SubtaskRepository subtaskRepository;
+	
+	@Mock
+	private TransactionalOperator operator;
 
 	@InjectMocks
 	private SubtaskService subtaskService;
@@ -47,31 +53,13 @@ public class SubtaskServiceTest {
 
 		List<PositionSummary> idPositions = List.of(new PositionSummary(1, 0, 1));
 
-		when(subtaskRepository.findPositionSummaryByTaskId(taskId)).thenReturn(idPositions);
-		when(subtaskRepository.save(any(Subtask.class))).thenReturn(subtask);
+		when(subtaskRepository.findPositionSummaryByTaskId(taskId)).thenReturn(Flux.fromIterable(idPositions));
+		when(subtaskRepository.save(any(Subtask.class))).thenReturn(Mono.just(subtask));
 
-		assertDoesNotThrow(() -> subtaskService.save(create));
+		assertDoesNotThrow(() -> subtaskService.save(create).block());
 	}
 
-	@Test
-	void delete() {
-		int maxId = 10;
-		List<Integer> ids = new ArrayList<>();
-
-		for(int cc = 1; cc <= maxId; cc++) {
-			when(subtaskRepository.existsById(cc)).thenReturn(true);
-			ids.add(cc);
-		}
-
-		when(subtaskRepository.existsById(maxId+1)).thenReturn(false);
-
-		assertDoesNotThrow(() -> subtaskService.delete(ids));
-
-		ids.add(maxId+1);
-
-		assertThrows(EntityNotFoundException.class, () ->  subtaskService.delete(ids));
-	}
-
+	@SuppressWarnings("unchecked")
 	@Test
 	void updatePosition() {
 		List<PositionSummary> idPositions = new ArrayList<>();
@@ -86,13 +74,17 @@ public class SubtaskServiceTest {
 			int randomPosition = new Random().nextInt(1, maxId+1);
 			int newPosition =(randomPosition != ip.getPosition()) ? randomPosition : maxId/2;
 
-			when(subtaskRepository.findPositionSummaryById(maxId+1)).thenReturn(Optional.empty());
-			when(subtaskRepository.findPositionSummaryById(ip.getId())).thenReturn(Optional.of(ip));
-			when(subtaskRepository.findPositionSummaryByRelatedSubtaskId(ip.getId())).thenReturn(new ArrayList<>(idPositions));
+			when(subtaskRepository.updatePriority(any(), anyInt())).thenReturn(Mono.empty());
+			when(subtaskRepository.findPositionSummaryById(maxId+1)).thenReturn(Mono.empty());
+			when(subtaskRepository.findPositionSummaryById(ip.getId())).thenReturn(Mono.just(ip));
+			when(subtaskRepository.findPositionSummaryByRelatedSubtaskId(ip.getId())).thenReturn(Flux.fromIterable(new ArrayList<>(idPositions)));
+			
+			when(subtaskRepository.getOperator()).thenReturn(operator);
+			when(operator.transactional(any(Mono.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-			assertThrows(EntityNotFoundException.class, () -> subtaskService.updatePosition(maxId+1, newPosition));
-			assertThrows(EntityExistsException.class, () -> subtaskService.updatePosition(ip.getId(), ip.getPosition()));
-			assertDoesNotThrow(() -> subtaskService.updatePosition(ip.getId(), newPosition));
+			assertThrows(ResourceNotFoundException.class, () -> subtaskService.updatePosition(maxId+1, newPosition).block());			
+			assertThrows(ResourceAlreadyExistsException.class, () -> subtaskService.updatePosition(ip.getId(), ip.getPosition()).block());
+			assertDoesNotThrow(() -> subtaskService.updatePosition(ip.getId(), newPosition).block());
 		});
 
 	}

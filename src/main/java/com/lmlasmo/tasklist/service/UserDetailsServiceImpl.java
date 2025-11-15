@@ -8,31 +8,36 @@ import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.model.EmailStatusType;
 import com.lmlasmo.tasklist.model.User;
+import com.lmlasmo.tasklist.repository.UserEmailRepository;
 import com.lmlasmo.tasklist.repository.UserRepository;
 
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 	
 	private UserRepository repository;
+	private UserEmailRepository emailRepository;
 
 	@Override
-	public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+	public UserDetails loadUserByUsername(String login) throws UsernameNotFoundException {
 		User user = null;
 		
-		if(username.contains("@")) {
-			user = repository.findByEmailsEmail(username)
-					.orElseThrow(() -> new UsernameNotFoundException("User not found"));
+		if(login.contains("@")) {
+			user = repository.findByEmail(login)
+					.switchIfEmpty(Mono.error(new UsernameNotFoundException("User not found")))
+					.block();
 			
-			user.getEmails().stream()
-				.filter(e -> e.getEmail().equals(username) && EmailStatusType.getAllowedStatus().contains(e.getStatus()))
-				.findFirst()
-				.orElseThrow(() -> new DisabledException("Email is not active"));
+			emailRepository.existsByEmailAndStatusIn(login, EmailStatusType.getAllowedStatus())
+				.filter(Boolean::booleanValue)
+				.switchIfEmpty(Mono.error(new DisabledException("Email is not active")))
+				.block();
 		}else {
-			user = repository.findByUsername(username)
-					.orElseThrow(() -> new UsernameNotFoundException("User not found"));
+			user = repository.findByUsername(login)
+					.switchIfEmpty(Mono.error(new UsernameNotFoundException("User not found")))
+					.block();
 		}
 		
 		return user;

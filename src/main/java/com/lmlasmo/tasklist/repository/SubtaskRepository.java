@@ -1,27 +1,22 @@
 package com.lmlasmo.tasklist.repository;
 
-import java.util.List;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.custom.SubtaskRepositoryCustom;
 
-public interface SubtaskRepository extends JpaRepository<Subtask, Integer>, SubtaskRepositoryCustom {
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-	public Page<Subtask> findByTaskId(int taskId, Pageable pageable);
+public interface SubtaskRepository extends ReactiveCrudRepository<Subtask, Integer>, SubtaskRepositoryCustom {
+
+	public Flux<Subtask> findByTaskId(int taskId);
 	
-	public boolean existsByTaskIdAndStatus(int taskId, TaskStatusType status);
+	public Mono<Boolean> existsByTaskIdAndStatus(int taskId, TaskStatusType status);
 	
-	public boolean existsByIdAndTaskUserId(int subtaskId, int userId);
-	
-	public boolean existsByIdAndVersion(int id, long version);
+	public Mono<Boolean> existsByIdAndVersion(int id, long version);
 		
-	public long countByTaskId(int taskId);	
-
-	public long countByIdInAndTaskUserId(List<Integer> subtaskIds, int userId);
+	public Mono<Long> countByTaskId(int taskId);
 	
 }
