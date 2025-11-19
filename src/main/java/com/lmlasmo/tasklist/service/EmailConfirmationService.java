@@ -18,10 +18,11 @@ import org.springframework.stereotype.Component;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationHashDTO;
 import com.lmlasmo.tasklist.exception.InvalidEmailCodeException;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
 
-import jakarta.persistence.EntityExistsException;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @RequiredArgsConstructor
 @Component
@@ -41,43 +42,47 @@ public class EmailConfirmationService {
 		this.uuid = UUID.randomUUID();
 	}
 	
-	public EmailConfirmationHashDTO sendConfirmationEmail(String email, EmailConfirmationScope scope) {
+	public Mono<EmailConfirmationHashDTO> sendConfirmationEmail(String email, EmailConfirmationScope scope) {
 		return sendConfirmationEmail(email, scope, null);
 	}
 	
-	public EmailConfirmationHashDTO sendConfirmationEmail(String email, EmailConfirmationScope scope, Map<String, Object> extra) {		
-		EmailConfirmationCodeHashDTO codeHash = createCodeHash(email, scope, extra);
-		
-		String emailBody = "Code: " + codeHash.getCode();
-		emailService.send(email, "Confirmation code of email", emailBody);
-		
-		return new EmailConfirmationHashDTO(codeHash.getHash(), codeHash.getTimestamp());
+	public Mono<EmailConfirmationHashDTO> sendConfirmationEmail(String email, EmailConfirmationScope scope, Map<String, Object> extra) {		
+		return createCodeHash(email, scope, extra)
+				.flatMap(ch -> {
+					String emailBody = "Code: " + ch.getCode();
+					return emailService.send(email, "Confirmation code of email", emailBody)
+							.thenReturn(ch);
+				})
+				.map(ch -> new EmailConfirmationHashDTO(ch.getHash(), ch.getTimestamp()));
 	}
 	
-	public EmailConfirmationCodeHashDTO createCodeHash(String email, EmailConfirmationScope scope) {
+	public Mono<EmailConfirmationCodeHashDTO> createCodeHash(String email, EmailConfirmationScope scope) {
 		return createCodeHash(email, scope, null);
 	}
 	
-	public EmailConfirmationCodeHashDTO createCodeHash(String email, EmailConfirmationScope scope, Map<String, Object> extra) {
-		if(scope.equals(EmailConfirmationScope.LINK) && userEmailService.existsByEmail(email)) {
-			throw new EntityExistsException("Email already used");
-		}
-		
-		extra = extra == null ? new TreeMap<>() : new TreeMap<>(extra);
-		
-		Instant now = Instant.now();
-		Instant expires = now.plus(duration);
-		
-		String code = String.format("%06d", new SecureRandom().nextInt(1_000_000));		
-		HashBody body = new HashBody(uuid, email, code, scope, now, expires, extra);
-		
-		String hash = generateHash(body.toString());		
-		
-		return new EmailConfirmationCodeHashDTO(hash, now, code);
+	public Mono<EmailConfirmationCodeHashDTO> createCodeHash(String email, EmailConfirmationScope scope, Map<String, Object> extra) {
+		return userEmailService.existsByEmail(email)
+				.flatMap(e -> {
+					return e && EmailConfirmationScope.LINK.equals(scope) 
+							? Mono.error(new ResourceAlreadyExistsException("Email already used"))
+							: Mono.defer(() -> {
+								Map<String, Object> fExtra = extra == null ? new TreeMap<>() : new TreeMap<>(extra);
+								
+								Instant now = Instant.now();
+								Instant expires = now.plus(duration);
+								
+								String code = String.format("%06d", new SecureRandom().nextInt(1_000_000));		
+								HashBody body = new HashBody(uuid, email, code, scope, now, expires, fExtra);
+								
+								String hash = generateHash(body.toString());		
+								
+								return Mono.just(new EmailConfirmationCodeHashDTO(hash, now, code));
+							});
+				});
 	}
 	
-	public void valideCodeHash(EmailConfirmationCodeHashDTO codeHash, String email, EmailConfirmationScope scope) {
-		valideCodeHash(codeHash, email, scope, null);
+	public Mono<Void> valideCodeHash(EmailConfirmationCodeHashDTO codeHash, String email, EmailConfirmationScope scope) {
+		return Mono.fromRunnable(() -> valideCodeHash(codeHash, email, scope, null));
 	}
 	
 	public void valideCodeHash(EmailConfirmationCodeHashDTO codeHash, String email, EmailConfirmationScope scope, Map<String, Object> extra) {

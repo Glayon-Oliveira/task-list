@@ -4,69 +4,76 @@ import java.util.Map;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
-import org.springframework.orm.jpa.JpaOptimisticLockingFailureException;
-import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.reactive.resource.NoResourceFoundException;
+import org.springframework.web.server.MethodNotAllowedException;
 
 import com.lmlasmo.tasklist.advice.exception.util.AdviceWrapper;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.exception.PreconditionFailedException;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 
-import jakarta.persistence.EntityExistsException;
-import jakarta.persistence.EntityNotFoundException;
-import jakarta.servlet.http.HttpServletRequest;
+import reactor.core.publisher.Mono;
 
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
 public class MainAdviceController {
 	
-	@ExceptionHandler(EntityNotFoundException.class)
+	@ExceptionHandler(ResourceNotFoundException.class)
 	@ResponseStatus(code = HttpStatus.NOT_FOUND)
-	public Map<String, Object> exceptionResponse(EntityNotFoundException exception, HttpServletRequest request){
-		return AdviceWrapper.wrapper(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+	public Map<String, Object> exceptionResponse(ResourceNotFoundException exception, ServerHttpRequest req){
+		return AdviceWrapper.wrapper(HttpStatus.NOT_FOUND, exception.getMessage(), req);
 	}
 	
 	@ExceptionHandler(NoResourceFoundException.class)
 	@ResponseStatus(code = HttpStatus.NOT_FOUND)
-	public Map<String, Object> exceptionResponse(NoResourceFoundException exception, HttpServletRequest request){
-		return AdviceWrapper.wrapper(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+	public Mono<Map<String, Object>> exceptionResponse(NoResourceFoundException exception, ServerHttpRequest req){
+		return Mono.just(AdviceWrapper.wrapper(HttpStatus.NOT_FOUND, exception.getMessage(), req));
 	}
 	
-	@ExceptionHandler(EntityExistsException.class)
+	@ExceptionHandler(ResourceAlreadyExistsException.class)
 	@ResponseStatus(code = HttpStatus.CONFLICT)
-	public Map<String, Object> exceptionResponse(EntityExistsException exception, HttpServletRequest request){		
-		return AdviceWrapper.wrapper(HttpStatus.CONFLICT, exception.getMessage(), request);
+	public Map<String, Object> exceptionResponse(ResourceAlreadyExistsException exception, ServerHttpRequest req){		
+		return AdviceWrapper.wrapper(HttpStatus.CONFLICT, exception.getMessage(), req);
 	}
 	
-	@ExceptionHandler(JpaOptimisticLockingFailureException.class)
+	@ExceptionHandler(OptimisticLockingFailureException.class)
 	@ResponseStatus(code = HttpStatus.CONFLICT)
-	public Map<String, Object> exceptionResponse(JpaOptimisticLockingFailureException exception, HttpServletRequest request) {
-		return AdviceWrapper.wrapper(HttpStatus.CONFLICT, "The entity has been modified by another process. Please update the data and try again", request);
+	public Map<String, Object> exceptionResponse(OptimisticLockingFailureException exception, ServerHttpRequest req) {
+		return AdviceWrapper.wrapper(HttpStatus.CONFLICT, "The entity has been modified by another process. Please update the data and try again", req);
 	}
 	
 	@ExceptionHandler(PreconditionFailedException.class)
 	@ResponseStatus(code = HttpStatus.PRECONDITION_FAILED)
-	public Map<String, Object> exceptionResponse(PreconditionFailedException ex, HttpServletRequest req) {
-		return AdviceWrapper.wrapper(HttpStatus.PRECONDITION_FAILED, "ETag does not match current resource version", req);
+	public Mono<Map<String, Object>> exceptionResponse(PreconditionFailedException ex, ServerHttpRequest req) {
+		return Mono.just(AdviceWrapper.wrapper(HttpStatus.PRECONDITION_FAILED, "ETag does not match current resource version", req));
 	}
 	
-	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+	@ExceptionHandler(MethodNotAllowedException.class)
 	@ResponseStatus(code = HttpStatus.METHOD_NOT_ALLOWED)
-	public Map<String, Object> exceptionResponse(HttpRequestMethodNotSupportedException ex, HttpServletRequest req){
+	public Mono<Map<String, Object>> exceptionResponse(MethodNotAllowedException ex, ServerHttpRequest req){
 		String message = "HTTP method not supported. Supported methods %s";
-		message = String.format(message, String.join(", ", ex.getSupportedMethods()));
 		
-		return AdviceWrapper.wrapper(HttpStatus.METHOD_NOT_ALLOWED,message, req);
+		String[] methods = ex.getSupportedMethods().stream()
+				.map(HttpMethod::name)
+				.toArray(String[]::new);
+		
+		message = String.format(message, String.join(", ", methods));
+		
+		return Mono.just(AdviceWrapper.wrapper(HttpStatus.METHOD_NOT_ALLOWED,message, req));
 	}	
 	
 	@ExceptionHandler(EntityNotDeleteException.class)
 	@ResponseStatus(code = HttpStatus.INTERNAL_SERVER_ERROR)
-	public Map<String, Object> exceptionResponse(EntityNotDeleteException ex, HttpServletRequest req){
-		return AdviceWrapper.wrapper(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), req);
+	public Mono<Map<String, Object>> exceptionResponse(EntityNotDeleteException ex, ServerHttpRequest req){
+		return Mono.just(AdviceWrapper.wrapper(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(), req));
 	}
 	
 }

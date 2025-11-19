@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.controller.subtask;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
@@ -16,12 +17,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -30,13 +29,14 @@ import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.SubtaskController;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
-import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
-import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
-@WebMvcTest(controllers = SubtaskController.class)
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+@WebFluxTest(controllers = SubtaskController.class)
 @TestInstance(Lifecycle.PER_CLASS)
 public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 
@@ -64,12 +64,16 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 		subtask = new Subtask();
 		subtask.setId(1);
 		subtask.setPosition(1);
-		subtask.setTask(new Task(1));
+		subtask.setTaskId(1);
 		subtask.setCreatedAt(Instant.now());
 		subtask.setUpdatedAt(subtask.getCreatedAt());
+		
+		Mono<Void> accessError = Mono.error(new AccessDeniedException("Access denied"));
 
-		when(accessService.canAccessTask(eq(subtask.getId()), eq(getDefaultUser().getId()))).thenReturn(false);
-		when(accessService.canAccessTask(eq(subtask.getTask().getId()), eq(getDefaultUser().getId()))).thenReturn(false);
+		when(accessService.canAccessSubtask(eq(subtask.getId()), eq(getDefaultUser().getId()))).thenReturn(accessError);
+		when(accessService.canAccessSubtask(anyList(), eq(getDefaultUser().getId()))).thenReturn(accessError);
+		when(accessService.canAccessTask(eq(subtask.getId()), eq(getDefaultUser().getId()))).thenReturn(accessError);
+		when(accessService.canAccessTask(eq(subtask.getTaskId()), eq(getDefaultUser().getId()))).thenReturn(accessError);
 	}
 
 	@Test
@@ -86,48 +90,59 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 		String create = String.format(createFormat,
 				"Subtask Test - Name UUID = " + UUID.randomUUID().toString(),
 				"Subtask Test - Summary UUID = " + UUID.randomUUID().toString(),
-				subtask.getTask().getId());
-
-		when(accessService.canAccessTask(subtask.getTask().getId(), getDefaultUser().getId())).thenReturn(false);
-
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
-				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(create))
-		.andExpect(MockMvcResultMatchers.status().is(403))
-		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
+				subtask.getTaskId());
+		
+		when(subtaskService.save(any())).thenReturn(Mono.empty());
+		
+		getWebTestClient().post()
+			.uri(baseUri)
+			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(create)
+			.exchange()
+			.expectStatus().isForbidden();
 	}
 
 	@Test
 	void getSubtasksByTask() throws Exception {
-		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
-				.param("taskId", String.valueOf(subtask.getTask().getId()))
-				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(403))
-		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
+		when(subtaskService.findByTask(anyInt())).thenReturn(Flux.empty());
+		
+		getWebTestClient().get()
+			.uri(ub -> ub.path(baseUri)
+					.queryParam("taskId", subtask.getTaskId())
+					.build())
+			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.exchange()
+			.expectStatus().isForbidden();
 	}
 
 	@Test
 	void getSubtaskById() throws Exception {
-		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + "/" + subtask.getId())
-				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(403))
-		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
+		when(subtaskService.findById(anyInt())).thenReturn(Mono.empty());
+		
+		getWebTestClient().get()
+			.uri(baseUri+"/"+subtask.getId())
+			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.exchange()
+			.expectStatus().isForbidden();
 	}
 
 	@Test
-	void update() throws Exception {
+	void update() throws Exception {		
 		UpdateSubtaskDTO update = new UpdateSubtaskDTO();
 		update.setName(UUID.randomUUID().toString());
 		update.setSummary(UUID.randomUUID().toString());
 		update.setDurationMinutes(5);
-
-		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + subtask.getId())
-				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(mapper.writeValueAsString(update)))
-		.andExpect(MockMvcResultMatchers.status().is(403))
-		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
+		
+		when(subtaskService.update(anyInt(), any())).thenReturn(Mono.empty());
+		
+		getWebTestClient().patch()
+			.uri(baseUri+"/"+subtask.getId())			
+			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(mapper.writeValueAsString(update))
+			.exchange()
+			.expectStatus().isForbidden();
 	}
 
 	@Test
@@ -138,14 +153,16 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 
 		MultiValueMap<String, String> baseParams = new LinkedMultiValueMap<>();
 		baseParams.add("subtaskIds", strIds);
-
-		when(accessService.canAccessSubtask(anyList(), anyInt())).thenReturn(false);
-
-		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
-				.params(baseParams)
-				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(403))
-		.andExpect(result -> VerifyResolvedException.verify(result, AccessDeniedException.class));
+		
+		when(subtaskService.delete(anyList())).thenReturn(Mono.empty());
+		
+		getWebTestClient().delete()
+			.uri(ub -> ub.path(baseUri)
+					.queryParams(baseParams)
+					.build())
+			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.exchange()
+			.expectStatus().isForbidden();
 	}
 
 	@Test
@@ -154,11 +171,16 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 
 		MultiValueMap<String, String> baseParams = new LinkedMultiValueMap<>();
 		baseParams.add("position", String.valueOf(newPosition));
-
-		getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri+"/"+subtask.getId())
-				.params(baseParams)
-				.header("Authorization", "Bearer " + getDefaultAccessJwtToken()))
-		.andExpect(MockMvcResultMatchers.status().is(403));
+		
+		when(subtaskService.updatePosition(anyInt(), anyInt())).thenReturn(Mono.empty());
+		
+		getWebTestClient().patch()
+			.uri(ub -> ub.path(baseUri+"/"+subtask.getId())
+					.queryParams(baseParams)
+					.build())
+			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.exchange()
+			.expectStatus().isForbidden();
 	}
 
 }

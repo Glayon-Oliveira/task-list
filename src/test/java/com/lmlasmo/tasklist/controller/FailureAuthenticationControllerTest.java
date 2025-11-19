@@ -13,26 +13,24 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.param.FailureAuthenticateEndpointSource;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailService;
+import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
 import com.lmlasmo.tasklist.service.UserEmailService;
-import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
-import jakarta.persistence.EntityNotFoundException;
+import reactor.core.publisher.Mono;
 
-@WebMvcTest
+@WebFluxTest
 @TestInstance(Lifecycle.PER_CLASS)
 public class FailureAuthenticationControllerTest extends AbstractControllerTest {
 
@@ -53,22 +51,27 @@ public class FailureAuthenticationControllerTest extends AbstractControllerTest 
 	
 	@MockitoBean
 	private EmailConfirmationService confirmationService;
+	
+	@MockitoBean
+	private ResourceAccessService resourceAccess;
 
 	@Override
 	@BeforeEach
 	protected void setUp() {
 		super.setUp();
 
-		when(getUserService().existsById(anyInt())).thenReturn(false);
-		when(getUserService().findById(anyInt())).thenThrow(EntityNotFoundException.class);
+		when(getUserService().existsById(anyInt())).thenReturn(Mono.just(false));
+		when(getUserService().findById(anyInt())).thenThrow(ResourceNotFoundException.class);
 	}
 
 	@ParameterizedTest
 	@MethodSource("com.lmlasmo.tasklist.param.FailureAuthenticateEndpointSource#source")
 	void authenticateEndpoint(FailureAuthenticateEndpointSource.FailureAuthenticateEndpointData data) throws Exception {
 		for(HttpMethod method: data.getMethods()) {
-			getMockMvc().perform(MockMvcRequestBuilders.request(method, data.getEndpoint()))
-			.andExpect(MockMvcResultMatchers.status().is(401));
+			getWebTestClient().method(method)
+				.uri(data.getEndpoint())
+				.exchange()
+				.expectStatus().isUnauthorized();
 		}
 	}
 
@@ -92,12 +95,13 @@ public class FailureAuthenticationControllerTest extends AbstractControllerTest 
 		for(Entry<String, String> credential: credentials) {
 
 			String signIn = String.format(signInFormat, credential.getKey(), credential.getValue());
-
-			getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
-					.contentType(MediaType.APPLICATION_JSON)
-					.content(signIn))
-			.andExpect(MockMvcResultMatchers.status().is(401))
-			.andExpect(result -> VerifyResolvedException.verify(result, BadCredentialsException.class));
+			
+			getWebTestClient().post()
+				.uri(baseUri)
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(signIn)
+				.exchange()
+				.expectStatus().isUnauthorized();
 		}
 	}
 

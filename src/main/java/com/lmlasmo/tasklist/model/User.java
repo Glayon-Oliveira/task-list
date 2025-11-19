@@ -1,30 +1,25 @@
 package com.lmlasmo.tasklist.model;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.ReadOnlyProperty;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
+import io.r2dbc.spi.Readable;
+
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -35,14 +30,12 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @RequiredArgsConstructor
-@Entity
 @Table(name = "users")
 public class User implements UserDetails{
 
 	private static final long serialVersionUID = -7660617497542184786L;
 	
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@NonNull
 	private Integer id;
 	
@@ -51,47 +44,52 @@ public class User implements UserDetails{
 	
 	@Column
 	private String password;
-	
-	@Enumerated(EnumType.STRING)
+		
 	@Column
 	private RoleType role = RoleType.COMUM;
-	
-	@Enumerated(EnumType.STRING)
+		
 	@Column
 	private UserStatusType status = UserStatusType.ACTIVE;
 	
-	@CreationTimestamp
-	@Column(name = "created_at")
+	@ReadOnlyProperty
+	@Column("created_at")
 	private Instant createdAt;
 	
-	@UpdateTimestamp
-	@Column(name = "updated_at")
+	@ReadOnlyProperty
+	@Column("updated_at")
 	private Instant updatedAt;
-	
-	@Column(name = "last_login")
+		
+	@Column("last_login")
 	private Instant lastLogin;
 	
-	@Column(name = "row_version")
+	@Column("row_version")
 	@Version
 	private long version;
-	
-	@OneToMany(mappedBy = "user", cascade = CascadeType.REMOVE)
-	private Set<Task> tasks;
-	
-	@OneToMany(mappedBy = "user", cascade = {CascadeType.PERSIST, CascadeType.REMOVE})
-	private Set<UserEmail> emails;
 	
 	public User(CreateUserDTO signup) {
 		this.username = signup.getUsername();
 		this.password = signup.getPassword();
+	}
+	
+	public User(Readable row) {
+		this.id = row.get("id", Integer.class);
+		this.username = row.get("username", String.class);
+		this.password = row.get("password", String.class);
+		this.role = RoleType.valueOf(row.get("role", String.class));
+		this.status = UserStatusType.valueOf(row.get("status", String.class));
+		this.version = row.get("row_version", Long.class);
 		
-		UserEmail email = new UserEmail();
-		email.setEmail(signup.getEmail());
-		email.setPrimary(true);
-		email.setUser(this);
+		this.createdAt = Optional.ofNullable(row.get("created_at", LocalDateTime.class))
+				.map(i -> i.toInstant(ZoneOffset.UTC))
+				.orElse(null);
 		
-		this.emails = new HashSet<>();
-		emails.add(email);
+		this.updatedAt = Optional.ofNullable(row.get("updated_at", LocalDateTime.class))
+				.map(i -> i.toInstant(ZoneOffset.UTC))
+				.orElse(null);
+		
+		this.lastLogin = Optional.ofNullable(row.get("last_login", LocalDateTime.class))
+				.map(i -> i.toInstant(ZoneOffset.UTC))
+				.orElse(null);
 	}
 
 	@Override

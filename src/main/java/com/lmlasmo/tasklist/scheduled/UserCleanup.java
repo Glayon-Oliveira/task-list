@@ -22,17 +22,17 @@ public class UserCleanup {
 	
 	@Scheduled(cron = "0 0 3 1 */7 *", zone = "UTC")
     public void taskMarkUsersInactive() {
-		userService.markUsersInactive(expires);
+		userService.markUsersInactive(expires).block();
     }
 
     @Scheduled(cron = "0 0 4 1 */3 *", zone = "UTC")
     public void taskMarkInactiveForDeletion() {
-    	userService.markInactiveUsersForDeletion();
+    	userService.markInactiveUsersForDeletion().block();
     }
 
     @Scheduled(cron = "0 0 5 1 */6 *", zone = "UTC")
     public void taskDeleteUsersMarked() {
-    	userService.deleteUsersMarkedForDeletion();
+    	userService.deleteUsersMarkedForDeletion().block();
     }
 	
 }

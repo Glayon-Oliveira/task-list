@@ -7,11 +7,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.lmlasmo.tasklist.model.Task;
-import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.repository.TaskRepository;
 import com.lmlasmo.tasklist.repository.user.AbstractUserRepositoryTest;
 
@@ -46,14 +46,19 @@ public class AbstractTaskRepositoryTest extends AbstractUserRepositoryTest {
 				task.setSummary(summary);
 				task.setDeadline(deadline.toInstant());
 				task.setDeadlineZone(deadlineZone);
-				task.setUser(new User(u.getId()));
+				task.setUserId(u.getId());
 
-				task = taskRepository.save(task);
+				task = taskRepository.save(task).block();
 				tasks.add(task);
 			}
 		});
 
 		tasks = Collections.unmodifiableList(tasks);
+	}
+	
+	@AfterEach
+	public void setDown() {
+		taskRepository.deleteAll().block();
 	}
 
 }

@@ -5,23 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.orm.jpa.JpaOptimisticLockingFailureException;
+import org.springframework.dao.OptimisticLockingFailureException;
 
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
-
-import jakarta.persistence.EntityManager;
+import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
 public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
-
-	@Autowired
-	private EntityManager em;
 
 	@Test
 	void delete() {
@@ -29,14 +23,24 @@ public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 			getTaskRepository().deleteById(t.getId());
 		});
 	}
+	
+	@Test
+	void findSummaryBy() {
+		getTasks().forEach(t -> {
+			StatusSummary summary = getTaskRepository().findStatusSummaryById(t.getId()).block();
+			
+			assertEquals(summary.getId(), t.getId());
+			assertEquals(summary.getStatus(), t.getStatus());
+			assertEquals(summary.getVersion(), t.getVersion());		
+		});
+	}
 
 	@Test
 	void findByUser() {
 		getUsers().forEach(u -> {
-			Pageable pageable = PageRequest.of(0, getMaxTasksPerUser());
-			Page<Task> page = getTaskRepository().findByUserId(u.getId(), pageable);
+			List<Task> tasks = getTaskRepository().findByUserId(u.getId()).collectList().block();
 
-			assertTrue(page.getSize() == getMaxTasksPerUser());
+			assertTrue(tasks.size() == getMaxTasksPerUser());
 		});
 	}
 
@@ -44,13 +48,12 @@ public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 	void updateStatus() {
 		getTasks().forEach(t -> {
 			for(TaskStatusType status: TaskStatusType.values()) {
-				getTaskRepository().updateStatus(new BasicSummary(t.getId(), t.getVersion()), status);
+				getTaskRepository().updateStatus(new BasicSummary(t.getId(), t.getVersion()), status).block();
 
-				Task task = getTaskRepository().findById(t.getId()).orElse(null);
-				em.refresh(task);
+				t = getTaskRepository().findById(t.getId()).block();
 
-				assertNotNull(task);
-				assertTrue(task.getStatus().equals(status));
+				assertNotNull(t);
+				assertTrue(t.getStatus().equals(status));
 			}
 		});
 	}
@@ -58,23 +61,45 @@ public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 	@Test
 	void updateStatusWithVersion() {
 	    getTasks().forEach(t -> {
-	        em.refresh(t);
+	    	
 	        long initialVersion = t.getVersion();
 	        
-	        getTaskRepository().updateStatus(new BasicSummary(t.getId(), t.getVersion()), TaskStatusType.COMPLETED);
-	        em.refresh(t);	        
+	        getTaskRepository().updateStatus(new BasicSummary(t.getId(), t.getVersion()), TaskStatusType.COMPLETED).block();
+	        
+	        Task task = getTaskRepository().findById(t.getId()).block();
 
-	        assertEquals(TaskStatusType.COMPLETED, t.getStatus());
-	        assertTrue(t.getVersion() > initialVersion);
+	        assertEquals(TaskStatusType.COMPLETED, task.getStatus());
+	        assertTrue(task.getVersion() > initialVersion);
 
-	        assertThrows(JpaOptimisticLockingFailureException.class, 
-	        		() -> getTaskRepository().updateStatus(new BasicSummary(t.getId(), initialVersion), TaskStatusType.IN_PROGRESS)
+	        assertThrows(OptimisticLockingFailureException.class, 
+	        		() -> getTaskRepository().updateStatus(new BasicSummary(t.getId(), initialVersion), TaskStatusType.IN_PROGRESS).block()
 	        		);
-
-	        em.refresh(t);
-	        assertEquals(TaskStatusType.COMPLETED, t.getStatus());
+	        
+	        assertEquals(TaskStatusType.COMPLETED, task.getStatus());
 	    });
 	}
 
+	@Test
+	void sumByVersion() {
+		getUsers().forEach(u -> {
+			
+			List<Task> tasks = getTasks()
+					.stream()
+					.filter(t -> u.getId().equals(t.getUserId()))
+					.toList();
+			
+			List<Integer> ids = tasks.stream()
+					.map(Task::getId)
+					.toList();
+			
+			long sumByUser = tasks.stream()
+					.map(Task::getVersion)
+					.reduce(Long::sum)
+					.orElse(0L);
+			
+			assertEquals(sumByUser, getTaskRepository().sumVersionByUser(u.getId()).block());
+			assertEquals(sumByUser, getTaskRepository().sumVersionByids(ids).block());
+		});
+	}
 
 }
