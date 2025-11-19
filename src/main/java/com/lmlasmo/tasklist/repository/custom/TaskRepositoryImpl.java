@@ -70,7 +70,7 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 				.map(i -> "?")
 				.collect(Collectors.joining(", "));
 		
-		String sql = "SELECT COALESCE(SUM(t.row_version), 0) FROM tasks WHERE id IN (%s)"
+		String sql = "SELECT COALESCE(CAST(SUM(t.row_version) AS BIGINT), 0) FROM tasks t WHERE id IN (%s)"
 				.formatted(placeholders);
 		
 		return template.getDatabaseClient()
@@ -82,7 +82,7 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 
 	@Override
 	public Mono<Long> sumVersionByUser(int userId) {
-		String sql = new StringBuilder("SELECT COALESCE(SUM(t.row_version), 0) FROM tasks t ")
+		String sql = new StringBuilder("SELECT COALESCE(CAST(SUM(t.row_version) AS BIGINT), 0) FROM tasks t ")
 				.append("JOIN users u ON t.user_id = u.id ")
 				.append("WHERE u.id = ?")
 				.toString();

@@ -13,6 +13,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
+import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
 public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 
@@ -20,6 +21,17 @@ public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 	void delete() {
 		getTasks().forEach(t -> {
 			getTaskRepository().deleteById(t.getId());
+		});
+	}
+	
+	@Test
+	void findSummaryBy() {
+		getTasks().forEach(t -> {
+			StatusSummary summary = getTaskRepository().findStatusSummaryById(t.getId()).block();
+			
+			assertEquals(summary.getId(), t.getId());
+			assertEquals(summary.getStatus(), t.getStatus());
+			assertEquals(summary.getVersion(), t.getVersion());		
 		});
 	}
 
@@ -67,5 +79,27 @@ public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 	    });
 	}
 
+	@Test
+	void sumByVersion() {
+		getUsers().forEach(u -> {
+			
+			List<Task> tasks = getTasks()
+					.stream()
+					.filter(t -> u.getId().equals(t.getUserId()))
+					.toList();
+			
+			List<Integer> ids = tasks.stream()
+					.map(Task::getId)
+					.toList();
+			
+			long sumByUser = tasks.stream()
+					.map(Task::getVersion)
+					.reduce(Long::sum)
+					.orElse(0L);
+			
+			assertEquals(sumByUser, getTaskRepository().sumVersionByUser(u.getId()).block());
+			assertEquals(sumByUser, getTaskRepository().sumVersionByids(ids).block());
+		});
+	}
 
 }

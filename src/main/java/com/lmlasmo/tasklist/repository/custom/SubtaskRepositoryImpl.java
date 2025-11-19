@@ -245,7 +245,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.map(i -> "?")
 				.collect(Collectors.joining(", "));
 		
-		String sql = "SELECT COALESCE(SUM(s.row_version), 0) FROM subtasks WHERE id IN (%s)"
+		String sql = "SELECT COALESCE(CAST(SUM(s.row_version) AS BIGINT), 0) FROM subtasks s WHERE id IN (%s)"
 				.formatted(placeholders);
 		
 		return template.getDatabaseClient()
@@ -257,7 +257,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 
 	@Override
 	public Mono<Long> sumVersionByTask(int taskId) {
-		StringBuilder sql = new StringBuilder("SELECT COALESCE(SUM(s.row_version), 0) FROM subtasks s ")
+		StringBuilder sql = new StringBuilder("SELECT COALESCE(CAST(SUM(s.row_version) AS BIGINT), 0) FROM subtasks s ")
 				.append("JOIN tasks t ON s.task_id = t.id ")
 				.append("WHERE t.id = ?");
 		

@@ -289,6 +289,28 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 
 	    assertDoesNotThrow(() -> getSubtaskRepository().updateStatus(basics, TaskStatusType.COMPLETED).block());
 	}
+	
+	@Test
+	void sumVersion() {
+		getTasks().forEach(t -> {
+			
+			List<Subtask> subtasks = getSubtasks().stream()
+					.filter(s -> t.getId().equals(s.getTaskId()))
+					.toList();
+			
+			List<Integer> ids = subtasks.stream()
+					.map(Subtask::getId)
+					.toList();
+			
+			long sumByTask = subtasks.stream()
+					.map(Subtask::getVersion)
+					.reduce(Long::sum)
+					.orElse(0L);
+			
+			assertEquals(sumByTask, getSubtaskRepository().sumVersionByTask(t.getId()).block());
+			assertEquals(sumByTask, getSubtaskRepository().sumVersionByids(ids).block());
+		});
+	}
 
 
 }
