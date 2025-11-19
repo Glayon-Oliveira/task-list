@@ -1,50 +1,60 @@
 package com.lmlasmo.tasklist.advice.response;
 
+import java.util.List;
+
 import org.springframework.core.MethodParameter;
-import org.springframework.data.domain.Page;
-import org.springframework.http.MediaType;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.converter.HttpMessageConverter;
-import org.springframework.http.server.ServerHttpRequest;
-import org.springframework.http.server.ServerHttpResponse;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+import org.springframework.http.codec.ServerCodecConfigurer;
+import org.springframework.http.server.reactive.ServerHttpResponse;
+import org.springframework.stereotype.Component;
+import org.springframework.web.reactive.accept.RequestedContentTypeResolver;
+import org.springframework.web.reactive.result.method.annotation.ResponseBodyResultHandler;
+import org.springframework.web.server.ServerWebExchange;
 
 import com.lmlasmo.tasklist.dto.VersionedDTO;
 
-@RestControllerAdvice
-public class EtagResponseAdviceController implements ResponseBodyAdvice<Object>{
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-	@Override
-	public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
-		return true;
-	}
-
-	@Override
-	public Object beforeBodyWrite(Object body, MethodParameter returnType, MediaType selectedContentType,
-			Class<? extends HttpMessageConverter<?>> selectedConverterType, ServerHttpRequest request,
-			ServerHttpResponse response) {
+@Component
+@Order(-1000)
+public class EtagResponseAdviceController extends ResponseBodyResultHandler {
 		
-		long version = extractVersion(body);
-		
-		if(version >= 0) response.getHeaders().setETag(Long.toString(version));
-		
-		return body;
+	public EtagResponseAdviceController(ServerCodecConfigurer configurer, RequestedContentTypeResolver resolver) {
+		super(configurer.getWriters(), resolver);
 	}
 	
-	private long extractVersion(Object body) {
-		if (body instanceof VersionedDTO dto) return dto.getVersion();
-	    if (body instanceof ResponseEntity<?> entity && entity.getBody() instanceof VersionedDTO dto) return dto.getVersion();
+	@Override
+	protected Mono<Void> writeBody(Object body, MethodParameter bodyParameter, ServerWebExchange exchange) {
+		return Mono.justOrEmpty(body)
+				.flatMap(this::extractVersion)
+				.doOnNext(v -> setETag(v, exchange))
+				.then(super.writeBody(body, bodyParameter, exchange));
+	}
+	
+	private Mono<Long> extractVersion(Object body) {
+		if (body instanceof VersionedDTO dto) return Mono.just(dto.getVersion());
+		
+		if(body instanceof List<?> list) return extractVersion(Flux.fromIterable(list));
+				
+	    if (body instanceof ResponseEntity<?> entity) return extractVersion(entity.getBody());
 	    
-	    if(body instanceof Page<?> page) {
-	    	return page.stream()
-	    			.filter(o -> o instanceof VersionedDTO)
-	    			.mapToLong(o -> ((VersionedDTO) o).getVersion())
-	    			.reduce((a, b) -> a+b)
-	    			.orElse(-1);
+	    if(body instanceof Mono<?> mono) return mono.flatMap(this::extractVersion);
+	    
+	    if(body instanceof Flux<?> flux) {
+	    	return flux.flatMap(this::extractVersion)
+	    			.reduce(Long::sum)
+	    			.defaultIfEmpty(-1L);
 	    }
 	    
-	    return -1;
-	}	
+	    return Mono.just(-1L);
+	}
+	
+	private void setETag(long version, ServerWebExchange exchange) {
+		ServerHttpResponse res = exchange.getResponse();
+		
+		if(version >= 0) res.getHeaders().setETag("\""+version+"\"");
+	}
 
 }

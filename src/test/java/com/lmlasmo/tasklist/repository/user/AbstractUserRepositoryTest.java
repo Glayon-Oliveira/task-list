@@ -4,36 +4,42 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserEmail;
+import com.lmlasmo.tasklist.repository.UserEmailRepository;
 import com.lmlasmo.tasklist.repository.UserRepository;
 
 import lombok.Getter;
 
-@DataJpaTest(showSql = false)
-@Transactional
+@DataR2dbcTest
 public class AbstractUserRepositoryTest {
 
 	@Getter
 	@Autowired
 	private UserRepository userRepository;
+	
+	@Getter
+	@Autowired
+	private UserEmailRepository userEmailRepository;
 
 	@Getter
 	private final int maxUsers = 5;
 
 	@Getter
 	private List<User> users = new ArrayList<>();
+	
+	@Getter
+	private Map<Integer, UserEmail> emails = new HashMap<>();
 
 	@Getter
 	private Map<Integer, String> passwords = new HashMap<>();
@@ -49,21 +55,27 @@ public class AbstractUserRepositoryTest {
 			User user = new User();
 			user.setUsername(username);
 			user.setPassword(encoder.encode(password));
-			user.setEmails(new HashSet<>());
 			user.setLastLogin(Instant.now());
+			user = userRepository.save(user).block();
 			
-			UserEmail userEmail = new UserEmail("test@example.com");
-			userEmail.setUser(user);
+			UserEmail userEmail = new UserEmail(UUID.randomUUID().toString()+"@example.com");
+			userEmail.setUserId(user.getId());
 			
-			user.getEmails().add(userEmail);
-
-			user = userRepository.save(user);
+			userEmail = userEmailRepository.save(userEmail).block();
+			
+			emails.put(user.getId(), userEmail);
+			
 			users.add(user);
 			passwords.put(user.getId(), password);
 		}
 
 		users = Collections.unmodifiableList(users);
 		passwords = Collections.unmodifiableMap(passwords);
+	}
+	
+	@AfterEach
+	public void setDown() {
+		userRepository.deleteAll().block();
 	}
 
 }

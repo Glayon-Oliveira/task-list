@@ -3,11 +3,7 @@ package com.lmlasmo.tasklist.dto;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.Set;
-import java.util.stream.Collectors;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
@@ -46,10 +42,6 @@ public class TaskDTO implements VersionedDTO {
 	@JsonProperty
 	private long version;
 	
-	@JsonProperty
-	@JsonInclude(content = Include.NON_NULL)
-	private Set<SubtaskDTO> subtasks;
-	
 	public TaskDTO(Task task) {
 		this.id = task.getId();
 		this.name = task.getName();
@@ -60,18 +52,6 @@ public class TaskDTO implements VersionedDTO {
 		this.version = task.getVersion();
 		this.deadlineZone = task.getDeadlineZone();
 		this.deadline = task.getDeadline().atZone(ZoneId.of(deadlineZone)).toOffsetDateTime();		
-	}
-	
-	public TaskDTO(Task task, boolean withSubtasks) {
-		this(task);
-		
-		if(withSubtasks) this.subtasks = task.getSubtasks().stream()
-				.map(SubtaskDTO::new)
-				.collect(Collectors.toSet());
-	}
-	
-	public void setDeadline(OffsetDateTime deadline) {
-		this.deadline = deadline.withSecond(0).withNano(0);
 	}
 
 }

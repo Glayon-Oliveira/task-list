@@ -1,23 +1,30 @@
 package com.lmlasmo.tasklist.repository;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.Collection;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.repository.reactive.ReactiveCrudRepository;
 
+import com.lmlasmo.tasklist.model.EmailStatusType;
 import com.lmlasmo.tasklist.model.UserEmail;
+import com.lmlasmo.tasklist.repository.custom.RepositoryCustom;
 
-public interface UserEmailRepository extends JpaRepository<UserEmail, Integer> {
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
-	public Optional<UserEmail> findByEmail(String email);
+public interface UserEmailRepository extends ReactiveCrudRepository<UserEmail, Integer>, RepositoryCustom {
+
+	public Mono<UserEmail> findByEmail(String email);
 	
-	public List<UserEmail> findByUserId(int userId);
+	public Flux<UserEmail> findByUserId(int userId);
 	
-	public boolean existsByEmail(String email);
+	public Mono<UserEmail> findByUserIdAndPrimary(int userId, boolean primary);
 	
-	public boolean existsByIdAndUserId(int emailId, int userId);
+	public Mono<Boolean> existsByEmail(String email);
+	
+	public Mono<Boolean> existsByIdAndUserId(int emailId, int userId);
 
-	public boolean existsByEmailAndUserId(String email, int userId);
+	public Mono<Boolean> existsByEmailAndUserId(String email, int userId);
 
+	public Mono<Boolean> existsByEmailAndStatusIn(String email, Collection<EmailStatusType> status);
 	
 }

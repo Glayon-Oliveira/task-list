@@ -2,23 +2,14 @@ package com.lmlasmo.tasklist.model;
 
 import java.time.Instant;
 
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.ReadOnlyProperty;
+import org.springframework.data.annotation.Version;
+import org.springframework.data.relational.core.mapping.Column;
+import org.springframework.data.relational.core.mapping.Table;
 
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
-import jakarta.persistence.Version;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -26,12 +17,10 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@Entity
 @Table(name = "subtasks")
 public class Subtask {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private int id;
 	
 	@Column
@@ -40,37 +29,35 @@ public class Subtask {
 	@Column
 	private String summary;
 	
-	@Column(name = "duration_minutes")
+	@Column("duration_minutes")
 	private int durationMinutes;
 	
-	@Enumerated(EnumType.STRING)
 	@Column
 	private TaskStatusType status = TaskStatusType.PENDING;
 	
 	@Column
 	private int position;
 	
-	@CreationTimestamp
-	@Column(name = "created_at")
+	@ReadOnlyProperty
+	@Column("created_at")
 	private Instant createdAt;
 	
-	@UpdateTimestamp
-	@Column(name = "updated_at")
+	@ReadOnlyProperty
+	@Column("updated_at")
 	private Instant updatedAt;
 	
-	@Column(name = "row_version")
+	@Column("row_version")
 	@Version
 	private long version;
 	
-	@ManyToOne(fetch = FetchType.EAGER)
-	@JoinColumn(name = "task_id")
-	private Task task;
+	@Column("task_id")
+	private int taskId;
 	
 	public Subtask(CreateSubtaskDTO create) {
 		this.name = create.getName();
 		this.durationMinutes = create.getDurationMinutes();
 		this.summary = create.getSummary();
-		this.task = new Task(create.getTaskId());
+		this.taskId = create.getTaskId();
 	}
 	
 }

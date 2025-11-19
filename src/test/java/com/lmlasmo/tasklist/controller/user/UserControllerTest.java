@@ -2,10 +2,13 @@ package com.lmlasmo.tasklist.controller.user;
 
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import java.io.UnsupportedEncodingException;
-import java.util.List;
 import java.util.UUID;
 
 import org.junit.jupiter.api.RepeatedTest;
@@ -16,14 +19,13 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
@@ -33,19 +35,19 @@ import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
-import com.lmlasmo.tasklist.model.UserEmail;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
 import com.lmlasmo.tasklist.param.user.SignInSource;
 import com.lmlasmo.tasklist.param.user.SignUpSource;
 import com.lmlasmo.tasklist.param.user.UpdatePasswordOfDefaultUserSource;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
 import com.lmlasmo.tasklist.service.EmailService;
+import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.UserEmailService;
-import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
-import jakarta.persistence.EntityExistsException;
+import reactor.core.publisher.Mono;
 
-@WebMvcTest(controllers = {AuthController.class, UserController.class})
+@WebFluxTest(controllers = {AuthController.class, UserController.class})
 @Import(EmailConfirmationService.class)
 @TestInstance(Lifecycle.PER_CLASS)
 public class UserControllerTest extends AbstractControllerTest {
@@ -58,6 +60,9 @@ public class UserControllerTest extends AbstractControllerTest {
 	
 	@MockitoBean
 	private EmailService emailService;
+	
+	@MockitoBean
+	private ResourceAccessService resourceAccess;
 	
 	@Autowired
 	private EmailConfirmationService confirmationService;
@@ -78,7 +83,9 @@ public class UserControllerTest extends AbstractControllerTest {
 					}
 				""";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(data.getEmail(), EmailConfirmationScope.LINK);
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(false));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(data.getEmail(), EmailConfirmationScope.LINK).block();
 
 		String create = String.format(
 				createFormat,
@@ -91,19 +98,20 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		String signUpUri = "/api/auth/signup";
 
-		when(getUserService().save(any(CreateUserDTO.class))).thenReturn(new UserDTO(getDefaultUser()));
-		when(userEmailService.existsByEmail(data.getEmail())).thenReturn(false);		
-
-		ResultActions resultActions = getMockMvc().perform(MockMvcRequestBuilders.post(signUpUri)
+		when(getUserService().save(any(CreateUserDTO.class))).thenReturn(Mono.just(new UserDTO(getDefaultUser())));
+		when(userEmailService.existsByEmail(data.getEmail())).thenReturn(Mono.just(false));
+		
+		ResponseSpec response = getWebTestClient().post()
+				.uri(signUpUri)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(create))
-				.andExpect(MockMvcResultMatchers.status().is(data.getStatus()))
-				.andExpect(result -> VerifyResolvedException.verify(result, data.getExpectedException()));
+				.bodyValue(create)
+				.exchange()
+				.expectStatus().isEqualTo(data.getStatus());
 
 		assumeTrue(data.getStatus() >= 200 && data.getStatus() < 300);
-
-		resultActions.andExpect(MockMvcResultMatchers.jsonPath("$.username").value(getDefaultUser().getUsername()));
-		resultActions.andExpect(MockMvcResultMatchers.jsonPath("$.emails[0].email").value(getDefaultUser().getEmails().iterator().next().getEmail()));
+		
+		response.expectBody()
+			.jsonPath("$.username").isEqualTo(getDefaultUser().getUsername());
 	}
 
 	@ParameterizedTest	
@@ -121,12 +129,13 @@ public class UserControllerTest extends AbstractControllerTest {
 		assumeTrue(data.getStatus() < 200 || data.getStatus() >= 300);
 
 		String signIn = String.format(signInFormat, data.getLogin(), data.getPassword());
-
-		getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(signIn))
-		.andExpect(MockMvcResultMatchers.status().is(data.getStatus()))
-		.andExpect(result -> VerifyResolvedException.verify(result, data.getExpectedException()));
+		
+		getWebTestClient().post()
+			.uri(baseUri)
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(signIn)
+			.exchange()
+			.expectStatus().isEqualTo(data.getStatus());
 	}
 
 	@RepeatedTest(2)
@@ -141,23 +150,30 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		int current = info.getCurrentRepetition();
 		
-		List<UserEmail> emails = getDefaultUser().getEmails().stream()
-				.toList();
+		String email = "test@example.com";
 		
-		String signIn = String.format(signInFormat, (current % 2 == 0) ? getDefaultUser().getUsername() : emails.get(0).getEmail(), getDefaultPassword());
-
-		String strJwtToken = getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
+		String signIn = String.format(signInFormat, (current % 2 == 0) ? getDefaultUser().getUsername() : email, getDefaultPassword());
+		
+		when(getUserService().lastLoginToNow(getDefaultUser().getId())).thenReturn(Mono.empty());
+		
+		byte[] responseBody = getWebTestClient().post()
+				.uri(baseUri)
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(signIn))
-				.andExpect(MockMvcResultMatchers.status().is(200))
-				.andReturn().getResponse().getContentAsString();
-
-		DoubleJWTTokensDTO doublejwtTokens = oMapper.readValue(strJwtToken, DoubleJWTTokensDTO.class);
-
-		getMockMvc().perform(MockMvcRequestBuilders.get("/api/user/i")
-				.header("Authorization", "Bearer " + doublejwtTokens.getAccessToken().getToken()))
-		.andExpect(MockMvcResultMatchers.status().is(200))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.username").value(getDefaultUser().getUsername()));
+				.bodyValue(signIn)
+				.exchange()
+				.expectStatus().isOk()
+				.expectBody()
+				.returnResult()
+				.getResponseBody();
+		
+		DoubleJWTTokensDTO doublejwtTokens = oMapper.readValue(responseBody, DoubleJWTTokensDTO.class);
+		
+		getWebTestClient().get()
+			.uri("/api/user/i")
+			.header("Authorization", "Bearer " + doublejwtTokens.getAccessToken().getToken())
+			.exchange()
+			.expectStatus().isOk()
+			.expectBody().jsonPath("$.username").isEqualTo(getDefaultUser().getUsername());
 	}
 
 	@RepeatedTest(2)
@@ -174,15 +190,16 @@ public class UserControllerTest extends AbstractControllerTest {
 							}
 					}
 				""";
-		List<UserEmail> emails = getDefaultUser().getEmails().stream()
-				.toList();
+		String email = "test@example.com";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.LINK);
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(false));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.LINK).block();
 		
 		String signup = String.format(
 				signupFormat,
 				getDefaultUser().getUsername(),
-				emails.get(0).getEmail(),
+				email,
 				getDefaultPassword(),
 				codeHash.getCode(),
 				codeHash.getHash(),
@@ -190,36 +207,46 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		String signUpUri = "/api/auth/signup";
 
-		when(getUserService().save(any())).thenThrow(EntityExistsException.class);
+		when(getUserService().save(any())).thenThrow(ResourceAlreadyExistsException.class);
 		
-		if(info.getCurrentRepetition() % 2 == 1) when(userEmailService.existsByEmail(emails.get(0).getEmail())).thenReturn(false); 
-
-		getMockMvc().perform(MockMvcRequestBuilders.post(signUpUri)
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(signup))
-		.andExpect(MockMvcResultMatchers.status().is(409))
-		.andExpect(result -> VerifyResolvedException.verify(result, EntityExistsException.class));
+		if(info.getCurrentRepetition() % 2 == 1) when(userEmailService.existsByEmail(email)).thenReturn(Mono.just(false));
+		
+		getWebTestClient().post()
+			.uri(signUpUri)
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(signup)
+			.exchange()
+			.expectStatus().isEqualTo(HttpStatus.CONFLICT);
 	}
 
 	@Test
 	void deleteDefaultUser() throws Exception {
 		String baseUri = "/api/user/i";
 		
+		String etag = Long.toString(getDefaultUser().getVersion());
+		String fEtag = Long.toString(getDefaultUser().getVersion()/2+1);
+		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());		
-		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()));
+		headers.setIfMatch("\""+etag+"\"");
 		
-		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);
+		when(getUserService().existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
+		when(getUserService().existsByIdAndVersion(eq(getDefaultUser().getId()), eq(getDefaultUser().getVersion()))).thenReturn(Mono.just(true));
+		when(getUserService().delete(anyInt())).thenReturn(Mono.empty());
 		
-		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
-				.headers(headers))
-		.andExpect(MockMvcResultMatchers.status().isNoContent());
+		getWebTestClient().delete()
+			.uri(baseUri)
+			.headers(h -> h.addAll(headers))
+			.exchange()
+			.expectStatus().isNoContent();
 		
-		headers.setIfMatch(Long.toString(getDefaultUser().getVersion()/2+1));
+		headers.setIfMatch("\""+fEtag+"\"");
 		
-		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
-				.headers(headers))
-		.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
+		getWebTestClient().delete()
+			.uri(baseUri)
+			.headers(h -> h.addAll(headers))
+			.exchange()
+			.expectStatus().isEqualTo(HttpStatus.PRECONDITION_FAILED);
 	}
 
 	@ParameterizedTest
@@ -237,25 +264,29 @@ public class UserControllerTest extends AbstractControllerTest {
 					}
 				""";
 		
-		List<UserEmail> emails = getDefaultUser().getEmails().stream().toList();
+		String email = "test@example.com";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.RECOVERY);
+		when(getUserService().updatePassword(any())).thenReturn(Mono.empty());
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(true));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.RECOVERY).block();
 
 		String update = String.format(updateFormat,
-				emails.get(0).getEmail(),
+				email,
 				data.getPassword(),
 				codeHash.getCode(),
 				codeHash.getHash(),
 				codeHash.getTimestamp());
 		
 		String updateUri = "/api/auth/recover/password";
-
-		getMockMvc().perform(MockMvcRequestBuilders.patch(updateUri)
-				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(update))
-		.andExpect(MockMvcResultMatchers.status().is(data.getStatus()))
-		.andExpect(result -> VerifyResolvedException.verify(result, data.getExpectedException()));
+		
+		getWebTestClient().patch()
+			.uri(updateUri)
+			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(update)
+			.exchange()
+			.expectStatus().isEqualTo(data.getStatus());
 	}
 	
 	@Test
@@ -272,12 +303,15 @@ public class UserControllerTest extends AbstractControllerTest {
 					}
 				""";
 		
-		List<UserEmail> emails = getDefaultUser().getEmails().stream().toList();
+		String email = "test@example.com";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(emails.get(0).getEmail(), EmailConfirmationScope.RECOVERY);
+		when(getUserService().updatePassword(any())).thenReturn(Mono.empty());
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(true));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.RECOVERY).block();
 
 		String update = String.format(updateFormat,
-				emails.get(0).getEmail(),
+				email,
 				UUID.randomUUID(),
 				codeHash.getCode(),
 				codeHash.getHash(),
@@ -287,14 +321,16 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
-				
-		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);		
-
-		getMockMvc().perform(MockMvcRequestBuilders.patch(updateUri)
-				.headers(headers)
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(update))
-		.andExpect(MockMvcResultMatchers.status().isNoContent());
+		
+		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(Mono.just(true));
+		
+		getWebTestClient().patch()
+			.uri(updateUri)
+			.headers(h -> h.addAll(headers))
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(update)
+			.exchange()
+			.expectStatus().isNoContent();
 	}
 	
 	@Test
@@ -304,19 +340,24 @@ public class UserControllerTest extends AbstractControllerTest {
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
 				
-		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(true);
+		when(getUserService().existsByIdAndVersion(getDefaultUser().getId(), getDefaultUser().getVersion())).thenReturn(Mono.just(true));
 		
-		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
-				.headers(headers))
-		.andExpect(MockMvcResultMatchers.status().isOk())
-		.andExpect(MockMvcResultMatchers.header().exists("ETag"))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.version").value(getDefaultUser().getVersion()));
+		getWebTestClient().get()
+			.uri(baseUri)
+			.headers(h -> h.addAll(headers))
+			.exchange()
+			.expectStatus().isOk()
+			.expectHeader().exists("ETag")
+			.expectBody().jsonPath("$.version").isEqualTo(getDefaultUser().getVersion());
 		
-		headers.setIfNoneMatch(Long.toString(getDefaultUser().getVersion()));
+		String etag = Long.toString(getDefaultUser().getVersion());
+		headers.setIfNoneMatch("\""+etag+"\"");
 		
-		getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
-				.headers(headers))
-		.andExpect(MockMvcResultMatchers.status().isNotModified());
+		getWebTestClient().get()
+			.uri(baseUri)
+			.headers(h -> h.addAll(headers))
+			.exchange()
+			.expectStatus().isNotModified();
 	}
 
 }

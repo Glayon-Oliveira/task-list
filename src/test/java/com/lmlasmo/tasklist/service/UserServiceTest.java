@@ -3,10 +3,11 @@ package com.lmlasmo.tasklist.service;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
-import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -18,15 +19,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.reactive.TransactionalOperator;
 
+import com.lmlasmo.tasklist.dto.UserEmailDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
 import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.User;
+import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.repository.UserRepository;
 
-import jakarta.persistence.EntityExistsException;
-import jakarta.persistence.EntityNotFoundException;
+import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 @TestInstance(Lifecycle.PER_CLASS)
@@ -34,14 +39,23 @@ public class UserServiceTest {
 
 	@Mock
 	private UserRepository userRepository;
+	
+	@Mock
+	private UserEmailService userEmailService;
+	
+	@Mock
+	private TransactionalOperator operator;
 
 	private PasswordEncoder encoder = new BCryptPasswordEncoder();
 
 	private UserService userService;
 
+	@SuppressWarnings("unchecked")
 	@BeforeEach
 	public void setUpAll() {
-		userService = new UserService(userRepository, encoder);
+		userService = new UserService(userRepository, userEmailService, encoder);
+		lenient().when(userRepository.getOperator()).thenReturn(operator);
+		lenient().when(operator.transactional(any(Mono.class))).thenAnswer(invocation -> invocation.getArgument(0));
 	}
 
 	@Test
@@ -52,19 +66,21 @@ public class UserServiceTest {
 		CreateUserDTO signup = new CreateUserDTO();
 		signup.setUsername(username);
 		signup.setPassword(password);
+		signup.setEmail("test@example.com");
 
 		User user = new User(signup);
 		user.setId(1);
 		user.setPassword(encoder.encode(password));
 
-		when(userRepository.save(any(User.class))).thenReturn(user);
-		when(userRepository.existsByUsername(username)).thenReturn(true);
+		when(userRepository.save(any(User.class))).thenReturn(Mono.just(user));
+		when(userRepository.existsByUsername(username)).thenReturn(Mono.just(true));
+		when(userEmailService.save(anyString(), anyInt())).thenReturn(Mono.just(new UserEmailDTO(new UserEmail())));
 
-		assertThrows(EntityExistsException.class, () -> userService.save(signup));
+		assertThrows(ResourceAlreadyExistsException.class, () -> userService.save(signup).block());
 
-		when(userRepository.existsByUsername(username)).thenReturn(false);
+		when(userRepository.existsByUsername(username)).thenReturn(Mono.just(false));
 
-		assertDoesNotThrow(() -> userService.save(signup));
+		assertDoesNotThrow(() -> userService.save(signup).block());
 	}
 
 	@Test
@@ -76,16 +92,16 @@ public class UserServiceTest {
 		User user = new User(id);
 		user.setPassword(encoder.encode(password));
 
-		when(userRepository.findById(id)).thenReturn(Optional.of(user));
-		when(userRepository.findById(nId)).thenReturn(Optional.empty());
-		when(userRepository.save(any(User.class))).thenReturn(user);
+		when(userRepository.findById(id)).thenReturn(Mono.just(user));
+		when(userRepository.findById(nId)).thenReturn(Mono.empty());
+		when(userRepository.save(any(User.class))).thenReturn(Mono.just(user));
 
-		assertThrows(EntityNotFoundException.class, () -> userService.updatePassword(nId, password));
-		assertThrows(EntityNotUpdateException.class, () -> userService.updatePassword(id, password));
+		assertThrows(ResourceNotFoundException.class, () -> userService.updatePassword(nId, password).block());
+		assertThrows(EntityNotUpdateException.class, () -> userService.updatePassword(id, password).block());
 
 		user.setPassword(encoder.encode(UUID.randomUUID().toString()));
 
-		assertDoesNotThrow(() -> userService.updatePassword(id, password));
+		assertDoesNotThrow(() -> userService.updatePassword(id, password).block());
 	}
 
 	@Test
@@ -93,11 +109,12 @@ public class UserServiceTest {
 		int id = 1;
 		int nId = 2;
 
-		when(userRepository.existsById(id)).thenReturn(true);
-		when(userRepository.existsById(nId)).thenReturn(false);
+		when(userRepository.existsById(id)).thenReturn(Mono.just(true));
+		when(userRepository.existsById(nId)).thenReturn(Mono.just(false));
+		when(userRepository.deleteById(anyInt())).thenReturn(Mono.empty());
 
-		assertThrows(EntityNotFoundException.class, () -> userService.delete(nId));
-		assertThrows(EntityNotDeleteException.class, () -> userService.delete(id));
+		assertThrows(ResourceNotFoundException.class, () -> userService.delete(nId).block());
+		assertThrows(EntityNotDeleteException.class, () -> userService.delete(id).block());
 	}
 
 	@Test
@@ -106,13 +123,12 @@ public class UserServiceTest {
 		int nId = 2;
 
 		User user = new User(id);
-		user.setEmails(Set.of());
 
-		when(userRepository.findById(id)).thenReturn(Optional.ofNullable(user));
-		when(userRepository.findById(nId)).thenReturn(Optional.empty());
+		when(userRepository.findById(id)).thenReturn(Mono.justOrEmpty(user));
+		when(userRepository.findById(nId)).thenReturn(Mono.empty());
 
-		assertThrows(EntityNotFoundException.class, () -> userService.findById(nId));
-		assertDoesNotThrow(() -> userService.findById(id));
+		assertThrows(ResourceNotFoundException.class, () -> userService.findById(nId).block());
+		assertDoesNotThrow(() -> userService.findById(id).block());
 	}
 
 }

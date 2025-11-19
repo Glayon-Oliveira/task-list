@@ -1,18 +1,18 @@
 package com.lmlasmo.tasklist.service;
 
-import java.util.List;
-
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.dto.UserEmailDTO;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.EmailStatusType;
-import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.repository.UserEmailRepository;
 
-import jakarta.persistence.EntityExistsException;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Mono;
+import reactor.util.function.Tuple2;
 
 @AllArgsConstructor
 @Service
@@ -20,47 +20,43 @@ public class UserEmailService {
 
 	private UserEmailRepository emailRepository;
 	
-	public UserEmailDTO save(String email, int userId) {
-		if(emailRepository.existsByEmail(email)) throw new EntityExistsException("Email already used");
-		
-		UserEmail userEmail = new UserEmail(email);
-		userEmail.setUser(new User(userId));
-		
-		return new UserEmailDTO(emailRepository.save(userEmail));
+	public Mono<UserEmailDTO> save(String email, int userId) {
+		return emailRepository.existsByEmail(email)
+				.filter(e -> !e)
+				.switchIfEmpty(Mono.error(new ResourceAlreadyExistsException("Email already used")))
+				.thenReturn(new UserEmail(email, userId))
+				.flatMap(emailRepository::save)
+				.map(UserEmailDTO::new);
 	}
 	
-	public UserEmailDTO changePrimaryEmail(int emailId, int userId) {
-		List<UserEmail> userEmails = emailRepository.findByUserId(userId);
+	public Mono<UserEmailDTO> changePrimaryEmail(int emailId, int userId) {
+		Mono<UserEmail> targetEmail =  emailRepository.findById(emailId)
+				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Email not found")))
+				.doOnNext(ue -> ue.setPrimary(true))
+				.flatMap(emailRepository::save)
+				.switchIfEmpty(Mono.error(new OptimisticLockingFailureException("Email was updated by another transaction")));
 		
-		UserEmail targetEmail = userEmails.stream()
-				.filter(e -> e.getId() == emailId)
-				.findFirst()
-				.orElseThrow(() -> new EntityNotFoundException("Email not found"));
+		Mono<UserEmail> primaryEmail = emailRepository.findByUserIdAndPrimary(userId, true)
+				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Email primary not found")))
+				.doOnNext(ue -> ue.setPrimary(false))
+				.flatMap(emailRepository::save)
+				.switchIfEmpty(Mono.error(new OptimisticLockingFailureException("Email was updated by another transaction")));
 		
-		UserEmail primaryEmail = userEmails.stream()
-				.filter(e -> e.isPrimary())
-				.findFirst()
-				.orElseGet(() -> null);
-		
-		if(primaryEmail != null) {
-			primaryEmail.setPrimary(false);
-			emailRepository.save(primaryEmail);
-		}
-		
-		targetEmail.setPrimary(true);
-		return new UserEmailDTO(emailRepository.save(targetEmail));
+		return Mono.zip(targetEmail, primaryEmail)
+				.map(Tuple2::getT1)
+				.map(UserEmailDTO::new)
+				.as(m -> emailRepository.getOperator().transactional(m));
 	}
 	
-	public UserEmailDTO changeEmailStatus(String email, EmailStatusType status) {
-		UserEmail userEmail = emailRepository.findByEmail(email)
-				.orElseThrow(() -> new EntityNotFoundException("Email not found"));
-		
-		userEmail.setStatus(status);
-		
-		return new UserEmailDTO(emailRepository.save(userEmail));
+	public Mono<UserEmailDTO> changeEmailStatus(String email, EmailStatusType status) {
+		return emailRepository.findByEmail(email)
+				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Email not found")))
+				.doOnNext(ue -> ue.setStatus(status))
+				.flatMap(emailRepository::save)
+				.map(UserEmailDTO::new);
 	}
 
-	public boolean existsByEmail(String email) {
+	public Mono<Boolean> existsByEmail(String email) {
 		return emailRepository.existsByEmail(email);
 	}
 	

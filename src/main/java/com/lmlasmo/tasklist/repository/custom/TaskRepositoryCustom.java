@@ -1,19 +1,21 @@
 package com.lmlasmo.tasklist.repository.custom;
 
-import java.util.Optional;
+import java.util.Collection;
 
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
-public interface TaskRepositoryCustom {
-	
-	public Optional<StatusSummary> findStatusSummaryById(int taskId);
+import reactor.core.publisher.Mono;
 
-	public void updateStatus(BasicSummary basic, TaskStatusType status);
+public interface TaskRepositoryCustom extends RepositoryCustom {
 	
-	public long sumVersionByids(Iterable<Integer> ids);
+	public Mono<StatusSummary> findStatusSummaryById(int taskId);
+
+	public Mono<Void> updateStatus(BasicSummary basic, TaskStatusType status);
 	
-	public long sumVersionByUser(int userId);
+	public Mono<Long> sumVersionByids(Collection<Integer> ids);
+	
+	public Mono<Long> sumVersionByUser(int userId);
 	
 }

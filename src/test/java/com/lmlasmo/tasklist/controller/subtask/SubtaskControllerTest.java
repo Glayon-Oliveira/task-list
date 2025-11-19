@@ -3,6 +3,8 @@ package com.lmlasmo.tasklist.controller.subtask;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -21,14 +23,12 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 
@@ -38,14 +38,15 @@ import com.lmlasmo.tasklist.controller.SubtaskController;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
-import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.param.subtask.CreateSubtaskSource;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
-import com.lmlasmo.tasklist.util.VerifyResolvedException;
 
-@WebMvcTest(controllers = SubtaskController.class)
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+@WebFluxTest(controllers = SubtaskController.class)
 @TestInstance(Lifecycle.PER_CLASS)
 public class SubtaskControllerTest extends AbstractControllerTest{
 
@@ -73,7 +74,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		subtask = new Subtask();
 		subtask.setId(1);
 		subtask.setPosition(1);
-		subtask.setTask(new Task(1));
+		subtask.setTaskId(1);
 		subtask.setCreatedAt(Instant.now());
 		subtask.setUpdatedAt(subtask.getCreatedAt());
 		subtask.setVersion(new Random().nextLong(Long.MAX_VALUE));
@@ -91,27 +92,29 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 					}
 				""";
 
-		String create = String.format(createFormat, data.getName(), data.getSummary(), data.getDurationMinutes(), subtask.getTask().getId());
+		String create = String.format(createFormat, data.getName(), data.getSummary(), data.getDurationMinutes(), subtask.getTaskId());
 
 		subtask.setName(data.getName());
 		subtask.setSummary(data.getSummary());
 		subtask.setDurationMinutes(data.getDurationMinutes());
 
-		when(accessService.canAccessTask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.save(any())).thenReturn(new SubtaskDTO(subtask));
-
-		ResultActions resultActions = getMockMvc().perform(MockMvcRequestBuilders.post(baseUri)
+		when(accessService.canAccessTask(subtask.getId(), getDefaultUser().getId())).thenReturn(Mono.empty());
+		when(subtaskService.save(any())).thenReturn(Mono.just(new SubtaskDTO(subtask)));
+		
+		ResponseSpec response = getWebTestClient().post()
+				.uri(baseUri)
 				.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(create))
-				.andExpect(MockMvcResultMatchers.status().is(data.getStatus()))
-				.andExpect(result -> VerifyResolvedException.verify(result, data.getExpectedException()));
+				.bodyValue(create)
+				.exchange()
+				.expectStatus().isEqualTo(data.getStatus());
 
 		assumeTrue(data.getStatus() >= 200 && data.getStatus() < 300);
-
-		resultActions.andExpect(MockMvcResultMatchers.jsonPath("$.name").value(data.getName()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.summary").value(data.getSummary()))
-		.andExpect(MockMvcResultMatchers.jsonPath("$.durationMinutes").value(data.getDurationMinutes()));
+		
+		response.expectBody()
+			.jsonPath("$.name").isEqualTo(data.getName())
+			.jsonPath("$.summary").isEqualTo(data.getSummary())
+			.jsonPath("$.durationMinutes").isEqualTo(data.getDurationMinutes());
 	}
 
 	@RepeatedTest(2)
@@ -120,24 +123,26 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
-			headers.setIfNoneMatch(Long.toString(subtask.getVersion()));
-			when(subtaskService.sumVersionByTask(anyInt())).thenReturn(subtask.getVersion());
+			String etag = Long.toString(subtask.getVersion());
+			headers.setIfNoneMatch("\""+etag+"\"");
+			when(subtaskService.sumVersionByTask(anyInt())).thenReturn(Mono.just(subtask.getVersion()));
 		}
 		
-		when(accessService.canAccessTask(eq(1), eq(getDefaultUser().getId()))).thenReturn(true);
-		when(subtaskService.findByTask(eq(1), any())).thenReturn(new PageImpl<>(List.of(new SubtaskDTO(subtask))));
-
-		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.get(baseUri)
-				.param("taskId", "1")
-				.headers(headers));
+		when(accessService.canAccessTask(eq(1), eq(getDefaultUser().getId()))).thenReturn(Mono.empty());
+		when(subtaskService.findByTask(eq(1))).thenReturn(Flux.fromIterable((List.of(new SubtaskDTO(subtask)))));
+		
+		ResponseSpec response = getWebTestClient().get()
+				.uri(ub -> ub.path(baseUri)
+						.queryParam("taskId", 1).build())
+				.headers(h -> h.addAll(headers))
+				.exchange();
 		
 		if(info.getCurrentRepetition() == 2) {
-			result.andExpect(MockMvcResultMatchers.status().isNotModified());
+			response.expectStatus().isNotModified();
 		}else {
-			result.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.jsonPath("$.size").value(1))
-			.andExpect(MockMvcResultMatchers.header().exists("ETag"));
-		}	
+			response.expectHeader().exists("ETag")
+				.expectBody().jsonPath("$.length()").isEqualTo(1);
+		}
 	}
 
 	@RepeatedTest(2)
@@ -146,22 +151,25 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
 		if(info.getCurrentRepetition() == 2) {
-			headers.setIfNoneMatch(Long.toString(subtask.getVersion()));
-			when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(true);
+			String etag = Long.toString(subtask.getVersion());
+			headers.setIfNoneMatch("\""+etag+"\"");
+			when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(Mono.just(true));
 		}
 		
-		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.findById(subtask.getId())).thenReturn(new SubtaskDTO(subtask));
-
-		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.get(baseUri + "/" + subtask.getId())
-				.headers(headers));
+		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(Mono.empty());
+		when(subtaskService.findById(subtask.getId())).thenReturn(Mono.just(new SubtaskDTO(subtask)));
+		
+		ResponseSpec response = getWebTestClient().get()
+				.uri(baseUri + "/" + subtask.getId())
+				.headers(h -> h.addAll(headers))
+				.exchange();
 		
 		if(info.getCurrentRepetition() == 2) {
-			result.andExpect(MockMvcResultMatchers.status().isNotModified());
+			response.expectStatus().isNotModified();
 		}else {
-			result.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.jsonPath("$.id").value(subtask.getId()))
-			.andExpect(MockMvcResultMatchers.header().exists("ETag"));
+			response.expectStatus().isOk()
+				.expectHeader().exists("ETag")
+				.expectBody().jsonPath("$.id").isEqualTo(subtask.getId());
 		}
 	}
 
@@ -180,29 +188,35 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
+		String etag = Long.toString(subtask.getVersion());
+		String fEtag = Long.toString(subtask.getVersion()/2+1);
+		
 		if(info.getCurrentRepetition() == 2) {
-			headers.setIfMatch(Long.toString(subtask.getVersion()));			
+			headers.setIfMatch("\""+etag+"\"");			
 		}else if(info.getCurrentRepetition() == 3) {
-			headers.setIfMatch(Long.toString(subtask.getVersion()/2+1));
+			headers.setIfMatch("\""+fEtag+"\"");
 		}
 
-		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.update(eq(subtask.getId()), any())).thenReturn(subtaskDTO);
-		when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(true);
-
-		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + subtask.getId())
-				.headers(headers)
+		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(Mono.empty());
+		when(subtaskService.update(eq(subtask.getId()), any())).thenReturn(Mono.just(subtaskDTO));
+		when(subtaskService.existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
+		when(subtaskService.existsByIdAndVersion(eq(subtask.getId()), eq(subtask.getVersion()))).thenReturn(Mono.just(true));
+		
+		ResponseSpec response = getWebTestClient().patch()
+				.uri(baseUri + "/" + subtask.getId())
+				.headers(h -> h.addAll(headers))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(mapper.writeValueAsString(update)));
+				.bodyValue(mapper.writeValueAsString(update))
+				.exchange();
 		
 		if(info.getCurrentRepetition() == 3) {
-			result.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
+			response.expectStatus().isEqualTo(HttpStatus.PRECONDITION_FAILED);
 		}else {
-			result.andExpect(MockMvcResultMatchers.status().isOk())
-			.andExpect(MockMvcResultMatchers.jsonPath("$.name").value(subtaskDTO.getName()))
-			.andExpect(MockMvcResultMatchers.jsonPath("$.summary").value(subtaskDTO.getSummary()))
-			.andExpect(MockMvcResultMatchers.jsonPath("$.durationMinutes").value(subtaskDTO.getDurationMinutes()))
-			.andExpect(MockMvcResultMatchers.header().exists("ETag"));
+			response.expectStatus().isOk()
+				.expectBody()
+					.jsonPath("$.name").isEqualTo(subtaskDTO.getName())
+					.jsonPath("$.summary").isEqualTo(subtaskDTO.getSummary())
+					.jsonPath("$.durationMinutes").isEqualTo(subtaskDTO.getDurationMinutes());
 		}		
 	}
 
@@ -217,28 +231,38 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		long sumIds = ids.stream()
 				.mapToInt(Integer::intValue)
 				.sum();
+		
+		String etag = Long.toString(sumIds);
+		String fEtag = Long.toString(sumIds/2+1);
 
 		MultiValueMap<String, String> baseParams = new LinkedMultiValueMap<>();
 		baseParams.add("subtaskIds", strIds);
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
-		headers.setIfMatch(Long.toString(sumIds));
+		headers.setIfMatch("\""+etag+"\"");
 
-		when(accessService.canAccessSubtask(ids, getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.sumVersionByIds(ids)).thenReturn(sumIds);
-
-		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
-				.params(baseParams)
-				.headers(headers))
-		.andExpect(MockMvcResultMatchers.status().isNoContent());
+		when(accessService.canAccessSubtask(ids, getDefaultUser().getId())).thenReturn(Mono.empty());
+		when(subtaskService.sumVersionByIds(ids)).thenReturn(Mono.just(sumIds));
+		when(subtaskService.delete(anyList())).thenReturn(Mono.empty());
 		
-		headers.setIfMatch(Long.toString(sumIds/2+1));
+		getWebTestClient().delete()
+				.uri(ub -> ub.path(baseUri)
+						.queryParams(baseParams)
+						.build())
+				.headers(h -> h.addAll(headers))
+				.exchange()
+				.expectStatus().isNoContent();
 		
-		getMockMvc().perform(MockMvcRequestBuilders.delete(baseUri)
-				.params(baseParams)
-				.headers(headers))
-		.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
+		headers.setIfMatch("\""+fEtag+"\"");
+		
+		getWebTestClient().delete()
+				.uri(ub -> ub.path(baseUri)
+						.queryParams(baseParams)
+						.build())
+				.headers(h -> h.addAll(headers))
+				.exchange()
+				.expectStatus().isEqualTo(HttpStatus.PRECONDITION_FAILED);
 	}
 
 	@RepeatedTest(10)
@@ -251,23 +275,31 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
 		
+		String etag = Long.toString(subtask.getVersion());
+		String fEtag = Long.toString(subtask.getVersion()/2+1);
+		
 		if(info.getCurrentRepetition() == 2) {
-			headers.setIfMatch(Long.toString(subtask.getVersion()));			
+			headers.setIfMatch("\""+etag+"\"");			
 		}else if(info.getCurrentRepetition() == 3) {
-			headers.setIfMatch(Long.toString(subtask.getVersion()/2+1));
+			headers.setIfMatch("\""+fEtag+"\"");
 		}
 
-		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(true);
-		when(subtaskService.existsByIdAndVersion(subtask.getId(), subtask.getVersion())).thenReturn(true);
-
-		ResultActions result = getMockMvc().perform(MockMvcRequestBuilders.patch(baseUri + "/" + subtask.getId())
-				.params(baseParams)
-				.headers(headers));
+		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(Mono.empty());
+		when(subtaskService.existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
+		when(subtaskService.existsByIdAndVersion(eq(subtask.getId()), eq(subtask.getVersion()))).thenReturn(Mono.just(true));		
+		when(subtaskService.updatePosition(anyInt(), anyInt())).thenReturn(Mono.empty());
+		
+		ResponseSpec response = getWebTestClient().patch()
+				.uri(ub -> ub.path(baseUri + "/" + subtask.getId())
+						.queryParams(baseParams)
+						.build())
+				.headers(h -> h.addAll(headers))
+				.exchange();
 		
 		if(info.getCurrentRepetition() == 3) {
-			result.andExpect(MockMvcResultMatchers.status().isPreconditionFailed());
+			response.expectStatus().isEqualTo(HttpStatus.PRECONDITION_FAILED);			
 		}else {
-			result.andExpect(MockMvcResultMatchers.status().is(204));
+			response.expectStatus().isNoContent();
 		}		
 	}
 

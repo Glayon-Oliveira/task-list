@@ -15,23 +15,22 @@ import org.springframework.context.annotation.Import;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.service.SubtaskService;
 
-import jakarta.persistence.EntityManager;
-
 @Import(SubtaskService.class)
 public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryTest{
 
 	@Autowired
 	private SubtaskService subtaskService;
 
-	@Autowired
-	private EntityManager em;
-
 	@RepeatedTest(maxSubtaskPerTask)
-	void updatePosition(RepetitionInfo info) {
+	void updatePosition(RepetitionInfo info) {		
 		getSubtasks().forEach(s -> {
-			em.refresh(s);			
 
 			int newPosition = new Random().nextInt(1, maxSubtaskPerTask+1);
+			
+			Subtask subtask = getSubtaskRepository().findById(s.getId()).block();
+			
+			s.setPosition(subtask.getPosition());
+			s.setVersion(subtask.getVersion());
 
 			if(newPosition == s.getPosition()) {
 				newPosition = (s.getPosition() == maxSubtaskPerTask) ? newPosition-1 : maxSubtaskPerTask;
@@ -39,10 +38,12 @@ public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryT
 
 			final int originalPosition = s.getPosition();
 
-			subtaskService.updatePosition(s.getId(), newPosition);
-
-			Subtask subtask = getSubtaskRepository().findById(s.getId()).orElse(null);
-			em.refresh(subtask);
+			subtaskService.updatePosition(s.getId(), newPosition).block();
+			
+			subtask = getSubtaskRepository().findById(s.getId()).block();
+			
+			s.setPosition(subtask.getPosition());
+			s.setVersion(subtask.getVersion());
 
 			assertNotNull(subtask);
 			assertTrue(subtask.getPosition() != originalPosition);
@@ -55,7 +56,7 @@ public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryT
 				.map(Subtask::getId)
 				.toList();
 
-		subtaskService.delete(ids);
+		subtaskService.delete(ids).block();
 	}
 
 }

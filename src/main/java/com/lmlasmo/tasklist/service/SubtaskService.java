@@ -1,27 +1,27 @@
 package com.lmlasmo.tasklist.service;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
+import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.service.applier.UpdateSubtaskApplier;
 
-import jakarta.persistence.EntityExistsException;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @Service
@@ -29,53 +29,53 @@ public class SubtaskService {
 
 	private SubtaskRepository subtaskRepository;
 		
-	public SubtaskDTO save(CreateSubtaskDTO create) {
-		Subtask subtask = new Subtask(create);
-		
-		List<PositionSummary> idPositions = subtaskRepository.findPositionSummaryByTaskId(create.getTaskId());
-		
-		int maxPosition = idPositions.stream()
-				.mapToInt(PositionSummary::getPosition)
-				.max()
-				.orElse(0);
-		
-		subtask.setPosition(maxPosition + 1);
-				
-		return new SubtaskDTO(subtaskRepository.save(subtask));
+	public Mono<SubtaskDTO> save(CreateSubtaskDTO create) {
+		return Mono.just(new Subtask(create))
+				.flatMap(s -> {
+					return subtaskRepository.findPositionSummaryByTaskId(create.getTaskId())
+							.map(PositionSummary::getPosition)
+							.reduce(Integer::max)
+							.doOnNext(s::setPosition)
+							.thenReturn(s);
+				})
+				.flatMap(subtaskRepository::save)
+				.map(SubtaskDTO::new);
 	}
 	
-	public void delete(List<Integer> subtaskIds) {
-		long count = subtaskIds.stream()
-				.filter(i -> subtaskRepository.existsById(i))
-				.count();
-		
-		if(count < subtaskIds.size()) throw new EntityNotFoundException("Subtask not found");
-		
-		subtaskRepository.deleteAllByIdInBatch(subtaskIds);
+	public Mono<Void> delete(List<Integer> subtaskIds) {
+		return Flux.fromIterable(subtaskIds)
+				.collectList()
+				.flatMap(subtaskRepository::deleteAllById)
+				.then();
 	}
 	
-	public SubtaskDTO update(int subtaskId, UpdateSubtaskDTO update) {
-		Subtask subtask = subtaskRepository.findById(subtaskId).orElseThrow(() -> new EntityNotFoundException("Subtask not found for id equals " + subtaskId));
-		
-		UpdateSubtaskApplier.apply(update, subtask);
-		
-		return new SubtaskDTO(subtaskRepository.save(subtask));
+	public Mono<SubtaskDTO> update(int subtaskId, UpdateSubtaskDTO update) {
+		return subtaskRepository.findById(subtaskId)
+				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id equals " + subtaskId)))
+				.doOnNext(s -> UpdateSubtaskApplier.apply(update, s))
+				.flatMap(subtaskRepository::save)
+				.map(SubtaskDTO::new);
 	}
-	
-	@Transactional
-	public void updatePosition(int subtaskId, int position) {
-		PositionSummary subtask = subtaskRepository.findPositionSummaryById(subtaskId)
-				.orElseThrow(() -> new EntityNotFoundException("Subtask not found for id " + subtaskId));
 		
-		if(subtask.getPosition() == position) throw new EntityExistsException("New position of subtask is equals at exists position");
-		
-		List<PositionSummary> sublingSubtasks = subtaskRepository.findPositionSummaryByRelatedSubtaskId(subtaskId);
-		
-		subtaskRepository.updatePriority(subtask, 0);
-		subtask = new PositionSummary(subtask.getId(), subtask.getVersion()+1, subtask.getPosition());
-		
-		normalizePositions(sublingSubtasks, subtask, position)
-			.forEach(s -> subtaskRepository.updatePriority(s, s.getPosition()));
+	public Mono<Void> updatePosition(int subtaskId, int position) {
+		return subtaskRepository.findPositionSummaryById(subtaskId)
+				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id " + subtaskId)))
+				.flatMap(s -> {
+					if(s.getPosition() == position) {
+						return Mono.error(new ResourceAlreadyExistsException("New position of subtask is equals at exists position"));
+					}
+					
+					return subtaskRepository.updatePriority(s, 0)
+							.thenReturn(new PositionSummary(s.getId(), s.getVersion()+1, s.getPosition()));
+				})
+				.flatMap(s -> {
+					return subtaskRepository.findPositionSummaryByRelatedSubtaskId(subtaskId)
+							.collectList()
+							.map(ss -> normalizePositions(ss, s, position))
+							.flatMapMany(Flux::fromIterable)
+							.concatMap(ups -> subtaskRepository.updatePriority(ups, ups.getPosition()))
+							.then();
+				}).as(m -> subtaskRepository.getOperator().transactional(m));
 	}
 
 	private List<PositionSummary> normalizePositions(List<PositionSummary> siblingSubtasks, PositionSummary subtaskToMove, int targetPosition){
@@ -110,25 +110,27 @@ public class SubtaskService {
 		return Collections.unmodifiableList(resultList);
 	}
 	
-	public boolean existsByIdAndVersion(int id, long version) {
+	public Mono<Boolean> existsByIdAndVersion(int id, long version) {
 		return subtaskRepository.existsByIdAndVersion(id, version);
 	}
 	
-	public long sumVersionByIds(Iterable<Integer> ids) {
+	public Mono<Long> sumVersionByIds(Collection<Integer> ids) {
 		return subtaskRepository.sumVersionByids(ids);
 	}
 	
-	public long sumVersionByTask(int taskId) {
+	public Mono<Long> sumVersionByTask(int taskId) {
 		return subtaskRepository.sumVersionByTask(taskId);
 	}
 	
-	public Page<SubtaskDTO> findByTask(int taskId, Pageable pageable){		
-		return subtaskRepository.findByTaskId(taskId, pageable).map(SubtaskDTO::new);
+	public Flux<SubtaskDTO> findByTask(int taskId){		
+		return subtaskRepository.findByTaskId(taskId)
+				.map(SubtaskDTO::new);
 	}
 
-	public SubtaskDTO findById(int subtaskId) {
-		return subtaskRepository.findById(subtaskId).map(SubtaskDTO::new)
-				.orElseThrow(() -> new EntityNotFoundException("Subtask not found for id equals " + subtaskId));
-	}	
+	public Mono<SubtaskDTO> findById(int subtaskId) {
+		return subtaskRepository.findById(subtaskId)
+				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id equals " + subtaskId)))
+				.map(SubtaskDTO::new);
+	}
 	
 }

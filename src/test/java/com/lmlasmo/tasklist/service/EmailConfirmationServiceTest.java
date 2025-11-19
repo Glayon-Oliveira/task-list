@@ -2,6 +2,8 @@ package com.lmlasmo.tasklist.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 
@@ -18,6 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.exception.InvalidEmailCodeException;
 import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
+
+import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 @TestInstance(Lifecycle.PER_CLASS)
@@ -36,14 +40,16 @@ public class EmailConfirmationServiceTest {
 	public void sendConfirmationEmailAndValidation() {
 		String email = "test@example.com";
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.LINK);
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(false));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.LINK).block();
 		String code = codeHash.getCode();
 		String hash = codeHash.getHash();
-		Instant timestamp = codeHash.getTimestamp();
+		Instant timestamp = codeHash.getTimestamp();		
 		
 		EmailConfirmationCodeHashDTO confirmationCodeHashDto = new EmailConfirmationCodeHashDTO(hash, timestamp, code);
 		
-		assertDoesNotThrow(() -> confirmationService.valideCodeHash(confirmationCodeHashDto, email, EmailConfirmationScope.LINK));
+		assertDoesNotThrow(() -> confirmationService.valideCodeHash(confirmationCodeHashDto, email, EmailConfirmationScope.LINK).block());
 	}
 	
 	@RepeatedTest(3)
@@ -51,14 +57,16 @@ public class EmailConfirmationServiceTest {
 		String email = "test@example.com";
 		int current = info.getCurrentRepetition();
 		
-		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.LINK);
+		when(userEmailService.existsByEmail(anyString())).thenReturn(Mono.just(false));
+		
+		EmailConfirmationCodeHashDTO codeHash = confirmationService.createCodeHash(email, EmailConfirmationScope.LINK).block();
 		String code = current == 1 ? "135256" :codeHash.getCode();		
 		Instant timestamp = current == 2 ? Instant.now() : codeHash.getTimestamp();
 		String hash = current == 3 ? "nhsdhfiosjsdfojndndoewi" : codeHash.getHash();
 		
 		EmailConfirmationCodeHashDTO confirmationCodeHashDto = new EmailConfirmationCodeHashDTO(hash, timestamp, code);
 		
-		assertThrows(InvalidEmailCodeException.class, () -> confirmationService.valideCodeHash(confirmationCodeHashDto, email, EmailConfirmationScope.LINK));
+		assertThrows(InvalidEmailCodeException.class, () -> confirmationService.valideCodeHash(confirmationCodeHashDto, email, EmailConfirmationScope.LINK).block());
 	}
 	
 	@Test

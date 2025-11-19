@@ -1,81 +1,92 @@
 package com.lmlasmo.tasklist.repository.custom;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.util.Collection;
+import java.util.Optional;
 
+import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
+import org.springframework.data.relational.core.query.Criteria;
+import org.springframework.data.relational.core.query.Query;
+import org.springframework.data.relational.core.query.Update;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserStatusType;
 import com.lmlasmo.tasklist.repository.summary.UserSummary.StatusSummary;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.criteria.CriteriaBuilder;
-import jakarta.persistence.criteria.CriteriaQuery;
-import jakarta.persistence.criteria.CriteriaUpdate;
-import jakarta.persistence.criteria.Root;
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @Repository
-public class UserRepositoryCustomImpl implements UserRepositoryCustom {
+public class UserRepositoryCustomImpl extends RepositoryCustomImpl implements UserRepositoryCustom {
 	
-	private EntityManager manager;
+	private R2dbcEntityTemplate template;
 	
 	@Override
-	@Transactional(readOnly = true)
-	public List<StatusSummary> findStatusSummaryByStatus(UserStatusType status) {
-		CriteriaBuilder builder = manager.getCriteriaBuilder();
-		CriteriaQuery<StatusSummary> query = builder.createQuery(StatusSummary.class);
-		Root<User> root = query.from(User.class);
+	public Mono<User> findByEmail(String email) {
+		String sql = new StringBuilder("SELECT u.* FROM users u ")
+				.append("JOIN user_emails um ON um.user_id = u.id ")
+				.append("WHERE um.email = ?")
+				.toString();
 		
-		query.select(builder.construct(
-				StatusSummary.class, 
-				root.get("id"),
-				root.get("version"),
-				root.get("status"),
-				root.get("lastLogin")))
-		.where(builder.equal(root.get("status"), status));
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, email)
+				.map(User::new)
+				.one();
+	}
+	
+	@Override
+	public Flux<StatusSummary> findStatusSummaryByStatus(UserStatusType status) {
+		String sql = "SELECT id, row_version, status, last_login FROM users WHERE status = ?";
 		
-		return manager.createQuery(query).getResultList();
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, status.toString())
+				.map(row -> new StatusSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						UserStatusType.valueOf(row.get("status", String.class)),
+						Optional.ofNullable(row.get("last_login", LocalDateTime.class))
+							.map(i -> i.toInstant(ZoneOffset.UTC))
+							.orElse(null)
+						))
+				.all();
 	}
 
 	@Override
-	@Transactional(readOnly = true)
-	public List<StatusSummary> findStatusSummaryByStatusAndLastLoginAfter(UserStatusType status, Instant after) {
-		CriteriaBuilder builder = manager.getCriteriaBuilder();
-		CriteriaQuery<StatusSummary> query = builder.createQuery(StatusSummary.class);
-		Root<User> root = query.from(User.class);
+	public Flux<StatusSummary> findStatusSummaryByStatusAndLastLoginAfter(UserStatusType status, Instant after) {
+		String sql = "SELECT id, row_version, status, last_login FROM users WHERE status = ? AND last_login > ?";
 		
-		query.select(builder.construct(
-				StatusSummary.class, 
-				root.get("id"),
-				root.get("version"),
-				root.get("status"),
-				root.get("lastLogin")))
-		.where(builder.and(
-				builder.equal(root.get("status"), status),
-				builder.greaterThan(root.get("lastLogin"), after)));
-		
-		return manager.createQuery(query).getResultList();
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, status.toString())
+				.bind(1, after)
+				.map(row -> new StatusSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						UserStatusType.valueOf(row.get("status", String.class)),
+						Optional.ofNullable(row.get("last_login", LocalDateTime.class))
+							.map(i -> i.toInstant(ZoneOffset.UTC))
+							.orElse(null)
+						))
+				.all();
 	}
 
 	@Override
-	@Transactional
-	public void changeStatusByIds(Iterable<Integer> userIds, UserStatusType status) {
-		CriteriaBuilder builder = manager.getCriteriaBuilder();
-		CriteriaUpdate<User> update = builder.createCriteriaUpdate(User.class);
-		Root<User> root = update.from(User.class);
+	public Mono<Void> changeStatusByIds(Collection<Integer> userIds, UserStatusType status) {
+		if(userIds.isEmpty()) return Mono.just(null);
 		
-		List<Integer> ids = new ArrayList<>();
-		userIds.forEach(ids::add);
-		
-		update.set(root.get("status"), status)
-			.where(root.get("id").in(new ArrayList<Integer>(ids)));
-		
-		manager.createQuery(update).executeUpdate();
-	}	
+		return template.update(
+					Query.query(Criteria.where("id").in(userIds)),
+					Update.update("status", status),
+					User.class
+				).then()
+				.as(getOperator()::transactional);
+	}
 	
 }

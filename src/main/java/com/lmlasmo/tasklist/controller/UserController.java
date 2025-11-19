@@ -7,40 +7,41 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lmlasmo.tasklist.controller.util.ETagCheck;
+import com.lmlasmo.tasklist.controller.util.ETagHelper;
 import com.lmlasmo.tasklist.dto.UserDTO;
-import com.lmlasmo.tasklist.security.AuthenticatedTool.DirectAuthenticatedTool;
+import com.lmlasmo.tasklist.security.AuthenticatedTool;
 import com.lmlasmo.tasklist.service.UserService;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
 
-	private UserService userService;	
+	private UserService userService;
 	
 	@DeleteMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Void delete(HttpServletRequest req, HttpServletResponse res) {
-		int id = DirectAuthenticatedTool.getUserId();
-				
-		ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et));		
-		userService.delete(id);
-		
-		return null;
+	public Mono<Void> delete() {
+		return AuthenticatedTool.getUserId()
+				.flatMap(usid -> {
+					return ETagHelper.checkEtag(et -> userService.existsByIdAndVersion(usid, et))
+							.filter(Boolean::valueOf)
+							.flatMap(c -> userService.delete(usid));
+				});
 	}
 		
 	@GetMapping("/i")	
-	public UserDTO findByI(HttpServletRequest req, HttpServletResponse res) {
-		int id = DirectAuthenticatedTool.getUserId();
-		
-		if(ETagCheck.check(req, res, et -> userService.existsByIdAndVersion(id, et))) return null;
-		
-		return userService.findById(id);
+	public Mono<UserDTO> findByI() {
+		return AuthenticatedTool.getUserId()
+				.flatMap(usid -> {
+					return ETagHelper.checkEtag(et -> userService.existsByIdAndVersion(usid, et))
+							.filter(Boolean::booleanValue)
+							.flatMap(c -> userService.findById(usid))
+							.as(ETagHelper::setEtag);
+				});
 	}
 	
 }

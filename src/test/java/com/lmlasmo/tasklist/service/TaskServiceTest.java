@@ -4,12 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
@@ -21,11 +21,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.Task;
-import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.repository.TaskRepository;
 
-import jakarta.persistence.EntityNotFoundException;
+import reactor.core.publisher.Mono;
 
 @ExtendWith(MockitoExtension.class)
 public class TaskServiceTest {
@@ -44,12 +44,12 @@ public class TaskServiceTest {
 		create.setDeadline(OffsetDateTime.now());
 		create.setDeadlineZone(ZoneId.systemDefault().toString());
 
-		Task task = new Task(create, new User(userId));
+		Task task = new Task(create, userId);
 		task.setId(1);
 
-		when(taskRepository.save(any(Task.class))).thenReturn(task);
+		when(taskRepository.save(any(Task.class))).thenReturn(Mono.just(task));
 
-		assertDoesNotThrow(() -> taskService.save(create, userId));
+		assertDoesNotThrow(() -> taskService.save(create, userId).block());
 	}
 
 	@Test
@@ -57,11 +57,12 @@ public class TaskServiceTest {
 		int id = 1;
 		int nId = 2;
 
-		when(taskRepository.existsById(id)).thenReturn(true);
-		when(taskRepository.existsById(nId)).thenReturn(false);
+		when(taskRepository.existsById(id)).thenReturn(Mono.just(true));
+		when(taskRepository.existsById(nId)).thenReturn(Mono.just(false));
+		when(taskRepository.deleteById(anyInt())).thenReturn(Mono.empty());
 
-		assertThrows(EntityNotFoundException.class, () -> taskService.delete(nId));
-		assertThrows(EntityNotDeleteException.class, () -> taskService.delete(id));
+		assertThrows(ResourceNotFoundException.class, () -> taskService.delete(nId).block());
+		assertThrows(EntityNotDeleteException.class, () -> taskService.delete(id).block());
 	}
 
 	@Test
@@ -80,19 +81,19 @@ public class TaskServiceTest {
 		update.setName(UUID.randomUUID().toString());
 		update.setSummary(UUID.randomUUID().toString());
 
-		when(taskRepository.findById(id)).thenReturn(Optional.of(task));
-		when(taskRepository.findById(nId)).thenReturn(Optional.empty());
-		when(taskRepository.save(task)).thenReturn(task);
+		when(taskRepository.findById(id)).thenReturn(Mono.just(task));
+		when(taskRepository.findById(nId)).thenReturn(Mono.empty());
+		when(taskRepository.save(task)).thenReturn(Mono.just(task));
 
 		assertDoesNotThrow(() -> taskService.update(id, update));
-		assertThrows(EntityNotFoundException.class, () -> taskService.update(nId, update));
+		assertThrows(ResourceNotFoundException.class, () -> taskService.update(nId, update).block());
 
 		task.setName(update.getName());
 		task.setSummary(update.getSummary());
-		when(taskRepository.save(task)).thenReturn(task);
+		when(taskRepository.save(task)).thenReturn(Mono.just(task));
 
-		assertEquals(update.getName(), taskService.update(id, update).getName());
-		assertEquals(update.getSummary(), taskService.update(id, update).getSummary());
+		assertEquals(update.getName(), taskService.update(id, update).block().getName());
+		assertEquals(update.getSummary(), taskService.update(id, update).block().getSummary());
 	}
 
 	@Test
@@ -114,19 +115,19 @@ public class TaskServiceTest {
 		task.setDeadline(update.getDeadline().toInstant());
 		task.setDeadlineZone(update.getDeadlineZone());
 
-		when(taskRepository.findById(id)).thenReturn(Optional.of(task));
-		when(taskRepository.save(any())).thenReturn(task);
-		when(taskRepository.findById(nId)).thenReturn(Optional.empty());
+		when(taskRepository.findById(id)).thenReturn(Mono.just(task));
+		when(taskRepository.save(any())).thenReturn(Mono.just(task));
+		when(taskRepository.findById(nId)).thenReturn(Mono.empty());
 
-		assertDoesNotThrow(() -> taskService.update(id, update));
-		assertThrows(EntityNotFoundException.class, () -> taskService.update(nId, update));
+		assertDoesNotThrow(() -> taskService.update(id, update).block());
+		assertThrows(ResourceNotFoundException.class, () -> taskService.update(nId, update).block());
 
 		task.setDeadline(update.getDeadline().toInstant());
 		task.setDeadlineZone(update.getDeadlineZone());
-		when(taskRepository.save(task)).thenReturn(task);
+		when(taskRepository.save(task)).thenReturn(Mono.just(task));
 
-		assertEquals(update.getDeadline().toInstant().atZone(ZoneId.of(update.getDeadlineZone())).toOffsetDateTime(), taskService.update(id, update).getDeadline());
-		assertEquals(update.getDeadlineZone(), taskService.update(id, update).getDeadlineZone());
+		assertEquals(update.getDeadline().toInstant().atZone(ZoneId.of(update.getDeadlineZone())).toOffsetDateTime(), taskService.update(id, update).block().getDeadline());
+		assertEquals(update.getDeadlineZone(), taskService.update(id, update).block().getDeadlineZone());
 	}
 
 }
