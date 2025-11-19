@@ -65,6 +65,15 @@ public class UserService {
 				.switchIfEmpty(Mono.error(new OptimisticLockingFailureException("User was updated by another transaction")))
 				.then();
 	}
+		
+	public void updatePassword(PasswordRecoveryDTO passwordRecovery) {
+		User user = repository.findByEmailsEmail(passwordRecovery.getEmail())
+				.orElseThrow(() -> new EntityNotFoundException("Email not found"));
+		
+		user.setPassword(encoder.encode(passwordRecovery.getPassword()));
+		
+		repository.save(user);
+	}
 	
 	public Mono<Void> updatePassword(int id, String password) {
 		return repository.findById(id)
