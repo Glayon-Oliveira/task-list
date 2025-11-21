@@ -19,6 +19,7 @@ import org.springframework.web.server.UnsupportedMediaTypeStatusException;
 
 import com.lmlasmo.tasklist.advice.exception.util.AdviceWrapper;
 import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
+import com.lmlasmo.tasklist.exception.InvalidDataRequestException;
 import com.lmlasmo.tasklist.exception.InvalidEmailCodeException;
 import com.lmlasmo.tasklist.exception.TaskHasSubtasksException;
 
@@ -108,6 +109,11 @@ public class BadRequestAdviceController {
 	
 	@ExceptionHandler(InvalidEmailCodeException.class)
 	public Mono<Map<String, Object>> exceptionResponse(InvalidEmailCodeException ex, ServerHttpRequest req) {
+		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
+	}
+	
+	@ExceptionHandler(InvalidDataRequestException.class)
+	public Mono<Map<String, Object>> exceptionResponse(InvalidDataRequestException ex, ServerHttpRequest req) {
 		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
 	}
 

@@ -1,0 +1,175 @@
+Perfeito — vamos detalhar:
+
+# ✅ 1. Queries necessárias
+
+Você precisa de 3 tipos de consultas:
+
+---
+
+## **A. Buscar a subtask com a MENOR posição (START)**
+
+```sql
+SELECT *
+FROM subtasks
+WHERE task_id = :taskId
+ORDER BY position ASC
+LIMIT 1;
+```
+
+---
+
+## **B. Buscar a subtask com a MAIOR posição (END)**
+
+```sql
+SELECT *
+FROM subtasks
+WHERE task_id = :taskId
+ORDER BY position DESC
+LIMIT 1;
+```
+
+---
+
+## **C. Buscar a subtask com a menor posição *depois* da subtask X**
+
+Ou seja, a próxima subtask na ordenação:
+
+```sql
+SELECT *
+FROM subtasks
+WHERE task_id = :taskId
+  AND position > :currentPosition
+ORDER BY position ASC
+LIMIT 1;
+```
+
+---
+
+## **D. (Opcional) Buscar a subtask com a maior posição *antes* da subtask X**
+
+```sql
+SELECT *
+FROM subtasks
+WHERE task_id = :taskId
+  AND position < :currentPosition
+ORDER BY position DESC
+LIMIT 1;
+```
+
+Isso cobre os casos:
+
+* AFTER
+* BEFORE
+* MID (duas queries)
+
+---
+
+# ✅ 2. Spring Data R2DBC consegue gerar essas queries automaticamente?
+
+Sim **para alguns casos**, não para todos.
+
+Ele consegue gerar automaticamente *desde que*:
+
+* você tenha uma entidade `Subtask`
+* o nome do método siga a convenção de keywords
+
+---
+
+# ⭐ Query automática para START (min posição)
+
+```java
+Mono<Subtask> findFirstByTaskIdOrderByPositionAsc();
+```
+
+---
+
+# ⭐ Query automática para END (max posição)
+
+```java
+Mono<Subtask> findFirstByTaskIdOrderByPositionDesc();
+```
+
+Ambas funcionam perfeitamente com R2DBC.
+
+---
+
+# ⭐ Query automática para "subtask após esta posição"
+
+```java
+Mono<Subtask> findFirstByTaskIdAndPositionGreaterThanOrderByPositionAsc(Long taskId, BigDecimal pos);
+```
+
+Isso funciona perfeitamente também.
+
+---
+
+# ⭐ Query automática para "subtask antes desta posição"
+
+```java
+Mono<Subtask> findFirstByTaskIdAndPositionLessThanOrderByPositionDesc(Long taskId, BigDecimal pos);
+```
+
+---
+
+# 🎉 **Conclusão sobre o Spring R2DBC**
+
+Spring Data R2DBC **SUPORTA 100%**:
+
+| Caso                        | Método derivado?                                   | Funciona? |
+| --------------------------- | -------------------------------------------------- | --------- |
+| menor posição (start)       | `findFirst…OrderByPositionAsc()`                   | ✔         |
+| maior posição (end)         | `findFirst…OrderByPositionDesc()`                  | ✔         |
+| próxima subtask depois de X | `findFirst…PositionGreaterThan…OrderByPositionAsc` | ✔         |
+| subtask anterior a X        | `findFirst…PositionLessThan…OrderByPositionDesc`   | ✔         |
+
+Você não precisa de queries manuais para nada disso.
+
+---
+
+# 🧠 Observação relevante
+
+⚠ **Spring Data R2DBC escolhe o LIMIT 1 automaticamente**
+quando você usa `findFirstBy...OrderBy...()`.
+
+Isso funciona igual no Spring Data JDBC/JPA.
+
+---
+
+# 🧭 Resumo final dos métodos
+
+### START
+
+```java
+Mono<Subtask> findFirstByTaskIdOrderByPositionAsc();
+```
+
+### END
+
+```java
+Mono<Subtask> findFirstByTaskIdOrderByPositionDesc();
+```
+
+### AFTER
+
+```java
+Mono<Subtask> findFirstByTaskIdAndPositionGreaterThanOrderByPositionAsc(Long taskId, BigDecimal pos);
+```
+
+### BEFORE
+
+```java
+Mono<Subtask> findFirstByTaskIdAndPositionLessThanOrderByPositionDesc(Long taskId, BigDecimal pos);
+```
+
+### MID (2 métodos acima)
+
+---
+
+Se quiser, posso também:
+
+* montar o **PositionService** completo
+* montar o **SubtaskMoveService**
+* gerar o pseudocódigo completo do fluxo BEFORE/AFTER/MID
+* desenhar o algoritmo final com BigDecimal ou potência de 2
+
+É só pedir.

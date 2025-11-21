@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.repository.custom;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 
 import com.lmlasmo.tasklist.model.TaskStatusType;
@@ -16,13 +17,21 @@ public interface SubtaskRepositoryCustom extends RepositoryCustom {
 
 	public Mono<Long> countByIdInAndTaskUserId(Collection<Integer> subtaskIds, int userId);
 		
-	public Flux<SubtaskSummary.PositionSummary> findPositionSummaryByTaskId(int taskId);
+	public Flux<SubtaskSummary.PositionSummary> findPositionSummaryByTaskIdOrderByASC(int taskId);
 		
 	public Mono<SubtaskSummary.PositionSummary> findPositionSummaryById(int subtaskId);
 		
 	public Flux<PositionSummary> findPositionSummaryByRelatedSubtaskId(int subtaskId);
 	
-	public Mono<Void> updatePriority(BasicSummary basic, int position);
+	public Mono<PositionSummary> findFirstPositionSummaryByTaskIdOrderByASC(int taskId);
+	
+	public Mono<PositionSummary> findLastPositionSummaryByTaskIdOrderByASC(int taskId);
+	
+	public Mono<PositionSummary> findFirstPositionSummaryByTaskIdAndPositionGreaterThanOrderByASC(int taskId, BigDecimal position);
+	
+	public Mono<PositionSummary> findFirstPositionSummaryByTaskIdAndPositionLessThanOrderByDESC(int taskId, BigDecimal position);
+	
+	public Mono<Void> updatePriority(BasicSummary basic, BigDecimal position);
 	
 	public Mono<SubtaskSummary.StatusSummary> findStatusSummaryById(int subtaskId);
 	
