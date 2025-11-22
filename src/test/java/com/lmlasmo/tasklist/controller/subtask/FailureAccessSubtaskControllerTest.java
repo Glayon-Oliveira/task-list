@@ -6,9 +6,9 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -63,7 +63,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 
 		subtask = new Subtask();
 		subtask.setId(1);
-		subtask.setPosition(1);
+		subtask.setPosition(BigDecimal.ONE);
 		subtask.setTaskId(1);
 		subtask.setCreatedAt(Instant.now());
 		subtask.setUpdatedAt(subtask.getCreatedAt());
@@ -167,18 +167,22 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 
 	@Test
 	void updatePositions() throws Exception {
-		int newPosition = new Random().nextInt(1, 10);
-
-		MultiValueMap<String, String> baseParams = new LinkedMultiValueMap<>();
-		baseParams.add("position", String.valueOf(newPosition));
+		String update = """
+				{
+					"moveType": "AFTER",
+					"anchorSubtaskId": "%d"
+				}
+				""";
 		
-		when(subtaskService.updatePosition(anyInt(), anyInt())).thenReturn(Mono.empty());
+		update = update.formatted(1);
+		
+		when(subtaskService.updatePosition(anyInt(), any())).thenReturn(Mono.empty());
 		
 		getWebTestClient().patch()
-			.uri(ub -> ub.path(baseUri+"/"+subtask.getId())
-					.queryParams(baseParams)
-					.build())
+			.uri(baseUri+"/"+subtask.getId()+"/position")
 			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
+			.contentType(MediaType.APPLICATION_JSON)
+			.bodyValue(update)
 			.exchange()
 			.expectStatus().isForbidden();
 	}
