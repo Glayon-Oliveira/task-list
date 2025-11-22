@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -31,7 +32,7 @@ public class SubtaskDTO implements VersionedDTO {
 	private TaskStatusType status;
 	
 	@JsonProperty	
-	private Integer position;
+	private BigDecimal position;
 	
 	@JsonProperty
 	private Instant createdAt;

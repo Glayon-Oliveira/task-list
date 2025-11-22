@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.repository.subtask;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -39,7 +40,7 @@ public class AbstractSubtaskRepositoryTest extends AbstractTaskRepositoryTest {
 				Subtask subtask = new Subtask();
 				subtask.setName(name);
 				subtask.setSummary(summary);
-				subtask.setPosition(subtasks.size()+1);
+				subtask.setPosition(BigDecimal.valueOf(subtasks.size()+1));
 				subtask.setTaskId(t.getId());
 
 				subtask = subtaskRepository.save(subtask).block();

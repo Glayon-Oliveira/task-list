@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -29,18 +30,19 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 	@Test
 	void findPositionSummaryByTaskId() {
 		getTasks().forEach(t -> {
-			List<PositionSummary> idPositions = getSubtaskRepository().findPositionSummaryByTaskId(t.getId())
+			List<PositionSummary> idPositions = getSubtaskRepository().findPositionSummaryByTaskIdOrderByASC(t.getId())
 					.collectList().block();
 
 			getSubtasks().stream()
+			.sorted(Comparator.comparing(Subtask::getPosition))
 				.filter(s -> s.getTaskId() == t.getId())
 				.forEach(s -> {
 					PositionSummary idPosition = idPositions.stream()
 							.filter(ip -> ip.getId() == s.getId())
 							.findFirst().orElseThrow();
-
+					
 					assertTrue(idPosition.getId() == s.getId());
-					assertTrue(idPosition.getPosition() == s.getPosition());
+					assertTrue(idPosition.getPosition().compareTo(s.getPosition()) == 0);
 				});
 		});
 	}
@@ -54,7 +56,7 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		
 		assertNotNull(positionSummary);
 		assertEquals(subtask.getId(), positionSummary.getId());
-		assertEquals(subtask.getPosition(), positionSummary.getPosition());
+		assertEquals(subtask.getPosition().compareTo(positionSummary.getPosition()), 0);
 	}
 	
 	@Test
@@ -82,14 +84,13 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 				 	.collect(Collectors.toSet())
 				);
 		
-		assertEquals(
-				related.stream()
-					.map(PositionSummary::getPosition)
-					.collect(Collectors.toSet()),
-				subtasks.stream()
-				 	.map(Subtask::getPosition)
-				 	.collect(Collectors.toSet())
-				);
+		subtasks.forEach(s -> {
+			PositionSummary relatedValue = related.stream()
+					.filter(r -> r.getId() == s.getId())
+					.findFirst().get();
+			
+			assertEquals(s.getPosition().compareTo(relatedValue.getPosition()), 0);
+		});
 	}
 
 	@Test
@@ -110,16 +111,20 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 				.filter(s -> s.getTaskId() == task.getId())
 				.collect(Collectors.toList());
 		
-		sortedSubtasks.sort(Comparator.comparingInt(Subtask::getPosition));
+		sortedSubtasks.sort(Comparator.comparingDouble((s) -> s.getPosition().doubleValue()));
 		
 		int subtaskIndex = new Random().nextInt(0, sortedSubtasks.size());
 		Subtask subtask = sortedSubtasks.get(subtaskIndex);
-		final int position = subtask.getPosition();
+		final BigDecimal position = subtask.getPosition();
 		
 		Subtask lastSubtask = sortedSubtasks.get(subtaskIndex == sortedSubtasks.size()-1 ? 0 : sortedSubtasks.size()-1);
-		final int lastPosition = lastSubtask.getPosition();
+		final BigDecimal lastPosition = lastSubtask.getPosition();
 		
-		getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), subtask.getVersion()), lastPosition > position ? lastPosition+1 : position+1).block();
+		getSubtaskRepository().updatePriority(new BasicSummary(
+				subtask.getId(),
+				subtask.getVersion()),
+				lastPosition.compareTo(position) > 0 ? lastPosition.add(BigDecimal.ONE) : position.add(BigDecimal.ONE)
+				).block();
 		
 		Subtask upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
 		Subtask upLastSubtask = getSubtaskRepository().findById(lastSubtask.getId()).block();
@@ -130,7 +135,9 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		lastSubtask.setPosition(upLastSubtask.getPosition());
 		lastSubtask.setVersion(upLastSubtask.getVersion());
 		
-		assertEquals(subtask.getPosition(), lastPosition > position ? lastPosition+1 : position+1);
+		BigDecimal toAssertTrue = lastPosition.compareTo(position) > 0 ? lastPosition.add(BigDecimal.ONE) : position.add(BigDecimal.ONE);
+		
+		assertTrue(subtask.getPosition().compareTo(toAssertTrue) == 0);
 		
 		getSubtaskRepository().updatePriority(new BasicSummary(lastSubtask.getId(), lastSubtask.getVersion()), position).block();
 		
@@ -143,7 +150,7 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		lastSubtask.setPosition(upLastSubtask.getPosition());
 		lastSubtask.setVersion(upLastSubtask.getVersion());
 		
-		assertEquals(lastSubtask.getPosition(), position);
+		assertEquals(lastSubtask.getPosition().compareTo(position), 0);
 		
 		assertThrows(DataIntegrityViolationException.class, () -> getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), subtask.getVersion()), lastSubtask.getPosition()).block());
 	}
@@ -158,9 +165,13 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 	    Subtask subtask = subtasks.get(0);
 
 	    long initialVersion = subtask.getVersion();
-	    int newPosition = subtask.getPosition() + subtasks.size() + 1;
+	    BigDecimal newPosition = subtask.getPosition()
+	    		.add(BigDecimal.valueOf(subtasks.size()+1));
  
-	    getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), initialVersion), newPosition).block();
+	    getSubtaskRepository().updatePriority(new BasicSummary(
+	    		subtask.getId(),
+	    		initialVersion),
+	    		newPosition).block();
 
 	    Subtask upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
 	    
@@ -168,13 +179,19 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 	    subtask.setVersion(upSubtask.getVersion());
 
 	    assertEquals(initialVersion + 1, subtask.getVersion());
-	    assertEquals(newPosition, subtask.getPosition());
+	    assertEquals(newPosition.compareTo(subtask.getPosition()), 0);
 
 	    assertThrows(OptimisticLockingFailureException.class, 
-	    		() -> getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), initialVersion), newPosition + 1).block()
+	    		() -> getSubtaskRepository().updatePriority(new BasicSummary(
+	    				subtask.getId(),
+	    				initialVersion),
+	    				newPosition.add(BigDecimal.ONE)).block()
 	    );
 
-	    getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), subtask.getVersion()), newPosition + 2).block();
+	    getSubtaskRepository().updatePriority(new BasicSummary(
+	    		subtask.getId(),
+	    		subtask.getVersion()),
+	    		newPosition.add(BigDecimal.valueOf(2))).block();
 
 	    upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
 	    
@@ -182,7 +199,7 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 	    subtask.setVersion(upSubtask.getVersion());
 	    
 	    assertEquals(initialVersion+2, subtask.getVersion());
-	    assertEquals(newPosition + 2, subtask.getPosition());
+	    assertEquals(newPosition.add(BigDecimal.valueOf(2)).compareTo(subtask.getPosition()), 0);
 	}
 	
 	@Test

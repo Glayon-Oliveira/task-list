@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.repository.custom;
 
+import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -70,10 +71,11 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 	}
 
 	@Override	
-	public Flux<PositionSummary> findPositionSummaryByTaskId(int taskId) {
-		String sql = new StringBuilder("SELECT s.id, s.row_version, s.position FROM subtasks s ")
+	public Flux<PositionSummary> findPositionSummaryByTaskIdOrderByASC(int taskId) {
+		String sql = new StringBuilder("SELECT s.id, s.row_version, s.position, s.task_id FROM subtasks s ")
 				.append("JOIN tasks t ON s.task_id = t.id ")
-				.append("WHERE t.id = ?")
+				.append("WHERE t.id = ? ")
+				.append("ORDER BY s.position ")
 				.toString();
 		
 		return template.getDatabaseClient()
@@ -82,14 +84,15 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.map(row -> new PositionSummary(
 						row.get("id", Integer.class),
 						row.get("row_version", Long.class),
-						row.get("position", Integer.class)
+						row.get("position", BigDecimal.class),
+						row.get("task_id", Integer.class)
 						))
 				.all();
 	}
 
 	@Override
 	public Mono<PositionSummary> findPositionSummaryById(int subtaskId) {
-		String sql = "SELECT id, row_version, position FROM subtasks WHERE id = ?";
+		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE id = ?";
 		
 		return template.getDatabaseClient()
 				.sql(sql.toString())
@@ -97,14 +100,15 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.map(row -> new PositionSummary(
 						row.get("id", Integer.class),
 						row.get("row_version", Long.class),
-						row.get("position", Integer.class)
+						row.get("position", BigDecimal.class),
+						row.get("task_id", Integer.class)
 						))
 				.one();
 	}
 
 	@Override
 	public Flux<PositionSummary> findPositionSummaryByRelatedSubtaskId(int subtaskId) {
-		String sql = new StringBuilder("SELECT s.id, s.row_version, s.position FROM subtasks s ")
+		String sql = new StringBuilder("SELECT s.id, s.row_version, s.position, s.task_id FROM subtasks s ")
 				.append("JOIN tasks t ON s.task_id = t.id ")
 				.append("WHERE t.id = (SELECT task_id FROM subtasks WHERE id = ?) ")
 				.append("AND s.id != ?")
@@ -117,13 +121,78 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.map(row -> new PositionSummary(
 						row.get("id", Integer.class),
 						row.get("row_version", Long.class),
-						row.get("position", Integer.class)
+						row.get("position", BigDecimal.class),
+						row.get("task_id", Integer.class)
 						))
 				.all();
 	}
+	
+	public Mono<PositionSummary> findFirstPositionSummaryByTaskIdOrderByASC(int taskId) {
+		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE task_id = ? ORDER BY position ASC LIMIT 1";
+		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, taskId)
+				.map(row -> new PositionSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						row.get("position", BigDecimal.class),
+						row.get("task_id", Integer.class)
+						))
+				.first();
+	}
+	
+	public Mono<PositionSummary> findLastPositionSummaryByTaskIdOrderByASC(int taskId) {
+		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE task_id = ? ORDER BY position DESC LIMIT 1";
+		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, taskId)
+				.map(row -> new PositionSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						row.get("position", BigDecimal.class),
+						row.get("task_id", Integer.class)
+						))
+				.first();
+	}
+	
+	@Override
+	public Mono<PositionSummary> findFirstPositionSummaryByTaskIdAndPositionGreaterThanOrderByASC(int taskId, BigDecimal position) {
+		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE task_id = ? AND position > ? ORDER BY position ASC LIMIT 1";
+		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, taskId)
+				.bind(1, position)
+				.map(row -> new PositionSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						row.get("position", BigDecimal.class),
+						row.get("task_id", Integer.class)
+						))
+				.first();
+	}
 
 	@Override
-	public Mono<Void> updatePriority(BasicSummary basic, int position) {
+	public Mono<PositionSummary> findFirstPositionSummaryByTaskIdAndPositionLessThanOrderByDESC(int taskId, BigDecimal position) {
+		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE task_id = ? AND position < ? ORDER BY position DESC LIMIT 1";
+		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, taskId)
+				.bind(1, position)
+				.map(row -> new PositionSummary(
+						row.get("id", Integer.class),
+						row.get("row_version", Long.class),
+						row.get("position", BigDecimal.class),
+						row.get("task_id", Integer.class)
+						))
+				.first();
+	}
+
+	@Override
+	public Mono<Void> updatePriority(BasicSummary basic, BigDecimal position) {
 		return template.update(
 					Query.query(
 							Criteria.where("id").is(basic.getId())
