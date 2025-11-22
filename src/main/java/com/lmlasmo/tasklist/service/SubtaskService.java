@@ -1,41 +1,44 @@
 package com.lmlasmo.tasklist.service;
 
-import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
-import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.dto.update.UpdateSubtaskPositionDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateSubtaskPositionDTO.MovePositionType;
+import com.lmlasmo.tasklist.exception.InvalidDataRequestException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.service.applier.UpdateSubtaskApplier;
 
-import lombok.AllArgsConstructor;
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-@AllArgsConstructor
+@RequiredArgsConstructor
 @Service
 public class SubtaskService {
 
-	private SubtaskRepository subtaskRepository;
+	@NonNull private SubtaskRepository subtaskRepository;
+	private final BigDecimal positionStep = BigDecimal.valueOf(1024);
 		
 	public Mono<SubtaskDTO> save(CreateSubtaskDTO create) {
 		return Mono.just(new Subtask(create))
 				.flatMap(s -> {
-					return subtaskRepository.findPositionSummaryByTaskId(create.getTaskId())
+					return subtaskRepository.findPositionSummaryByTaskIdOrderByASC(create.getTaskId())
 							.map(PositionSummary::getPosition)
-							.reduce(Integer::max)
-							.doOnNext(s::setPosition)
+							.reduce(BigDecimal::max)
+							.doOnNext(m -> s.setPosition(m.add(positionStep)))
 							.thenReturn(s);
 				})
 				.flatMap(subtaskRepository::save)
@@ -56,58 +59,72 @@ public class SubtaskService {
 				.flatMap(subtaskRepository::save)
 				.map(SubtaskDTO::new);
 	}
+	
+	public Mono<Void> updatePosition(int subtaskId, UpdateSubtaskPositionDTO update) {
+		if(subtaskId == update.getAnchorSubtaskId()) return Mono.error(new InvalidDataRequestException("Subtask id "+ subtaskId +" not can equals anchor subtask id " + update.getAnchorSubtaskId()));
 		
-	public Mono<Void> updatePosition(int subtaskId, int position) {
 		return subtaskRepository.findPositionSummaryById(subtaskId)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id " + subtaskId)))
 				.flatMap(s -> {
-					if(s.getPosition() == position) {
-						return Mono.error(new ResourceAlreadyExistsException("New position of subtask is equals at exists position"));
+					return subtaskRepository.findPositionSummaryById(update.getAnchorSubtaskId())
+							.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id " + update.getAnchorSubtaskId())))
+							.flatMap(a -> {
+								return updatePositionForMidOrLimit(s, a, update.getMoveType());
+							});
+				});
+	}
+	
+	private Mono<Void> updatePositionForMidOrLimit(PositionSummary subtask, PositionSummary anchorSubtask, MovePositionType moveType) {		
+		boolean isBefore = MovePositionType.BEFORE.equals(moveType);
+		BigDecimal nStep = positionStep.abs();
+		
+		Mono<PositionSummary> lAnc = isBefore ? subtaskRepository.findFirstPositionSummaryByTaskIdAndPositionLessThanOrderByDESC(anchorSubtask.getTaskId(), anchorSubtask.getPosition()).cache()
+											  : subtaskRepository.findFirstPositionSummaryByTaskIdAndPositionGreaterThanOrderByASC(anchorSubtask.getTaskId(), anchorSubtask.getPosition()).cache();
+		
+		return lAnc
+				.hasElement()
+				.flatMap(has -> {
+					if(has) {
+						return lAnc.flatMap(lA -> {
+							BigDecimal mid = anchorSubtask.getPosition()
+									.add(lA.getPosition())
+									.divide(BigDecimal.valueOf(2), 10, RoundingMode.HALF_UP);
+							return subtaskRepository.updatePriority(subtask, mid);
+						});
 					}
 					
-					return subtaskRepository.updatePriority(s, 0)
-							.thenReturn(new PositionSummary(s.getId(), s.getVersion()+1, s.getPosition()));
+					BigDecimal extreme = isBefore ? anchorSubtask.getPosition().divide(BigDecimal.valueOf(2), 10, RoundingMode.HALF_UP)
+												  : anchorSubtask.getPosition().add(nStep);
+					
+					return subtaskRepository.updatePriority(subtask, extreme);
 				})
-				.flatMap(s -> {
-					return subtaskRepository.findPositionSummaryByRelatedSubtaskId(subtaskId)
-							.collectList()
-							.map(ss -> normalizePositions(ss, s, position))
-							.flatMapMany(Flux::fromIterable)
-							.concatMap(ups -> subtaskRepository.updatePriority(ups, ups.getPosition()))
-							.then();
-				}).as(m -> subtaskRepository.getOperator().transactional(m));
+				.onErrorResume(DataIntegrityViolationException.class, e -> normalizePositions(subtask, anchorSubtask, moveType, nStep)
+						.then(Mono.defer(() -> {
+							UpdateSubtaskPositionDTO update = new UpdateSubtaskPositionDTO(moveType, anchorSubtask.getId());							
+							return updatePosition(subtask.getId(), update);
+						})))
+				.as(subtaskRepository.getOperator()::transactional);
 	}
-
-	private List<PositionSummary> normalizePositions(List<PositionSummary> siblingSubtasks, PositionSummary subtaskToMove, int targetPosition){
-		List<PositionSummary> resultList = new ArrayList<>();	
-		int maxPosition = siblingSubtasks.size() + 1;
-		final int finalPosition = Math.max(1, Math.min(targetPosition, maxPosition));		
-		
-		boolean isAscRasult = (finalPosition >= subtaskToMove.getPosition());
-				
-		subtaskToMove = new PositionSummary(subtaskToMove.getId(), subtaskToMove.getVersion(), finalPosition);
-		
-		siblingSubtasks.sort(Comparator.comparingInt(PositionSummary::getPosition));
-		Iterator<PositionSummary> siblingIt = siblingSubtasks.iterator();
-		
-		for(int pos = 1; pos <= maxPosition; pos++) {
-			
-			if(finalPosition != pos) {								
-				PositionSummary subtask = siblingIt.next();
-				siblingIt.remove();
-				
-				if(subtask.getPosition() != pos) resultList.add(new PositionSummary(subtask.getId(), subtask.getVersion(), pos));
-			}
-		}
-		
-		Comparator<PositionSummary> comparator = Comparator.comparingInt(PositionSummary::getPosition);
-		
-		if(!isAscRasult) comparator = comparator.reversed();
-		
-		resultList.sort(comparator);
-		resultList.add(subtaskToMove);
-		
-		return Collections.unmodifiableList(resultList);
+	
+	private Mono<Void> normalizePositions(PositionSummary subtask, PositionSummary anchorSubtask, MovePositionType moveType, BigDecimal step) {
+		return subtaskRepository.findPositionSummaryByTaskIdOrderByASC(subtask.getTaskId())
+				.index()
+				.concatMap(ts -> {
+					BigDecimal position = BigDecimal.valueOf(-3).multiply(BigDecimal.valueOf(ts.getT1()+1));
+					return subtaskRepository.updatePriority(ts.getT2(), position)
+							.thenReturn(new PositionSummary(
+									ts.getT2().getId(),
+									ts.getT2().getVersion()+1,
+									position,
+									0));
+				})
+				.index()
+				.concatMap(ts -> {
+					BigDecimal position = step.multiply(BigDecimal.valueOf(ts.getT1()+1));
+					return subtaskRepository.updatePriority(ts.getT2(), position);
+				})
+				.as(subtaskRepository.getOperator()::transactional)
+				.then();
 	}
 	
 	public Mono<Boolean> existsByIdAndVersion(int id, long version) {

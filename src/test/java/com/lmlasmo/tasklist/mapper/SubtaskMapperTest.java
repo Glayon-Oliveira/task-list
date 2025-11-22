@@ -2,6 +2,7 @@ package com.lmlasmo.tasklist.mapper;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -17,7 +18,7 @@ public class SubtaskMapperTest {
 	private String name = "Name - ID = " + UUID.randomUUID().toString();
 	private String summary = "Summary - ID = " + UUID.randomUUID().toString();
 	private int durationMinutes = 10;
-	private int position = 1;
+	private BigDecimal position = BigDecimal.ONE;
 	private Instant createdAt = Instant.now();
 	private Instant updatedAt = createdAt;
 	private Task task = new Task(1);

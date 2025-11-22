@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.model;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 
 import org.springframework.data.annotation.Id;
@@ -36,7 +37,7 @@ public class Subtask {
 	private TaskStatusType status = TaskStatusType.PENDING;
 	
 	@Column
-	private int position;
+	private BigDecimal position;
 	
 	@ReadOnlyProperty
 	@Column("created_at")

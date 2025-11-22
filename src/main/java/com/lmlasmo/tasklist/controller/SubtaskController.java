@@ -18,6 +18,7 @@ import com.lmlasmo.tasklist.controller.util.ETagHelper;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
+import com.lmlasmo.tasklist.dto.update.UpdateSubtaskPositionDTO;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.security.AuthenticatedResourceAccess;
 import com.lmlasmo.tasklist.service.SubtaskService;
@@ -63,13 +64,14 @@ public class SubtaskController {
 				.then(subtaskService.update(subtaskId, update));
 	}
 	
-	@PatchMapping(path = "/{subtaskId}", params = "position")
+	@PatchMapping(path = "/{subtaskId}/position")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Mono<Void> updateSubtaskPosition(@PathVariable @Min(1) int subtaskId, @RequestParam @Min(1) int position) {
+	public Mono<Void> updateSubtaskPosition(@PathVariable @Min(1) int subtaskId, @RequestBody @Valid UpdateSubtaskPositionDTO update) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskId, usid))
+				.then(resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(update.getAnchorSubtaskId(), usid)))
 				.then(ETagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
 				.filter(Boolean::booleanValue)
-				.thenEmpty(subtaskService.updatePosition(subtaskId, position));
+				.thenEmpty(subtaskService.updatePosition(subtaskId, update));
 	}
 	
 	@PatchMapping(params = {"subtaskIds", "status"})

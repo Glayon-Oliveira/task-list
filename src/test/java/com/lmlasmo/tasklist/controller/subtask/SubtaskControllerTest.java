@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Random;
@@ -73,7 +74,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 
 		subtask = new Subtask();
 		subtask.setId(1);
-		subtask.setPosition(1);
+		subtask.setPosition(BigDecimal.ONE);
 		subtask.setTaskId(1);
 		subtask.setCreatedAt(Instant.now());
 		subtask.setUpdatedAt(subtask.getCreatedAt());
@@ -265,12 +266,16 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 				.expectStatus().isEqualTo(HttpStatus.PRECONDITION_FAILED);
 	}
 
-	@RepeatedTest(10)
+	@RepeatedTest(3)
 	public void updatePositions(RepetitionInfo info) throws Exception {
-		int newPosition = new Random().nextInt(1, 10);
-
-		MultiValueMap<String, String> baseParams = new LinkedMultiValueMap<>();
-		baseParams.add("position", String.valueOf(newPosition));
+		String update = """
+				{
+					"moveType": "AFTER",
+					"anchorSubtaskId": "%d"
+				}
+				""";
+		
+		update = update.formatted(1);
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
@@ -284,16 +289,17 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 			headers.setIfMatch("\""+fEtag+"\"");
 		}
 
-		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(Mono.empty());
+		when(accessService.canAccessSubtask(eq(subtask.getId()), eq(getDefaultUser().getId()))).thenReturn(Mono.empty());
+		when(accessService.canAccessSubtask(eq(1), eq(getDefaultUser().getId()))).thenReturn(Mono.empty());
 		when(subtaskService.existsByIdAndVersion(anyInt(), anyLong())).thenReturn(Mono.just(false));
 		when(subtaskService.existsByIdAndVersion(eq(subtask.getId()), eq(subtask.getVersion()))).thenReturn(Mono.just(true));		
-		when(subtaskService.updatePosition(anyInt(), anyInt())).thenReturn(Mono.empty());
+		when(subtaskService.updatePosition(anyInt(), any())).thenReturn(Mono.empty());
 		
 		ResponseSpec response = getWebTestClient().patch()
-				.uri(ub -> ub.path(baseUri + "/" + subtask.getId())
-						.queryParams(baseParams)
-						.build())
+				.uri(baseUri + "/" + subtask.getId() + "/position")
 				.headers(h -> h.addAll(headers))
+				.contentType(MediaType.APPLICATION_JSON)
+				.bodyValue(update)
 				.exchange();
 		
 		if(info.getCurrentRepetition() == 3) {
