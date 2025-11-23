@@ -21,7 +21,7 @@ import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationHashDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailWithScope;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO;
-import com.lmlasmo.tasklist.dto.auth.JWTTokenType;
+import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO.JWTTokenType;
 import com.lmlasmo.tasklist.dto.auth.LoginDTO;
 import com.lmlasmo.tasklist.dto.auth.PasswordRecoveryDTO;
 import com.lmlasmo.tasklist.dto.auth.SignupDTO;
@@ -92,7 +92,7 @@ public class AuthController {
 	}	
 	
 	@PostMapping("/token/refresh")
-	public Mono<ResponseEntity<DoubleJWTTokensDTO>> refresh(@CookieValue(value = "rt", required = false) String refreshToken, @RequestBody(required = false) TokenDTO refreshTokenDto) throws Exception {
+	public Mono<ResponseEntity<DoubleJWTTokensDTO>> refresh(@CookieValue(value = "rt", required = false) String refreshToken, @RequestBody(required = false) @Valid TokenDTO refreshTokenDto) throws Exception {
 		String newRefreshToken = jwtService.regenerateRefreshToken(refreshTokenDto != null ? refreshTokenDto.getToken() : refreshToken);
 		
 		Mono<JWTTokenDTO> accessToken = access(newRefreshToken, null);
@@ -115,7 +115,7 @@ public class AuthController {
 	}	
 	
 	@PostMapping("/token/access")
-	public Mono<JWTTokenDTO> access(@CookieValue(value = "rt", required = false) String refreshToken, @RequestBody(required = false) TokenDTO refreshTokenDto) {
+	public Mono<JWTTokenDTO> access(@CookieValue(value = "rt", required = false) String refreshToken, @RequestBody(required = false) @Valid TokenDTO refreshTokenDto) {
 		SignedJWT signed = jwtService.validateRefreshToken(refreshTokenDto != null ? refreshTokenDto.getToken() : refreshToken);
 		
 		int id = jwtService.getSubjectIdOfToken(signed);

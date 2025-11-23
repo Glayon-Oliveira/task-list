@@ -2,6 +2,7 @@ package com.lmlasmo.tasklist.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,12 +21,15 @@ import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationSc
 import com.lmlasmo.tasklist.service.UserEmailService;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
 @RestController
 @RequestMapping("/api/account")
+@Validated
 public class AccountController {
 	
 	private UserEmailService userEmailService;
@@ -44,7 +48,7 @@ public class AccountController {
 	
 	@PatchMapping("/email/primary/{id}")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Mono<Void> changePrimaryEmail(@PathVariable int id) {
+	public Mono<Void> changePrimaryEmail(@PathVariable @Min(1) int id) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessEmail(id, usid))
 				.flatMap(usid -> userEmailService.changePrimaryEmail(id, usid))
 				.then();
@@ -53,7 +57,7 @@ public class AccountController {
 	@PatchMapping("/email/status/{status}")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public Mono<Void> changeStatusEmail(@RequestBody EmailDTO email, @PathVariable EmailStatusType status) {
+	public Mono<Void> changeStatusEmail(@RequestBody @Valid EmailDTO email, @PathVariable @NotNull EmailStatusType status) {
 		return userEmailService.changeEmailStatus(email.getEmail(), status)
 				.then();
 	}

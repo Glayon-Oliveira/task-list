@@ -5,6 +5,7 @@ import com.lmlasmo.tasklist.dto.auth.PasswordDTO;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,8 +20,9 @@ public class CreateUserDTO extends PasswordDTO {
 	private String username;
 	
 	@JsonProperty
-	@NotBlank
 	@Email
+	@Size(max = 255)
+	@NotBlank	
 	private String email;
 	
 	public void setEmail(String email) {
