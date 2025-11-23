@@ -20,7 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
-import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
+import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.repository.TaskRepository;
@@ -62,7 +62,7 @@ public class TaskServiceTest {
 		when(taskRepository.deleteById(anyInt())).thenReturn(Mono.empty());
 
 		assertThrows(ResourceNotFoundException.class, () -> taskService.delete(nId).block());
-		assertThrows(EntityNotDeleteException.class, () -> taskService.delete(id).block());
+		assertThrows(ResourceNotDeletableException.class, () -> taskService.delete(id).block());
 	}
 
 	@Test

@@ -23,8 +23,8 @@ import org.springframework.transaction.reactive.TransactionalOperator;
 
 import com.lmlasmo.tasklist.dto.UserEmailDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
-import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
-import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
+import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
+import com.lmlasmo.tasklist.exception.ResourceNotUpdatableException;
 import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.User;
@@ -97,7 +97,7 @@ public class UserServiceTest {
 		when(userRepository.save(any(User.class))).thenReturn(Mono.just(user));
 
 		assertThrows(ResourceNotFoundException.class, () -> userService.updatePassword(nId, password).block());
-		assertThrows(EntityNotUpdateException.class, () -> userService.updatePassword(id, password).block());
+		assertThrows(ResourceNotUpdatableException.class, () -> userService.updatePassword(id, password).block());
 
 		user.setPassword(encoder.encode(UUID.randomUUID().toString()));
 
@@ -114,7 +114,7 @@ public class UserServiceTest {
 		when(userRepository.deleteById(anyInt())).thenReturn(Mono.empty());
 
 		assertThrows(ResourceNotFoundException.class, () -> userService.delete(nId).block());
-		assertThrows(EntityNotDeleteException.class, () -> userService.delete(id).block());
+		assertThrows(ResourceNotDeletableException.class, () -> userService.delete(id).block());
 	}
 
 	@Test

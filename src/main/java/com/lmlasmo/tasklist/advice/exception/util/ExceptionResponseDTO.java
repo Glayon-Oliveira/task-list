@@ -1,4 +1,4 @@
-package com.lmlasmo.tasklist.exception;
+package com.lmlasmo.tasklist.advice.exception.util;
 
 import java.time.LocalDateTime;
 
