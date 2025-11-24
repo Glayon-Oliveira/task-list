@@ -14,4 +14,10 @@ public class MapperTestConfig {
 		return Mappers.getMapper(UserMapper.class);
 	}
 	
+	@Bean
+	@Primary
+	public UserEmailMapper userEmailMapper() {
+		return Mappers.getMapper(UserEmailMapper.class);
+	}
+	
 }

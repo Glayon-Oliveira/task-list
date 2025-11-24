@@ -24,13 +24,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.reactive.TransactionalOperator;
 
-import com.lmlasmo.tasklist.dto.UserEmailDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
 import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.exception.ResourceNotUpdatableException;
 import com.lmlasmo.tasklist.mapper.MapperTestConfig;
+import com.lmlasmo.tasklist.mapper.UserEmailMapper;
 import com.lmlasmo.tasklist.mapper.UserMapper;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserEmail;
@@ -53,7 +53,10 @@ public class UserServiceTest {
 	private TransactionalOperator operator;
 	
 	@Autowired
-	private UserMapper mapper;
+	private UserMapper userMapper;
+	
+	@Autowired
+	private UserEmailMapper uEmailMapper;
 
 	private PasswordEncoder encoder = new BCryptPasswordEncoder();
 	
@@ -62,7 +65,7 @@ public class UserServiceTest {
 	@SuppressWarnings("unchecked")
 	@BeforeEach
 	public void setUpAll() {
-		userService = new UserService(userRepository, userEmailService, encoder, mapper);
+		userService = new UserService(userRepository, userEmailService, encoder, userMapper);
 		lenient().when(userRepository.getOperator()).thenReturn(operator);
 		lenient().when(operator.transactional(any(Mono.class))).thenAnswer(invocation -> invocation.getArgument(0));
 	}
@@ -77,13 +80,13 @@ public class UserServiceTest {
 		signup.setPassword(password);
 		signup.setEmail("test@example.com");
 
-		User user = mapper.toUser(signup);
+		User user = userMapper.toUser(signup);
 		user.setId(1);
 		user.setPassword(encoder.encode(password));
 
 		when(userRepository.save(any(User.class))).thenReturn(Mono.just(user));
 		when(userRepository.existsByUsername(username)).thenReturn(Mono.just(true));
-		when(userEmailService.save(anyString(), anyInt())).thenReturn(Mono.just(new UserEmailDTO(new UserEmail())));
+		when(userEmailService.save(anyString(), anyInt())).thenReturn(Mono.just(uEmailMapper.toDTO(new UserEmail())));
 
 		assertThrows(ResourceAlreadyExistsException.class, () -> userService.save(signup).block());
 

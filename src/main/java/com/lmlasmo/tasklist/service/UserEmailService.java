@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import com.lmlasmo.tasklist.dto.UserEmailDTO;
 import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
+import com.lmlasmo.tasklist.mapper.UserEmailMapper;
 import com.lmlasmo.tasklist.model.EmailStatusType;
 import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.repository.UserEmailRepository;
@@ -19,6 +20,7 @@ import reactor.util.function.Tuple2;
 public class UserEmailService {
 
 	private UserEmailRepository emailRepository;
+	private UserEmailMapper mapper;
 	
 	public Mono<UserEmailDTO> save(String email, int userId) {
 		return emailRepository.existsByEmail(email)
@@ -26,7 +28,7 @@ public class UserEmailService {
 				.switchIfEmpty(Mono.error(new ResourceAlreadyExistsException("Email already used")))
 				.thenReturn(new UserEmail(email, userId))
 				.flatMap(emailRepository::save)
-				.map(UserEmailDTO::new);
+				.map(mapper::toDTO);
 	}
 	
 	public Mono<UserEmailDTO> changePrimaryEmail(int emailId, int userId) {
@@ -44,7 +46,7 @@ public class UserEmailService {
 		
 		return Mono.zip(targetEmail, primaryEmail)
 				.map(Tuple2::getT1)
-				.map(UserEmailDTO::new)
+				.map(mapper::toDTO)
 				.as(m -> emailRepository.getOperator().transactional(m));
 	}
 	
@@ -53,7 +55,7 @@ public class UserEmailService {
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Email not found")))
 				.doOnNext(ue -> ue.setStatus(status))
 				.flatMap(emailRepository::save)
-				.map(UserEmailDTO::new);
+				.map(mapper::toDTO);
 	}
 
 	public Mono<Boolean> existsByEmail(String email) {
