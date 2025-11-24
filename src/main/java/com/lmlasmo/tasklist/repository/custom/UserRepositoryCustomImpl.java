@@ -12,6 +12,7 @@ import org.springframework.data.relational.core.query.Query;
 import org.springframework.data.relational.core.query.Update;
 import org.springframework.stereotype.Repository;
 
+import com.lmlasmo.tasklist.mapper.UserMapper;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserStatusType;
 import com.lmlasmo.tasklist.repository.summary.UserSummary.StatusSummary;
@@ -25,6 +26,7 @@ import reactor.core.publisher.Mono;
 public class UserRepositoryCustomImpl extends RepositoryCustomImpl implements UserRepositoryCustom {
 	
 	private R2dbcEntityTemplate template;
+	private UserMapper mapper;
 	
 	@Override
 	public Mono<User> findByEmail(String email) {
@@ -36,7 +38,7 @@ public class UserRepositoryCustomImpl extends RepositoryCustomImpl implements Us
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bind(0, email)
-				.map(User::new)
+				.map(mapper::toUser)
 				.one();
 	}
 	

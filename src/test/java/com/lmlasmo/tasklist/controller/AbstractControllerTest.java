@@ -23,7 +23,8 @@ import org.springframework.web.filter.reactive.ServerWebExchangeContextFilter;
 import org.springframework.web.reactive.config.EnableWebFlux;
 
 import com.lmlasmo.tasklist.controller.AbstractControllerTest.TestWebFluxConfig;
-import com.lmlasmo.tasklist.dto.UserDTO;
+import com.lmlasmo.tasklist.mapper.MapperTestConfig;
+import com.lmlasmo.tasklist.mapper.UserMapper;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.security.AuthenticatedResourceAccess;
 import com.lmlasmo.tasklist.security.AuthenticationEntryPointImpl;
@@ -45,7 +46,8 @@ import reactor.core.publisher.Mono;
 		JWTAuthService.class,
 		AuthenticationEntryPointImpl.class, 
 		AuthenticatedResourceAccess.class,
-		TestWebFluxConfig.class})
+		TestWebFluxConfig.class,
+		MapperTestConfig.class})
 public abstract class AbstractControllerTest {
 
 	@Getter
@@ -67,6 +69,10 @@ public abstract class AbstractControllerTest {
 
 	@Autowired
 	private PasswordEncoder encoder;
+	
+	@Autowired
+	@Getter
+	private UserMapper userMapper;
 
 	@MockitoBean
 	private UserDetailsServiceImpl userDetailsService;
@@ -93,10 +99,10 @@ public abstract class AbstractControllerTest {
 		when(userDetailsService.findByUsername(eq("test@example.com"))).thenReturn(Mono.just(defaultUser));
 
 		when(userService.existsById(anyInt())).thenReturn(Mono.just(true));
-		when(userService.findById(anyInt())).thenReturn(Mono.just(new UserDTO(defaultUser)));
+		when(userService.findById(anyInt())).thenReturn(Mono.just(userMapper.toDTO(defaultUser)));
 
 		defaultRefreshJwtToken = jwtService.generateRefreshToken(defaultUser.getId());
-		defaultAccessJwtToken = jwtService.generateAccessToken(new UserDTO(defaultUser));
+		defaultAccessJwtToken = jwtService.generateAccessToken(userMapper.toDTO(defaultUser));
 	}
 	
 	@TestConfiguration

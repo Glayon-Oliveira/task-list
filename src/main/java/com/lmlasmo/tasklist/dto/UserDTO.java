@@ -6,7 +6,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lmlasmo.tasklist.model.RoleType;
-import com.lmlasmo.tasklist.model.User;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,15 +37,5 @@ public class UserDTO implements VersionedDTO {
 	
 	@JsonProperty
 	private long version;
-	
-	public UserDTO(User user) {
-		this.id = user.getId();
-		this.username = user.getUsername();
-		this.role = user.getRole();
-		this.lastLogin = user.getLastLogin();
-		this.createdAt = user.getCreatedAt();
-		this.updatedAt = user.getUpdatedAt();
-		this.version = user.getVersion();
-	}
 
 }

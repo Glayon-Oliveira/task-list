@@ -17,24 +17,30 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.reactive.TransactionalOperator;
 
 import com.lmlasmo.tasklist.dto.UserEmailDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
-import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
-import com.lmlasmo.tasklist.exception.ResourceNotUpdatableException;
 import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
+import com.lmlasmo.tasklist.exception.ResourceNotUpdatableException;
+import com.lmlasmo.tasklist.mapper.MapperTestConfig;
+import com.lmlasmo.tasklist.mapper.UserMapper;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.repository.UserRepository;
 
 import reactor.core.publisher.Mono;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({SpringExtension.class, MockitoExtension.class})
 @TestInstance(Lifecycle.PER_CLASS)
+@Import(MapperTestConfig.class)
 public class UserServiceTest {
 
 	@Mock
@@ -45,15 +51,18 @@ public class UserServiceTest {
 	
 	@Mock
 	private TransactionalOperator operator;
+	
+	@Autowired
+	private UserMapper mapper;
 
 	private PasswordEncoder encoder = new BCryptPasswordEncoder();
-
+	
 	private UserService userService;
 
 	@SuppressWarnings("unchecked")
 	@BeforeEach
 	public void setUpAll() {
-		userService = new UserService(userRepository, userEmailService, encoder);
+		userService = new UserService(userRepository, userEmailService, encoder, mapper);
 		lenient().when(userRepository.getOperator()).thenReturn(operator);
 		lenient().when(operator.transactional(any(Mono.class))).thenAnswer(invocation -> invocation.getArgument(0));
 	}
@@ -68,7 +77,7 @@ public class UserServiceTest {
 		signup.setPassword(password);
 		signup.setEmail("test@example.com");
 
-		User user = new User(signup);
+		User user = mapper.toUser(signup);
 		user.setId(1);
 		user.setPassword(encoder.encode(password));
 

@@ -31,7 +31,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.AuthController;
 import com.lmlasmo.tasklist.controller.UserController;
-import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
@@ -98,7 +97,7 @@ public class UserControllerTest extends AbstractControllerTest {
 		
 		String signUpUri = "/api/auth/signup";
 
-		when(getUserService().save(any(CreateUserDTO.class))).thenReturn(Mono.just(new UserDTO(getDefaultUser())));
+		when(getUserService().save(any(CreateUserDTO.class))).thenReturn(Mono.just(getUserMapper().toDTO(getDefaultUser())));
 		when(userEmailService.existsByEmail(data.getEmail())).thenReturn(Mono.just(false));
 		
 		ResponseSpec response = getWebTestClient().post()
