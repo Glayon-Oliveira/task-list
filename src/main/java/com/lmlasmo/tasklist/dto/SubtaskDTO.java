@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.Instant;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 
 import lombok.Getter;
@@ -42,17 +41,5 @@ public class SubtaskDTO implements VersionedDTO {
 	
 	@JsonProperty
 	private long version;
-	
-	public SubtaskDTO(Subtask subtask) {
-		this.id = subtask.getId();
-		this.name = subtask.getName();
-		this.summary = subtask.getSummary();
-		this.durationMinutes = subtask.getDurationMinutes();
-		this.status = subtask.getStatus();
-		this.position = subtask.getPosition();
-		this.createdAt = subtask.getCreatedAt();
-		this.updatedAt = subtask.getUpdatedAt();
-		this.version = subtask.getVersion();
-	}
 
 }

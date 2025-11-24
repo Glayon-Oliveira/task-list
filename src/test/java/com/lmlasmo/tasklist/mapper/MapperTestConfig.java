@@ -26,4 +26,10 @@ public class MapperTestConfig {
 		return Mappers.getMapper(TaskMapper.class);
 	}
 	
+	@Bean
+	@Primary
+	public SubtaskMapper subtaskMapper() {
+		return Mappers.getMapper(SubtaskMapper.class);
+	}
+	
 }

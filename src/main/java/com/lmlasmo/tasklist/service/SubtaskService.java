@@ -15,7 +15,7 @@ import com.lmlasmo.tasklist.dto.update.UpdateSubtaskPositionDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskPositionDTO.MovePositionType;
 import com.lmlasmo.tasklist.exception.InvalidDataRequestException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
-import com.lmlasmo.tasklist.model.Subtask;
+import com.lmlasmo.tasklist.mapper.SubtaskMapper;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.service.applier.UpdateSubtaskApplier;
@@ -30,10 +30,11 @@ import reactor.core.publisher.Mono;
 public class SubtaskService {
 
 	@NonNull private SubtaskRepository subtaskRepository;
+	@NonNull private SubtaskMapper mapper;
 	private final BigDecimal positionStep = BigDecimal.valueOf(1024);
 		
 	public Mono<SubtaskDTO> save(CreateSubtaskDTO create) {
-		return Mono.just(new Subtask(create))
+		return Mono.just(mapper.toEntity(create))
 				.flatMap(s -> {
 					return subtaskRepository.findPositionSummaryByTaskIdOrderByASC(create.getTaskId())
 							.map(PositionSummary::getPosition)
@@ -42,7 +43,7 @@ public class SubtaskService {
 							.thenReturn(s);
 				})
 				.flatMap(subtaskRepository::save)
-				.map(SubtaskDTO::new);
+				.map(mapper::toDTO);
 	}
 	
 	public Mono<Void> delete(List<Integer> subtaskIds) {
@@ -57,7 +58,7 @@ public class SubtaskService {
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id equals " + subtaskId)))
 				.doOnNext(s -> UpdateSubtaskApplier.apply(update, s))
 				.flatMap(subtaskRepository::save)
-				.map(SubtaskDTO::new);
+				.map(mapper::toDTO);
 	}
 	
 	public Mono<Void> updatePosition(int subtaskId, UpdateSubtaskPositionDTO update) {
@@ -141,13 +142,13 @@ public class SubtaskService {
 	
 	public Flux<SubtaskDTO> findByTask(int taskId){		
 		return subtaskRepository.findByTaskId(taskId)
-				.map(SubtaskDTO::new);
+				.map(mapper::toDTO);
 	}
 
 	public Mono<SubtaskDTO> findById(int subtaskId) {
 		return subtaskRepository.findById(subtaskId)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id equals " + subtaskId)))
-				.map(SubtaskDTO::new);
+				.map(mapper::toDTO);
 	}
 	
 }
