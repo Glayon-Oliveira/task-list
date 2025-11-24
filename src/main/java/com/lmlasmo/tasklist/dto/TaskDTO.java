@@ -51,7 +51,10 @@ public class TaskDTO implements VersionedDTO {
 		this.status = task.getStatus();
 		this.version = task.getVersion();
 		this.deadlineZone = task.getDeadlineZone();
-		this.deadline = task.getDeadline().atZone(ZoneId.of(deadlineZone)).toOffsetDateTime();		
+		
+		if(task.getDeadline() != null) {
+			this.deadline = task.getDeadline().atZone(ZoneId.of(deadlineZone)).toOffsetDateTime();
+		}
 	}
 
 }

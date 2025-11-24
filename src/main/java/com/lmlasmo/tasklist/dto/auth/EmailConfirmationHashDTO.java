@@ -20,13 +20,13 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EmailConfirmationHashDTO {
-	
+
 	@JsonProperty
 	@NotBlank
 	private String hash;
-	
+
 	@JsonProperty
 	@NotNull
-	private Instant timestamp;	
-	
+	private Instant timestamp;
+
 }

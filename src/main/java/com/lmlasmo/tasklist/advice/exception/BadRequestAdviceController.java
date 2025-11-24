@@ -18,7 +18,7 @@ import org.springframework.web.server.ServerWebInputException;
 import org.springframework.web.server.UnsupportedMediaTypeStatusException;
 
 import com.lmlasmo.tasklist.advice.exception.util.AdviceWrapper;
-import com.lmlasmo.tasklist.exception.EntityNotUpdateException;
+import com.lmlasmo.tasklist.exception.ResourceNotUpdatableException;
 import com.lmlasmo.tasklist.exception.InvalidDataRequestException;
 import com.lmlasmo.tasklist.exception.InvalidEmailCodeException;
 import com.lmlasmo.tasklist.exception.TaskHasSubtasksException;
@@ -31,14 +31,18 @@ import reactor.core.publisher.Mono;
 @ResponseStatus(code = HttpStatus.BAD_REQUEST)
 public class BadRequestAdviceController {
 	
-	@ExceptionHandler(EntityNotUpdateException.class)		
-	public Mono<Map<String, Object>> exceptionResponse(EntityNotUpdateException exception, ServerHttpRequest request) {
-		return Mono.just(AdviceWrapper.wrapper(exception.getMessage(), request));
-	}
-	
-	@ExceptionHandler(TaskHasSubtasksException.class)		
-	public Mono<Map<String, Object>> exceptionResponse(TaskHasSubtasksException exception, ServerHttpRequest request) {
-		return Mono.just(AdviceWrapper.wrapper(exception.getMessage(), request));
+	@ExceptionHandler({
+		ServerWebInputException.class,
+		ServerWebInputException.class,
+		TypeMismatchException.class,
+		UnsupportedMediaTypeStatusException.class,
+		InvalidEmailCodeException.class,
+		InvalidDataRequestException.class,
+		TaskHasSubtasksException.class,
+		ResourceNotUpdatableException.class
+	})
+	public Mono<Map<String, Object>> exceptionResponse(Exception ex, ServerHttpRequest req) {
+		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
 	}
 	
 	@ExceptionHandler(BindException.class)	
@@ -90,31 +94,6 @@ public class BadRequestAdviceController {
 	public Mono<Map<String, Object>> exceptionResponse(HttpMessageNotReadableException ex, ServerHttpRequest req){
 		String message = "Request body is invalid or malformed";
 		return Mono.just(AdviceWrapper.wrapper(message, req));
-	}
-	
-	@ExceptionHandler(ServerWebInputException.class)	
-	public Mono<Map<String, Object>> exceptionResponse(ServerWebInputException ex, ServerHttpRequest req){
-		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
-	}
-	
-	@ExceptionHandler(TypeMismatchException.class)	
-	public Mono<Map<String, Object>> exceptionResponse(TypeMismatchException ex, ServerHttpRequest req){
-		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
-	}
-	
-	@ExceptionHandler(UnsupportedMediaTypeStatusException.class)
-	public Mono<Map<String, Object>> exceptionResponse(UnsupportedMediaTypeStatusException ex, ServerHttpRequest req){
-		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
-	}
-	
-	@ExceptionHandler(InvalidEmailCodeException.class)
-	public Mono<Map<String, Object>> exceptionResponse(InvalidEmailCodeException ex, ServerHttpRequest req) {
-		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
-	}
-	
-	@ExceptionHandler(InvalidDataRequestException.class)
-	public Mono<Map<String, Object>> exceptionResponse(InvalidDataRequestException ex, ServerHttpRequest req) {
-		return Mono.just(AdviceWrapper.wrapper(ex.getMessage(), req));
-	}
+	}	
 
 }

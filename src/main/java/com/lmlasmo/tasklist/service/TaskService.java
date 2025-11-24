@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
-import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
+import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.repository.TaskRepository;
@@ -37,7 +37,7 @@ public class TaskService {
 				.then(repository.deleteById(id))
 				.then(repository.existsById(id))
 				.filter(e -> !e)
-				.switchIfEmpty(Mono.error(new EntityNotDeleteException("Task not deleted")))
+				.switchIfEmpty(Mono.error(new ResourceNotDeletableException("Task not deleted")))
 				.then();
 	}
 	

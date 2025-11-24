@@ -147,8 +147,6 @@ public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryT
 				update.setAnchorSubtaskId(lastAnchor.getId());
 			}
 			
-			System.out.println(subtask.getVersion());
-			
 			subtaskService.updatePosition(subtask.getId(), update).block();
 			
 			subtask = getSubtaskRepository().findById(subtask.getId()).block();

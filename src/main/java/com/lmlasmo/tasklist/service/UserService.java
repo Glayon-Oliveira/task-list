@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.PasswordRecoveryDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
-import com.lmlasmo.tasklist.exception.EntityNotDeleteException;
+import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.User;
@@ -71,7 +71,6 @@ public class UserService {
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("User not found")))
 				.doOnNext(u -> UpdateUserApplier.applyPassword(password, u, encoder))
 				.flatMap(repository::save)
-				.switchIfEmpty(Mono.error(new OptimisticLockingFailureException("User was updated by another transaction")))
 				.then();
 	}
 	
@@ -80,7 +79,6 @@ public class UserService {
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("User not found")))
 				.doOnNext(u -> u.setStatus(status))
 				.flatMap(repository::save)
-				.switchIfEmpty(Mono.error(new OptimisticLockingFailureException("User was updated by another transaction")))
 				.then();
 	}
 	
@@ -125,7 +123,7 @@ public class UserService {
 				.flatMap(e -> repository.deleteById(id))
 				.flatMap(v -> repository.existsById(id))
 				.filter(e -> !e)
-				.switchIfEmpty(Mono.error(new EntityNotDeleteException("User not deleted")))
+				.switchIfEmpty(Mono.error(new ResourceNotDeletableException("User not deleted")))
 				.then(); 		
 	}
 	

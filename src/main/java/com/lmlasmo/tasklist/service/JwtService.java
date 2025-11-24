@@ -15,6 +15,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.dto.UserDTO;
+import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO;
+import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO.JWTTokenType;
 import com.lmlasmo.tasklist.exception.ExpiredTokenException;
 import com.lmlasmo.tasklist.exception.InvalidTokenException;
 import com.nimbusds.jose.JOSEException;
@@ -82,6 +84,12 @@ public class JwtService {
 		return generateRefreshToken(id, null);
 	}
 	
+	public JWTTokenDTO generateRefreshTokenDTO(int id) {
+		String token = generateRefreshToken(id, null);
+		
+		return new JWTTokenDTO(token, JWTTokenType.REFRESH, refreshTokenDuration.getSeconds());
+	}
+	
 	public String generateRefreshToken(int id, Map<String, Object> claims) {
 		if(claims == null) claims = Map.of();
 		
@@ -101,6 +109,12 @@ public class JwtService {
 		return signed.serialize();
 	}
 	
+	public JWTTokenDTO generateRefreshTokenDTO(int id, Map<String, Object> claims) {
+		String token = generateRefreshToken(id, claims);
+		
+		return new JWTTokenDTO(token, JWTTokenType.REFRESH, refreshTokenDuration.getSeconds());
+	}
+	
 	public String regenerateRefreshToken(String refreshToken) {
 		SignedJWT signed = validateRefreshToken(refreshToken);
 		
@@ -114,13 +128,17 @@ public class JwtService {
 		}
 	}
 	
-	public String generateAccessToken(SignedJWT refreshToken, UserDTO user) {
-		int id = getSubjectIdOfToken(refreshToken);
-
+	public JWTTokenDTO regenerateRefreshTokenDTO(String refreshToken) {
+		String token = regenerateRefreshToken(refreshToken);
+		
+		return new JWTTokenDTO(token, JWTTokenType.REFRESH, refreshTokenDuration.getSeconds());
+	}
+	
+	public String generateAccessToken(UserDTO user) {
 		Instant now = Instant.now();
 		Instant expires = now.plus(accessTokenDuration);
 
-		Builder claimsSet = new JWTClaimsSet.Builder().subject(Integer.toString(id)).issuer(issuer)
+		Builder claimsSet = new JWTClaimsSet.Builder().subject(Integer.toString(user.getId())).issuer(issuer)
 				.issueTime(Date.from(now)).expirationTime(Date.from(expires));
 
 		String role = user.getRole().name();
@@ -129,6 +147,12 @@ public class JwtService {
 
 		SignedJWT signed = getSignedJWT(claimsSet.build(), Keys.getAccessPrivateKey());
 		return signed.serialize();
+	}
+	
+	public JWTTokenDTO generateAccessTokenDTO(UserDTO user) {
+		String token = generateAccessToken(user);
+		
+		return new JWTTokenDTO(token, JWTTokenType.ACCESS, accessTokenDuration.getSeconds());
 	}
 	
 	public int getSubjectIdOfToken(SignedJWT token) {

@@ -1,6 +1,7 @@
 package com.lmlasmo.tasklist.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -32,6 +33,7 @@ import reactor.core.publisher.Mono;
 @AllArgsConstructor
 @RestController
 @RequestMapping("/api/task")
+@Validated
 public class TaskController {
 
 	private TaskService taskService;
@@ -47,7 +49,7 @@ public class TaskController {
 	
 	@DeleteMapping("/{id}")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Mono<Void> delete(@PathVariable int id) {
+	public Mono<Void> delete(@PathVariable @Min(1) int id) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(id, usid))
 				.then(ETagHelper.checkEtag(et -> taskService.existsByIdAndVersion(id, et)))
 				.filter(Boolean::booleanValue)
@@ -56,7 +58,7 @@ public class TaskController {
 	
 	@PatchMapping("/{taskId}")
 	@ResponseStatus(code = HttpStatus.OK)	
-	public Mono<TaskDTO> update(@PathVariable @Min(1) int taskId, @RequestBody UpdateTaskDTO update) {
+	public Mono<TaskDTO> update(@PathVariable @Min(1) int taskId, @RequestBody @Valid UpdateTaskDTO update) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(taskId, usid))
 				.then(ETagHelper.checkEtag(et -> taskService.existsByIdAndVersion(taskId, et)))
 				.filter(Boolean::booleanValue)

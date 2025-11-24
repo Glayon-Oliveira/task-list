@@ -17,9 +17,9 @@ public interface CreateSubtaskSource {
 
 		return Stream.of(
 				Arguments.of(new CreateSubtaskData(name, summary, 5, 201, null)),
+				Arguments.of(new CreateSubtaskData(name, summary, 0, 201, null)),
 				Arguments.of(new CreateSubtaskData("", summary, 5, 400, MethodArgumentNotValidException.class)),
-				Arguments.of(new CreateSubtaskData(name, "", 5, 201, null)),
-				Arguments.of(new CreateSubtaskData(name, summary, 0, 400, MethodArgumentNotValidException.class))
+				Arguments.of(new CreateSubtaskData(name, "", 5, 201, null))
 				);
 	}
 

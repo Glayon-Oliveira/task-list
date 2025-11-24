@@ -15,7 +15,7 @@ public class PasswordDTO {
 
 	@JsonProperty
 	@NotEmpty
-	@Size(min = 8)
+	@Size(min = 8, max = 255)
 	private String password;
 	
 }

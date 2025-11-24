@@ -59,10 +59,13 @@ public class Task {
 	
 	public Task(CreateTaskDTO create, int userId) {
 		this.name = create.getName();
-		this.summary = create.getSummary();
-		this.deadline = create.getDeadline().toInstant();
+		this.summary = create.getSummary();		
 		this.deadlineZone = create.getDeadlineZone();
 		this.userId = userId;
+		
+		if(create.getDeadline() != null) {
+			this.deadline = create.getDeadline().toInstant();
+		}
 	}
 
 }

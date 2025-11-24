@@ -8,7 +8,6 @@ import com.lmlasmo.tasklist.validation.ValidZoneId;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,8 +24,7 @@ public class CreateTaskDTO {
 	@JsonProperty(required = false)
 	private String summary;
 	
-	@JsonProperty	
-	@NotNull
+	@JsonProperty(required = false)
 	@Future
 	private OffsetDateTime deadline;
 	
@@ -36,7 +34,9 @@ public class CreateTaskDTO {
 	private String deadlineZone;
 		
 	public void setDeadline(OffsetDateTime deadline) {
-		this.deadline = deadline.withSecond(0).withNano(0);
+		if(deadline != null) {
+			this.deadline = deadline.withSecond(0).withNano(0);
+		}		
 	}
 	
 }

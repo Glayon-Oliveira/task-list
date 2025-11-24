@@ -1,10 +1,10 @@
 package com.lmlasmo.tasklist.exception;
 
-public class EntityNotUpdateException extends RuntimeException{
+public class ResourceNotUpdatableException extends RuntimeException{
 
 	private static final long serialVersionUID = 3416237154049375682L;
 	
-	public EntityNotUpdateException(String message) {
+	public ResourceNotUpdatableException(String message) {
 		super(message);
 	}
 

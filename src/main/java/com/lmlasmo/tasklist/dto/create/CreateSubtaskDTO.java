@@ -21,7 +21,7 @@ public class CreateSubtaskDTO {
 	private String summary;
 	
 	@JsonProperty(required = false)
-	@Min(1)
+	@Min(0)
 	private int durationMinutes = 5;
 	
 	@JsonProperty
