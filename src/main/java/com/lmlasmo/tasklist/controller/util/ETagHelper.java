@@ -1,6 +1,6 @@
 package com.lmlasmo.tasklist.controller.util;
 
-import java.util.function.Function;
+import java.util.function.LongFunction;
 
 import org.springframework.web.filter.reactive.ServerWebExchangeContextFilter;
 import org.springframework.web.server.ServerWebExchange;
@@ -12,7 +12,7 @@ import reactor.core.publisher.Mono;
 
 public interface ETagHelper {	
 	
-	public static Mono<Boolean> checkEtag(Function<Long, Mono<Boolean>> check){
+	public static Mono<Boolean> checkEtag(LongFunction<Mono<Boolean>> check){
 		return Mono.deferContextual(ctx -> {
 			ServerWebExchange exchange = ctx.get(ServerWebExchangeContextFilter.EXCHANGE_CONTEXT_ATTRIBUTE);
 			

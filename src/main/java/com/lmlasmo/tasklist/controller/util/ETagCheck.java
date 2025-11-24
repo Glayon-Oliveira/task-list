@@ -7,7 +7,7 @@ import static org.springframework.http.HttpMethod.PUT;
 
 import java.util.List;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.LongFunction;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.server.reactive.ServerHttpRequest;
@@ -24,7 +24,7 @@ public interface ETagCheck {
 		return Set.of(PUT, PATCH, DELETE);
 	}
 	
-	public static Mono<Boolean> check(ServerWebExchange exchange, Function<Long, Mono<Boolean>> check) {
+	public static Mono<Boolean> check(ServerWebExchange exchange, LongFunction<Mono<Boolean>> check) {
 		ServerHttpRequest req = exchange.getRequest();
 		ServerHttpResponse res = exchange.getResponse();
 		
@@ -41,7 +41,7 @@ public interface ETagCheck {
 				}).defaultIfEmpty(true);
 	}
 	
-	private static Mono<Boolean> checkPrecondition(long etag, Function<Long, Mono<Boolean>> check) {
+	private static Mono<Boolean> checkPrecondition(long etag, LongFunction<Mono<Boolean>> check) {
 		return Mono.just(etag)
 				.flatMap(check::apply)
 				.flatMap(c -> {
@@ -50,7 +50,7 @@ public interface ETagCheck {
 				});
 	}
 
-	private static Mono<Boolean> checkIfNotModified(Long etag, ServerHttpResponse res, Function<Long, Mono<Boolean>> check) {
+	private static Mono<Boolean> checkIfNotModified(Long etag, ServerHttpResponse res, LongFunction<Mono<Boolean>> check) {
 		return Mono.just(etag)
 				.flatMap(check::apply)
 				.flatMap(c -> {
