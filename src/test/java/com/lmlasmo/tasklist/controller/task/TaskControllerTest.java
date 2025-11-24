@@ -24,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -36,6 +37,8 @@ import com.lmlasmo.tasklist.controller.TaskController;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
+import com.lmlasmo.tasklist.mapper.MapperTestConfig;
+import com.lmlasmo.tasklist.mapper.TaskMapper;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.param.task.CreateTaskSource;
@@ -48,6 +51,7 @@ import reactor.core.publisher.Mono;
 
 @WebFluxTest(controllers = TaskController.class)
 @TestInstance(Lifecycle.PER_CLASS)
+@Import(MapperTestConfig.class)
 public class TaskControllerTest extends AbstractControllerTest{
 
 	@MockitoBean
@@ -61,6 +65,9 @@ public class TaskControllerTest extends AbstractControllerTest{
 
 	@Autowired
 	private ObjectMapper mapper;
+	
+	@Autowired
+	private TaskMapper taskMapper;
 
 	private final String baseUri = "/api/task";
 
@@ -98,7 +105,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 
 		String create = String.format(createFormat, data.getName(), data.getSummary(), data.getDeadline(), data.getDeadlineZone());
 
-		when(taskService.save(any(CreateTaskDTO.class), anyInt())).thenReturn(Mono.just(new TaskDTO(task)));
+		when(taskService.save(any(CreateTaskDTO.class), anyInt())).thenReturn(Mono.just(taskMapper.toDTO(task)));
 		
 		ResponseSpec response = getWebTestClient().post()
 				.uri(baseUri)
@@ -119,7 +126,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 
 	@RepeatedTest(2)
 	public void getTasksByUser(RepetitionInfo info) throws Exception {
-		when(taskService.findByUser(eq(getDefaultUser().getId()))).thenReturn(Flux.fromIterable(List.of(new TaskDTO(task))));
+		when(taskService.findByUser(eq(getDefaultUser().getId()))).thenReturn(Flux.fromIterable(List.of(taskMapper.toDTO(task))));
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
@@ -158,7 +165,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		}
 		
 		when(accessService.canAccessTask(task.getId(), getDefaultUser().getId())).thenReturn(Mono.empty());
-		when(taskService.findById(task.getId())).thenReturn(Mono.just(new TaskDTO(task)));
+		when(taskService.findById(task.getId())).thenReturn(Mono.just(taskMapper.toDTO(task)));
 		when(taskService.existsByIdAndVersion(task.getId(), task.getVersion())).thenReturn(Mono.just(true));
 		
 		ResponseSpec response = getWebTestClient().get()
@@ -212,7 +219,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		update.setName(UUID.randomUUID().toString());
 		update.setSummary(UUID.randomUUID().toString());
 
-		TaskDTO fullTaskDTO = new TaskDTO(task);
+		TaskDTO fullTaskDTO = taskMapper.toDTO(task);
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
@@ -254,7 +261,7 @@ public class TaskControllerTest extends AbstractControllerTest{
 		update.setDeadline(OffsetDateTime.now().plusMinutes(1));
 		update.setDeadlineZone("UTC");
 
-		TaskDTO taskDTO = new TaskDTO(task);
+		TaskDTO taskDTO = taskMapper.toDTO(task);
 		taskDTO.setDeadline(update.getDeadline());
 		taskDTO.setDeadlineZone(ZoneId.of(update.getDeadlineZone()).toString());
 		

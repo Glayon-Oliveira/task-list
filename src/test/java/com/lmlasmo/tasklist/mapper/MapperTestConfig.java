@@ -20,4 +20,10 @@ public class MapperTestConfig {
 		return Mappers.getMapper(UserEmailMapper.class);
 	}
 	
+	@Bean
+	@Primary
+	public TaskMapper taskMapper() {
+		return Mappers.getMapper(TaskMapper.class);
+	}
+	
 }

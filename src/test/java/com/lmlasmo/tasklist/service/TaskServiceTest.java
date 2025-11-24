@@ -14,26 +14,34 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
+import com.lmlasmo.tasklist.mapper.MapperTestConfig;
+import com.lmlasmo.tasklist.mapper.TaskMapper;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.repository.TaskRepository;
 
 import reactor.core.publisher.Mono;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({SpringExtension.class, MockitoExtension.class})
+@Import({MapperTestConfig.class, TaskService.class})
 public class TaskServiceTest {
 
-	@Mock
+	@MockitoBean
 	private TaskRepository taskRepository;
+	
+	@Autowired
+	private TaskMapper mapper;
 
-	@InjectMocks
+	@Autowired
 	private TaskService taskService;
 
 	@Test
@@ -44,7 +52,8 @@ public class TaskServiceTest {
 		create.setDeadline(OffsetDateTime.now());
 		create.setDeadlineZone(ZoneId.systemDefault().toString());
 
-		Task task = new Task(create, userId);
+		Task task = mapper.toEntity(create);
+		task.setUserId(userId);
 		task.setId(1);
 
 		when(taskRepository.save(any(Task.class))).thenReturn(Mono.just(task));
