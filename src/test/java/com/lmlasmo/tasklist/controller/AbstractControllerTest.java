@@ -29,10 +29,10 @@ import com.lmlasmo.tasklist.security.AuthenticatedResourceAccess;
 import com.lmlasmo.tasklist.security.AuthenticationEntryPointImpl;
 import com.lmlasmo.tasklist.security.JWTConf;
 import com.lmlasmo.tasklist.security.SecurityConf;
+import com.lmlasmo.tasklist.service.JWTAuthService;
 import com.lmlasmo.tasklist.service.JwtService;
 import com.lmlasmo.tasklist.service.UserDetailsServiceImpl;
 import com.lmlasmo.tasklist.service.UserService;
-import com.nimbusds.jwt.SignedJWT;
 
 import lombok.Getter;
 import reactor.core.publisher.Mono;
@@ -41,7 +41,8 @@ import reactor.core.publisher.Mono;
 @EnableWebFlux
 @Import({SecurityConf.class,
 		JWTConf.class, 
-		JwtService.class, 
+		JwtService.class,
+		JWTAuthService.class,
 		AuthenticationEntryPointImpl.class, 
 		AuthenticatedResourceAccess.class,
 		TestWebFluxConfig.class})
@@ -95,10 +96,7 @@ public abstract class AbstractControllerTest {
 		when(userService.findById(anyInt())).thenReturn(Mono.just(new UserDTO(defaultUser)));
 
 		defaultRefreshJwtToken = jwtService.generateRefreshToken(defaultUser.getId());
-		
-		SignedJWT refreshSigned = jwtService.validateRefreshToken(defaultRefreshJwtToken);
-		
-		defaultAccessJwtToken = jwtService.generateAccessToken(refreshSigned, new UserDTO(defaultUser));
+		defaultAccessJwtToken = jwtService.generateAccessToken(new UserDTO(defaultUser));
 	}
 	
 	@TestConfiguration
