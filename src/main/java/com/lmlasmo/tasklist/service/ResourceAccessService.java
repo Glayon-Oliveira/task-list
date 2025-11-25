@@ -2,7 +2,6 @@ package com.lmlasmo.tasklist.service;
 
 import java.util.List;
 
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
@@ -22,41 +21,30 @@ public class ResourceAccessService {
 	private SubtaskRepository subtaskRepository;
 	
 	public Mono<Void> canAccessEmail(int emailId, int userId) {
-		return emailRepository.existsById(emailId)
+		return emailRepository.existsByIdAndUserId(emailId, userId)
 				.filter(Boolean::booleanValue)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Email not found for id " + emailId)))
-				.then(emailRepository.existsByIdAndUserId(emailId, userId))
-				.filter(Boolean::booleanValue)
-				.switchIfEmpty(Mono.error(new AccessDeniedException("Access denied")))
 				.then();
 	}
 	
 	public Mono<Void> canAccessEmail(String email, int userId) {
-		return emailRepository.existsByEmail(email)
+		return emailRepository.existsByEmailAndUserId(email, userId)
 				.filter(Boolean::booleanValue)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Email not found")))
-				.then(emailRepository.existsByEmailAndUserId(email, userId))
-				.filter(Boolean::booleanValue)
-				.switchIfEmpty(Mono.error(new AccessDeniedException("Access denied")))
 				.then();
 	}
 	
 	public Mono<Void> canAccessTask(int taskId, int userId) {
-		return taskRepository.existsById(taskId)
+		return taskRepository.existsByIdAndUserId(taskId, userId)
 				.filter(Boolean::booleanValue)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Task not found for id " + taskId)))
-				.then(taskRepository.existsByIdAndUserId(taskId, userId))
-				.filter(Boolean::booleanValue)
-				.switchIfEmpty(Mono.error(new AccessDeniedException("Access denied")))
 				.then();
 	}
 	
 	public Mono<Void> canAccessSubtask(int subtaskId, int userId) {
-		return subtaskRepository.existsById(subtaskId)
+		return subtaskRepository.existsByIdAndTaskUserId(subtaskId, userId)
 				.filter(Boolean::valueOf)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subask not found for id " + subtaskId)))
-				.then(subtaskRepository.existsByIdAndTaskUserId(subtaskId, userId))
-				.switchIfEmpty(Mono.error(new AccessDeniedException("Access denied")))
 				.then();
 	}
 	
@@ -64,7 +52,7 @@ public class ResourceAccessService {
 		return subtaskRepository.countByIdInAndTaskUserId(subtaskIds, userId)
 				.map(c -> subtaskIds.size() == c)
 				.filter(Boolean::booleanValue)
-				.switchIfEmpty(Mono.error(new AccessDeniedException("Access denied")))
+				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subask not found")))
 				.then();
 	}
 	
