@@ -1,10 +1,7 @@
 package com.lmlasmo.tasklist.repository.custom;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.Collection;
-import java.util.Optional;
 
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Criteria;
@@ -12,6 +9,8 @@ import org.springframework.data.relational.core.query.Query;
 import org.springframework.data.relational.core.query.Update;
 import org.springframework.stereotype.Repository;
 
+import com.lmlasmo.tasklist.mapper.UserMapper;
+import com.lmlasmo.tasklist.mapper.summary.UserSummaryMapper;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserStatusType;
 import com.lmlasmo.tasklist.repository.summary.UserSummary.StatusSummary;
@@ -25,6 +24,8 @@ import reactor.core.publisher.Mono;
 public class UserRepositoryCustomImpl extends RepositoryCustomImpl implements UserRepositoryCustom {
 	
 	private R2dbcEntityTemplate template;
+	private UserMapper mapper;
+	private UserSummaryMapper summaryMapper;
 	
 	@Override
 	public Mono<User> findByEmail(String email) {
@@ -36,7 +37,7 @@ public class UserRepositoryCustomImpl extends RepositoryCustomImpl implements Us
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bind(0, email)
-				.map(User::new)
+				.map(mapper::toUser)
 				.one();
 	}
 	
@@ -47,14 +48,7 @@ public class UserRepositoryCustomImpl extends RepositoryCustomImpl implements Us
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bind(0, status.toString())
-				.map(row -> new StatusSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						UserStatusType.valueOf(row.get("status", String.class)),
-						Optional.ofNullable(row.get("last_login", LocalDateTime.class))
-							.map(i -> i.toInstant(ZoneOffset.UTC))
-							.orElse(null)
-						))
+				.map(summaryMapper::toStatusSummary)
 				.all();
 	}
 
@@ -66,14 +60,7 @@ public class UserRepositoryCustomImpl extends RepositoryCustomImpl implements Us
 				.sql(sql)
 				.bind(0, status.toString())
 				.bind(1, after)
-				.map(row -> new StatusSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						UserStatusType.valueOf(row.get("status", String.class)),
-						Optional.ofNullable(row.get("last_login", LocalDateTime.class))
-							.map(i -> i.toInstant(ZoneOffset.UTC))
-							.orElse(null)
-						))
+				.map(summaryMapper::toStatusSummary)
 				.all();
 	}
 

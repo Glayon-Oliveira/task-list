@@ -10,7 +10,7 @@ import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
-import com.lmlasmo.tasklist.model.Task;
+import com.lmlasmo.tasklist.mapper.TaskMapper;
 import com.lmlasmo.tasklist.repository.TaskRepository;
 import com.lmlasmo.tasklist.service.applier.UpdateTaskApplier;
 
@@ -23,11 +23,13 @@ import reactor.core.publisher.Mono;
 public class TaskService {
 	
 	private TaskRepository repository;
+	private TaskMapper mapper;
 
 	public Mono<TaskDTO> save(CreateTaskDTO create, int userId) {
-		return Mono.just(new Task(create, userId))
+		return Mono.just(mapper.toEntity(create))
+				.doOnNext(t -> t.setUserId(userId))
 				.flatMap(repository::save)
-				.map(TaskDTO::new);
+				.map(mapper::toDTO);
 	}
 	
 	public Mono<Void> delete(int id) {
@@ -46,7 +48,7 @@ public class TaskService {
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Task not found for id equals " + taskId)))
 				.doOnNext(t -> UpdateTaskApplier.apply(update, t))
 				.flatMap(repository::save)
-				.map(TaskDTO::new);
+				.map(mapper::toDTO);
 	}	
 	
 	public Mono<Boolean> existsByIdAndVersion(int id, long version) {
@@ -63,18 +65,18 @@ public class TaskService {
 	
 	public Flux<TaskDTO> findByUser(int id) {
 		return repository.findByUserId(id)
-				.map(TaskDTO::new);
+				.map(mapper::toDTO);
 	}
 	
 	public Flux<TaskDTO> findAll(Pageable pageable){
 		return repository.findAll()
-				.map(TaskDTO::new);
+				.map(mapper::toDTO);
 	}
 
 	public Mono<TaskDTO> findById(int taskId) {
 		return repository.findById(taskId)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Task not found for id equals " + taskId)))
-				.map(TaskDTO::new);
+				.map(mapper::toDTO);
 	}	
 
 }

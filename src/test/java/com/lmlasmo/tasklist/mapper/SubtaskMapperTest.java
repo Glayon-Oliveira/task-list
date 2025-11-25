@@ -7,13 +7,22 @@ import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.Task;
 
+@ExtendWith(SpringExtension.class)
+@Import(MapperTestConfig.class)
 public class SubtaskMapperTest {
+	
+	@Autowired
+	private SubtaskMapper mapper;
 
 	private String name = "Name - ID = " + UUID.randomUUID().toString();
 	private String summary = "Summary - ID = " + UUID.randomUUID().toString();
@@ -31,7 +40,7 @@ public class SubtaskMapperTest {
 		create.setDurationMinutes(durationMinutes);
 		create.setTaskId(task.getId());
 
-		Subtask subtask = new Subtask(create);
+		Subtask subtask = mapper.toEntity(create);
 
 		assertTrue(subtask.getName().equals(create.getName()));
 		assertTrue(subtask.getSummary().equals(create.getSummary()));
@@ -51,7 +60,7 @@ public class SubtaskMapperTest {
 		subtask.setUpdatedAt(updatedAt);
 		subtask.setTaskId(task.getId());
 
-		SubtaskDTO dto = new SubtaskDTO(subtask);
+		SubtaskDTO dto = mapper.toDTO(subtask);
 
 		assertTrue(dto.getId() == subtask.getId());
 		assertTrue(dto.getName().equals(subtask.getName()));

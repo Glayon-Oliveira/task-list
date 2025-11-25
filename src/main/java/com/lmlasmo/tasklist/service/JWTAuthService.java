@@ -10,6 +10,7 @@ import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO.JWTTokenType;
+import com.lmlasmo.tasklist.mapper.UserMapper;
 import com.lmlasmo.tasklist.model.User;
 import com.nimbusds.jwt.SignedJWT;
 
@@ -23,6 +24,7 @@ public class JWTAuthService {
 
 	@NonNull private JwtService jwtService;
 	@NonNull private UserService userService;
+	@NonNull private UserMapper mapper;
 	
 	@Value("${app.cookie.secure}")
 	private boolean secure;
@@ -51,7 +53,7 @@ public class JWTAuthService {
 		
 		JWTTokenDTO refreshToken = jwtService.generateRefreshTokenDTO(user.getId());
 		
-		return generateAccessTokenDTO(new UserDTO(user))
+		return generateAccessTokenDTO(mapper.toDTO(user))
 				.map(ajt -> new DoubleJWTTokensDTO(refreshToken, ajt));	
 	}
 	

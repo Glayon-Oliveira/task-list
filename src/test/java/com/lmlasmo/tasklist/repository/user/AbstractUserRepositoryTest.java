@@ -12,8 +12,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import com.lmlasmo.tasklist.mapper.MapperTestConfig;
 import com.lmlasmo.tasklist.model.User;
 import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.repository.UserEmailRepository;
@@ -22,6 +24,7 @@ import com.lmlasmo.tasklist.repository.UserRepository;
 import lombok.Getter;
 
 @DataR2dbcTest
+@Import(MapperTestConfig.class)
 public class AbstractUserRepositoryTest {
 
 	@Getter

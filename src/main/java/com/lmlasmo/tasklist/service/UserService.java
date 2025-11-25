@@ -11,10 +11,10 @@ import org.springframework.stereotype.Service;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.PasswordRecoveryDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
-import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
-import com.lmlasmo.tasklist.model.User;
+import com.lmlasmo.tasklist.mapper.UserMapper;
 import com.lmlasmo.tasklist.model.UserStatusType;
 import com.lmlasmo.tasklist.repository.UserRepository;
 import com.lmlasmo.tasklist.repository.summary.UserSummary.StatusSummary;
@@ -32,17 +32,20 @@ public class UserService {
 	private UserEmailService userEmailService;
 	private PasswordEncoder encoder;
 	
+	private UserMapper userMapper;
+	
 	public Mono<UserDTO> save(CreateUserDTO signup) {
 		return repository.existsByUsername(signup.getUsername())
 				.filter(e -> !e)
 				.switchIfEmpty(Mono.error(new ResourceAlreadyExistsException("Username already exists")))
 				.thenReturn(signup)
 				.doOnNext(s -> s.setPassword(encoder.encode(s.getPassword())))
-				.map(User::new)
+				.map(userMapper::toUser)
 				.flatMap(repository::save)
+				.map(userMapper::toDTO)
 				.flatMap(u -> {
 					return userEmailService.save(signup.getEmail(), u.getId())
-							.thenReturn(new UserDTO(u));
+							.thenReturn(u);
 				}).as(m -> repository.getOperator().transactional(m));
 	}
 	
@@ -138,13 +141,13 @@ public class UserService {
 	public Mono<UserDTO> findById(int id) {
 		return repository.findById(id)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("User not found")))
-				.map(UserDTO::new);
+				.map(userMapper::toDTO);
 	}
 	
 	public Mono<UserDTO> findByEmail(String email) {
 		return repository.findByEmail(email)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("User not found")))
-				.map(UserDTO::new);
+				.map(userMapper::toDTO);
 	}	
 	
 }

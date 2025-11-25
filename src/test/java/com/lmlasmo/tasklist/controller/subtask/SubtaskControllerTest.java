@@ -25,6 +25,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -38,6 +39,8 @@ import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.SubtaskController;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
+import com.lmlasmo.tasklist.mapper.MapperTestConfig;
+import com.lmlasmo.tasklist.mapper.SubtaskMapper;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.param.subtask.CreateSubtaskSource;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
@@ -49,6 +52,7 @@ import reactor.core.publisher.Mono;
 
 @WebFluxTest(controllers = SubtaskController.class)
 @TestInstance(Lifecycle.PER_CLASS)
+@Import(MapperTestConfig.class)
 public class SubtaskControllerTest extends AbstractControllerTest{
 
 	@MockitoBean
@@ -62,6 +66,9 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 
 	@Autowired
 	private ObjectMapper mapper;
+	
+	@Autowired
+	private SubtaskMapper stMapper;
 
 	private final String baseUri = "/api/subtask";
 
@@ -100,7 +107,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		subtask.setDurationMinutes(data.getDurationMinutes());
 
 		when(accessService.canAccessTask(subtask.getId(), getDefaultUser().getId())).thenReturn(Mono.empty());
-		when(subtaskService.save(any())).thenReturn(Mono.just(new SubtaskDTO(subtask)));
+		when(subtaskService.save(any())).thenReturn(Mono.just(stMapper.toDTO(subtask)));
 		
 		ResponseSpec response = getWebTestClient().post()
 				.uri(baseUri)
@@ -130,7 +137,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		}
 		
 		when(accessService.canAccessTask(eq(1), eq(getDefaultUser().getId()))).thenReturn(Mono.empty());
-		when(subtaskService.findByTask(eq(1))).thenReturn(Flux.fromIterable((List.of(new SubtaskDTO(subtask)))));
+		when(subtaskService.findByTask(eq(1))).thenReturn(Flux.fromIterable((List.of(stMapper.toDTO(subtask)))));
 		
 		ResponseSpec response = getWebTestClient().get()
 				.uri(ub -> ub.path(baseUri)
@@ -158,7 +165,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		}
 		
 		when(accessService.canAccessSubtask(subtask.getId(), getDefaultUser().getId())).thenReturn(Mono.empty());
-		when(subtaskService.findById(subtask.getId())).thenReturn(Mono.just(new SubtaskDTO(subtask)));
+		when(subtaskService.findById(subtask.getId())).thenReturn(Mono.just(stMapper.toDTO(subtask)));
 		
 		ResponseSpec response = getWebTestClient().get()
 				.uri(baseUri + "/" + subtask.getId())
@@ -181,7 +188,7 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		update.setSummary(UUID.randomUUID().toString());
 		update.setDurationMinutes(5);
 
-		SubtaskDTO subtaskDTO = new SubtaskDTO(subtask);
+		SubtaskDTO subtaskDTO = stMapper.toDTO(subtask);
 		subtaskDTO.setName(update.getName());
 		subtaskDTO.setSummary(update.getSummary());
 		subtaskDTO.setDurationMinutes(update.getDurationMinutes());

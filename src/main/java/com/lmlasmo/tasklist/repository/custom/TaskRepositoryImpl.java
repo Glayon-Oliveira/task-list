@@ -13,6 +13,7 @@ import org.springframework.data.relational.core.query.Update;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 import org.springframework.stereotype.Repository;
 
+import com.lmlasmo.tasklist.mapper.summary.TaskSummaryMapper;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
@@ -26,6 +27,7 @@ import reactor.core.publisher.Mono;
 public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepositoryCustom {
 
 	private R2dbcEntityTemplate template;
+	private TaskSummaryMapper mapper;
 	
 	@Override
 	public Mono<StatusSummary> findStatusSummaryById(int taskId) {
@@ -34,11 +36,7 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bind(0, taskId)
-				.map((row, meta) -> new StatusSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						TaskStatusType.valueOf(row.get("status", String.class))
-						))
+				.map(mapper::toStatusSummary)
 				.one();
 	}
 

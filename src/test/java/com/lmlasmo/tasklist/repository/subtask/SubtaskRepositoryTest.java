@@ -15,9 +15,11 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 
+import com.lmlasmo.tasklist.mapper.summary.SubtaskSummaryMapper;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
@@ -26,6 +28,9 @@ import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.StatusSummary;
 
 public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
+	
+	@Autowired
+	private SubtaskSummaryMapper mapper;
 	
 	@Test
 	void findPositionSummaryByTaskId() {
@@ -120,10 +125,11 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		Subtask lastSubtask = sortedSubtasks.get(subtaskIndex == sortedSubtasks.size()-1 ? 0 : sortedSubtasks.size()-1);
 		final BigDecimal lastPosition = lastSubtask.getPosition();
 		
-		getSubtaskRepository().updatePriority(new BasicSummary(
+		getSubtaskRepository().updatePriority(mapper.toPositionSummary(
 				subtask.getId(),
-				subtask.getVersion()),
-				lastPosition.compareTo(position) > 0 ? lastPosition.add(BigDecimal.ONE) : position.add(BigDecimal.ONE)
+				subtask.getVersion(),
+				subtask.getTaskId(),
+				subtask.getPosition()), lastPosition.compareTo(position) > 0 ? lastPosition.add(BigDecimal.ONE) : position.add(BigDecimal.ONE)
 				).block();
 		
 		Subtask upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
@@ -139,7 +145,11 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		
 		assertTrue(subtask.getPosition().compareTo(toAssertTrue) == 0);
 		
-		getSubtaskRepository().updatePriority(new BasicSummary(lastSubtask.getId(), lastSubtask.getVersion()), position).block();
+		getSubtaskRepository().updatePriority(mapper.toPositionSummary(
+				lastSubtask.getId(),
+				lastSubtask.getVersion(),
+				lastSubtask.getTaskId(),
+				position), position).block();
 		
 		upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
 		upLastSubtask = getSubtaskRepository().findById(lastSubtask.getId()).block();
@@ -152,7 +162,12 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		
 		assertEquals(lastSubtask.getPosition().compareTo(position), 0);
 		
-		assertThrows(DataIntegrityViolationException.class, () -> getSubtaskRepository().updatePriority(new BasicSummary(subtask.getId(), subtask.getVersion()), lastSubtask.getPosition()).block());
+		assertThrows(DataIntegrityViolationException.class, 
+				() -> getSubtaskRepository().updatePriority(mapper.toPositionSummary(
+						subtask.getId(), 
+						subtask.getVersion(),
+						subtask.getTaskId(),
+						subtask.getPosition()), lastSubtask.getPosition()).block());
 	}
 	
 	@Test
@@ -168,10 +183,11 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 	    BigDecimal newPosition = subtask.getPosition()
 	    		.add(BigDecimal.valueOf(subtasks.size()+1));
  
-	    getSubtaskRepository().updatePriority(new BasicSummary(
+	    getSubtaskRepository().updatePriority(mapper.toPositionSummary(
 	    		subtask.getId(),
-	    		initialVersion),
-	    		newPosition).block();
+	    		initialVersion,
+	    		subtask.getTaskId(),
+	    		subtask.getPosition()), newPosition).block();
 
 	    Subtask upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
 	    
@@ -180,18 +196,20 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 
 	    assertEquals(initialVersion + 1, subtask.getVersion());
 	    assertEquals(newPosition.compareTo(subtask.getPosition()), 0);
-
+	    
 	    assertThrows(OptimisticLockingFailureException.class, 
-	    		() -> getSubtaskRepository().updatePriority(new BasicSummary(
-	    				subtask.getId(),
-	    				initialVersion),
-	    				newPosition.add(BigDecimal.ONE)).block()
-	    );
-
-	    getSubtaskRepository().updatePriority(new BasicSummary(
+	    		() -> getSubtaskRepository().updatePriority(mapper.toPositionSummary(
+	    						subtask.getId(),
+	    	    				initialVersion,
+	    	    				subtask.getTaskId(),
+	    	    				subtask.getPosition()), newPosition.add(BigDecimal.ONE)).block()
+		);
+	    
+	    getSubtaskRepository().updatePriority(mapper.toPositionSummary(
 	    		subtask.getId(),
-	    		subtask.getVersion()),
-	    		newPosition.add(BigDecimal.valueOf(2))).block();
+	    		subtask.getVersion(),
+	    		subtask.getTaskId(),
+	    		subtask.getPosition()), newPosition.add(BigDecimal.valueOf(2))).block();
 
 	    upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
 	    
@@ -246,10 +264,19 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		Subtask subtask = getSubtasks().get(index);
 		
 		List<BasicSummary> ids = getSubtasks().stream()
-				.map(s -> new BasicSummary(s.getId(), s.getVersion()))
+				.map(s -> (BasicSummary) mapper.toStatusSummary(
+						s.getId(),
+						s.getVersion(),
+						s.getTaskId(),
+						s.getStatus()))
 				.toList();
 		
-		getSubtaskRepository().updateStatus(new BasicSummary(subtask.getId(), subtask.getVersion()), TaskStatusType.COMPLETED).block();
+		getSubtaskRepository().updateStatus(mapper.toStatusSummary(
+				subtask.getId(),
+				subtask.getVersion(),
+				subtask.getTaskId(),
+				subtask.getStatus()
+				), TaskStatusType.COMPLETED).block();
 		
 		Subtask upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
 		
@@ -257,7 +284,12 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		subtask.setVersion(upSubtask.getVersion());
 		
 		ids = new ArrayList<>(ids);
-		ids.set(index, new BasicSummary(subtask.getId(), subtask.getVersion()));
+		
+		ids.set(index, mapper.toStatusSummary(
+				subtask.getId(),
+				subtask.getVersion(),
+				subtask.getTaskId(),
+				subtask.getStatus()));
 		
 		assertEquals(subtask.getStatus(), TaskStatusType.COMPLETED);
 		
@@ -280,17 +312,28 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 	void updateStatusWithVersion() {
 	    int index = new Random().nextInt(0, getSubtasks().size());
 	    Subtask subtask = getSubtasks().get(index);
-	    	    
-	    getSubtaskRepository().updateStatus(new BasicSummary(subtask.getId(), subtask.getVersion()), TaskStatusType.COMPLETED).block();
+	    
+	    getSubtaskRepository().updateStatus(mapper.toStatusSummary(
+	    		subtask.getId(),
+	    		subtask.getVersion(),
+	    		subtask.getTaskId(),
+	    		subtask.getStatus()
+	    		), TaskStatusType.COMPLETED).block();
 
 	    Subtask upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
 	    
 	    subtask.setStatus(upSubtask.getStatus());
 	    subtask.setVersion(upSubtask.getVersion());
 	    
-	    assertEquals(TaskStatusType.COMPLETED, subtask.getStatus());	    
+	    assertEquals(TaskStatusType.COMPLETED, subtask.getStatus());
+	    
 	    assertThrows(OptimisticLockingFailureException.class, 
-	    		() -> getSubtaskRepository().updateStatus(new BasicSummary(subtask.getId(), subtask.getVersion() - 1), TaskStatusType.COMPLETED).block()
+	    		() -> getSubtaskRepository().updateStatus(mapper.toStatusSummary(
+	    				subtask.getId(),
+	    				subtask.getVersion() - 1,
+	    				subtask.getTaskId(),
+	    				subtask.getStatus()
+	    				), TaskStatusType.COMPLETED).block()
 	    		);
 	    
 	    upSubtask = getSubtaskRepository().findById(subtask.getId()).block();
@@ -299,9 +342,14 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 	    subtask.setVersion(upSubtask.getVersion());
 	    
 	    assertEquals(TaskStatusType.COMPLETED, subtask.getStatus());
-
+	    
 	    List<BasicSummary> basics = getSubtasks().stream()
-	            .map(s -> new BasicSummary(s.getId(), s.getVersion()))
+	            .map(s -> (BasicSummary) mapper.toStatusSummary(
+	            		s.getId(),
+	            		s.getVersion(),
+	            		s.getTaskId(),
+	            		s.getStatus()
+	            		))
 	            .toList();
 
 	    assertDoesNotThrow(() -> getSubtaskRepository().updateStatus(basics, TaskStatusType.COMPLETED).block());

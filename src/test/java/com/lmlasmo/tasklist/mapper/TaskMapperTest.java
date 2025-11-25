@@ -8,13 +8,22 @@ import java.time.ZoneId;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.User;
 
+@ExtendWith(SpringExtension.class)
+@Import(MapperTestConfig.class)
 public class TaskMapperTest {
+	
+	@Autowired
+	private TaskMapper mapper;
 
 	private String name = "Name - ID = " + UUID.randomUUID().toString();
 	private	String summary = "Summary - ID = " + UUID.randomUUID().toString();
@@ -32,7 +41,8 @@ public class TaskMapperTest {
 		create.setDeadline(deadline);
 		create.setDeadlineZone(deadlineZone);
 
-		Task task = new Task(create, user.getId());
+		Task task = mapper.toEntity(create);
+		task.setUserId(user.getId());
 
 		assertTrue(task.getName().equals(create.getName()));
 		assertTrue(task.getSummary().equals(create.getSummary()));
@@ -51,7 +61,7 @@ public class TaskMapperTest {
 		task.setUpdatedAt(updateAt);
 		task.setUserId(user.getId());
 
-		TaskDTO dto = new TaskDTO(task);
+		TaskDTO dto = mapper.toDTO(task);
 
 		assertTrue(task.getName().equals(dto.getName()));
 		assertTrue(task.getSummary().equals(dto.getSummary()));

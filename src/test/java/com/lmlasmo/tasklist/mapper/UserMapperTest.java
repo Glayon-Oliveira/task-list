@@ -6,12 +6,21 @@ import java.time.Instant;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
 import com.lmlasmo.tasklist.model.User;
 
+@ExtendWith(SpringExtension.class)
+@Import(MapperTestConfig.class)
 public class UserMapperTest {
+	
+	@Autowired
+	private UserMapper mapper;
 
 	@Test
 	void signupDTOtoUser() {
@@ -22,8 +31,8 @@ public class UserMapperTest {
 		signup.setUsername(username);
 		signup.setPassword(password);
 		signup.setEmail("test@example.com");
-
-		User user = new User(signup);
+		
+		User user = mapper.toUser(signup);
 
 		assertTrue(user.getUsername().equals(username));
 		assertTrue(user.getPassword().equals(password));
@@ -39,7 +48,7 @@ public class UserMapperTest {
 		user.setCreatedAt(Instant.now());
 		user.setUpdatedAt(user.getCreatedAt());
 		
-		UserDTO dto = new UserDTO(user);
+		UserDTO dto = mapper.toDTO(user);
 
 		assertTrue(dto.getUsername().equals(user.getUsername()));
 		assertTrue(dto.getCreatedAt().equals(user.getCreatedAt()));

@@ -8,8 +8,6 @@ import org.springframework.data.annotation.Version;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
-import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
-
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.NonNull;
@@ -56,16 +54,5 @@ public class Task {
 	
 	@Column("user_id")
 	private int userId;
-	
-	public Task(CreateTaskDTO create, int userId) {
-		this.name = create.getName();
-		this.summary = create.getSummary();		
-		this.deadlineZone = create.getDeadlineZone();
-		this.userId = userId;
-		
-		if(create.getDeadline() != null) {
-			this.deadline = create.getDeadline().toInstant();
-		}
-	}
 
 }

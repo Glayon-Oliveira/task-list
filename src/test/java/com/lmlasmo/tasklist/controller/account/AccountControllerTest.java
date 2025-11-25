@@ -15,9 +15,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.AccountController;
-import com.lmlasmo.tasklist.dto.UserEmailDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
+import com.lmlasmo.tasklist.mapper.MapperTestConfig;
+import com.lmlasmo.tasklist.mapper.UserEmailMapper;
 import com.lmlasmo.tasklist.model.EmailStatusType;
 import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
@@ -29,7 +30,7 @@ import com.lmlasmo.tasklist.service.UserEmailService;
 import reactor.core.publisher.Mono;
 
 @WebFluxTest(controllers = {AccountController.class})
-@Import(EmailConfirmationService.class)
+@Import({EmailConfirmationService.class, MapperTestConfig.class})
 @TestInstance(Lifecycle.PER_CLASS)
 public class AccountControllerTest extends AbstractControllerTest {
 	
@@ -44,6 +45,9 @@ public class AccountControllerTest extends AbstractControllerTest {
 	
 	@Autowired
 	private EmailConfirmationService confirmationService;
+	
+	@Autowired
+	private UserEmailMapper uEmailMapper;
 
 	@RepeatedTest(2)
 	public void linkEmail(RepetitionInfo info) throws Exception {
@@ -75,7 +79,7 @@ public class AccountControllerTest extends AbstractControllerTest {
 		
 		String baseUri = "/api/account/email/link";
 
-		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(Mono.just(new UserEmailDTO(new UserEmail("test@example.com"))));
+		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(Mono.just(uEmailMapper.toDTO(new UserEmail("test@example.com"))));
 		when(getUserService().save(any())).thenThrow(ResourceAlreadyExistsException.class);
 		when(userEmailService.existsByEmail("test@example.com")).thenReturn(Mono.just(false));
 		
@@ -101,8 +105,8 @@ public class AccountControllerTest extends AbstractControllerTest {
 		String email = String.format(emailFormat, currentRept % 2 == 0 ? "test@example.com" : "testexample.com");
 		String baseUri = "/api/account/email/terminate";
 		
-		when(userEmailService.changeEmailStatus("test@example.com", EmailStatusType.SUSPENDED)).thenReturn(Mono.just(new UserEmailDTO(new UserEmail("test@example.com"))));
-		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(Mono.just(new UserEmailDTO(new UserEmail("test@example.com"))));
+		when(userEmailService.changeEmailStatus("test@example.com", EmailStatusType.SUSPENDED)).thenReturn(Mono.just(uEmailMapper.toDTO(new UserEmail("test@example.com"))));
+		when(userEmailService.save("test@example.com", getDefaultUser().getId())).thenReturn(Mono.just(uEmailMapper.toDTO(new UserEmail("test@example.com"))));
 		when(resourceAccessService.canAccessEmail("test@example.com", getDefaultUser().getId())).thenReturn(Mono.empty());
 		
 		getWebTestClient().post()
