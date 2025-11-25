@@ -16,13 +16,13 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.TaskController;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
+import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
@@ -67,7 +67,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 		task.setUpdatedAt(task.getCreatedAt());
 		
 		when(accessService.canAccessTask(anyInt(), eq(getDefaultUser().getId())))
-			.thenReturn(Mono.error(new AccessDeniedException("Access denied")));
+			.thenReturn(Mono.error(new ResourceNotFoundException("Subask not found")));
 	}
 
 	@Test
@@ -76,7 +76,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 			.uri(baseUri + task.getId()+1)
 			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 			.exchange()
-			.expectStatus().isForbidden();
+			.expectStatus().isNotFound();
 	}
 
 	@Test
@@ -87,7 +87,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 					.build())
 			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 			.exchange()
-			.expectStatus().isForbidden();
+			.expectStatus().isNotFound();
 	}
 
 	@Test
@@ -102,7 +102,7 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 			.contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(mapper.writeValueAsString(update))
 			.exchange()
-			.expectStatus().isForbidden();
+			.expectStatus().isNotFound();
 	}
 
 	@Test
@@ -117,18 +117,19 @@ public class FailureAccessTaskControllerTest extends AbstractControllerTest {
 			.contentType(MediaType.APPLICATION_JSON)
 			.bodyValue(mapper.writeValueAsString(update))
 			.exchange()
-			.expectStatus().isForbidden();
+			.expectStatus().isNotFound();
 	}
 
 	@Test
 	public void getTaskById() throws Exception {
+		System.out.println();
 		getWebTestClient().get()
 			.uri(ub -> ub.path(baseUri + task.getId())
 					.queryParam("withSubtasks", "true")
 					.build())
 			.header("Authorization", "Bearer " + getDefaultAccessJwtToken())
 			.exchange()
-			.expectStatus().isForbidden();
+			.expectStatus().isNotFound();
 	}
 
 }
