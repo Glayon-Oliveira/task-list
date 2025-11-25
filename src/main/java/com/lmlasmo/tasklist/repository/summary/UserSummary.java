@@ -4,21 +4,13 @@ import java.time.Instant;
 
 import com.lmlasmo.tasklist.model.UserStatusType;
 
-import lombok.Getter;
-
 public interface UserSummary {
-
-	@Getter
-	public static class StatusSummary extends BasicSummary {
+	
+	public static interface StatusSummary extends BasicSummary {
 		
-		private UserStatusType status;
-		private Instant lastLogin;
+		public UserStatusType getStatus();
 		
-		public StatusSummary(int id, long version, UserStatusType status, Instant lastLogin) {
-			super(id, version);
-			this.status = status;
-			this.lastLogin = lastLogin;
-		}
+		public Instant getLastLogin();
 		
 	}
 	

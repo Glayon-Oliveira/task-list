@@ -8,14 +8,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
 
+import com.lmlasmo.tasklist.mapper.summary.TaskSummaryMapper;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
 public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
+	
+	@Autowired
+	private TaskSummaryMapper mapper;
 
 	@Test
 	void delete() {
@@ -48,7 +53,7 @@ public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 	void updateStatus() {
 		getTasks().forEach(t -> {
 			for(TaskStatusType status: TaskStatusType.values()) {
-				getTaskRepository().updateStatus(new BasicSummary(t.getId(), t.getVersion()), status).block();
+				getTaskRepository().updateStatus(mapper.toStatusSummary(t.getId(), t.getVersion(), t.getStatus()), status).block();
 
 				t = getTaskRepository().findById(t.getId()).block();
 
@@ -63,8 +68,13 @@ public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 	    getTasks().forEach(t -> {
 	    	
 	        long initialVersion = t.getVersion();
+	        final Task tt = t;
 	        
-	        getTaskRepository().updateStatus(new BasicSummary(t.getId(), t.getVersion()), TaskStatusType.COMPLETED).block();
+	        getTaskRepository().updateStatus(new BasicSummary() {
+				@Override public int getId() {return tt.getId();}
+				
+				@Override public long getVersion() {return tt.getVersion();}
+			}, TaskStatusType.COMPLETED).block();
 	        
 	        Task task = getTaskRepository().findById(t.getId()).block();
 
@@ -72,7 +82,11 @@ public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 	        assertTrue(task.getVersion() > initialVersion);
 
 	        assertThrows(OptimisticLockingFailureException.class, 
-	        		() -> getTaskRepository().updateStatus(new BasicSummary(t.getId(), initialVersion), TaskStatusType.IN_PROGRESS).block()
+	        		() -> getTaskRepository().updateStatus(new BasicSummary() {
+	        					@Override public int getId() {return tt.getId();}
+	        					
+	        					@Override public long getVersion() {return tt.getVersion();}
+	    					}, TaskStatusType.IN_PROGRESS).block()
 	        		);
 	        
 	        assertEquals(TaskStatusType.COMPLETED, task.getStatus());

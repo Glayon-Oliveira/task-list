@@ -14,6 +14,7 @@ import org.springframework.data.relational.core.query.Update;
 import org.springframework.data.relational.core.sql.SqlIdentifier;
 import org.springframework.stereotype.Repository;
 
+import com.lmlasmo.tasklist.mapper.summary.SubtaskSummaryMapper;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
@@ -29,6 +30,7 @@ import reactor.core.publisher.Mono;
 public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements SubtaskRepositoryCustom {
 	
 	private R2dbcEntityTemplate template;
+	private SubtaskSummaryMapper mapper;
 	
 	@Override
 	public Mono<Boolean> existsByIdAndTaskUserId(int subtaskId, int userId) {
@@ -81,12 +83,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bind(0, taskId)
-				.map(row -> new PositionSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						row.get("position", BigDecimal.class),
-						row.get("task_id", Integer.class)
-						))
+				.map(mapper::toPositionSummary)
 				.all();
 	}
 
@@ -97,12 +94,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 		return template.getDatabaseClient()
 				.sql(sql.toString())
 				.bind(0, subtaskId)
-				.map(row -> new PositionSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						row.get("position", BigDecimal.class),
-						row.get("task_id", Integer.class)
-						))
+				.map(mapper::toPositionSummary)
 				.one();
 	}
 
@@ -118,12 +110,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.sql(sql)
 				.bind(0, subtaskId)
 				.bind(1, subtaskId)
-				.map(row -> new PositionSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						row.get("position", BigDecimal.class),
-						row.get("task_id", Integer.class)
-						))
+				.map(mapper::toPositionSummary)
 				.all();
 	}
 	
@@ -133,12 +120,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bind(0, taskId)
-				.map(row -> new PositionSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						row.get("position", BigDecimal.class),
-						row.get("task_id", Integer.class)
-						))
+				.map(mapper::toPositionSummary)
 				.first();
 	}
 	
@@ -148,12 +130,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bind(0, taskId)
-				.map(row -> new PositionSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						row.get("position", BigDecimal.class),
-						row.get("task_id", Integer.class)
-						))
+				.map(mapper::toPositionSummary)
 				.first();
 	}
 	
@@ -165,12 +142,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.sql(sql)
 				.bind(0, taskId)
 				.bind(1, position)
-				.map(row -> new PositionSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						row.get("position", BigDecimal.class),
-						row.get("task_id", Integer.class)
-						))
+				.map(mapper::toPositionSummary)
 				.first();
 	}
 
@@ -182,12 +154,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.sql(sql)
 				.bind(0, taskId)
 				.bind(1, position)
-				.map(row -> new PositionSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						row.get("position", BigDecimal.class),
-						row.get("task_id", Integer.class)
-						))
+				.map(mapper::toPositionSummary)
 				.first();
 	}
 
@@ -222,12 +189,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bind(0, subtaskId)
-				.map(row -> new StatusSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						TaskStatusType.valueOf(row.get("status", String.class)),
-						row.get("task_id", Integer.class)
-						))
+				.map(mapper::toStatusSummary)
 				.one();
 	}
 
@@ -250,12 +212,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bindValues(List.copyOf(subtaskIds))
-				.map(row -> new StatusSummary(
-						row.get("id", Integer.class),
-						row.get("row_version", Long.class),
-						TaskStatusType.valueOf(row.get("status", String.class)),
-						row.get("task_id", Integer.class)
-						))
+				.map(mapper::toStatusSummary)
 				.all();
 	}
 

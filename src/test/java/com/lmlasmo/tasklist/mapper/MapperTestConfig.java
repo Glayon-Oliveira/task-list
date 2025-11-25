@@ -5,6 +5,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 
+import com.lmlasmo.tasklist.mapper.summary.SubtaskSummaryMapper;
+import com.lmlasmo.tasklist.mapper.summary.TaskSummaryMapper;
+import com.lmlasmo.tasklist.mapper.summary.UserSummaryMapper;
+
 @Configuration
 public class MapperTestConfig {
 
@@ -30,6 +34,24 @@ public class MapperTestConfig {
 	@Primary
 	public SubtaskMapper subtaskMapper() {
 		return Mappers.getMapper(SubtaskMapper.class);
+	}
+	
+	@Bean
+	@Primary
+	public UserSummaryMapper userSummaryMapper() {
+		return Mappers.getMapper(UserSummaryMapper.class);
+	}
+	
+	@Bean
+	@Primary
+	public TaskSummaryMapper taskSummaryMapper() {
+		return Mappers.getMapper(TaskSummaryMapper.class);
+	}
+	
+	@Bean
+	@Primary
+	public SubtaskSummaryMapper subtaskSummaryMapper() {
+		return Mappers.getMapper(SubtaskSummaryMapper.class);
 	}
 	
 }
