@@ -2,6 +2,7 @@ package com.lmlasmo.tasklist.controller;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
@@ -15,6 +16,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.lmlasmo.tasklist.doc.controller.auth.AccessApiDoc;
+import com.lmlasmo.tasklist.doc.controller.auth.EmailConfirmationApiDoc;
+import com.lmlasmo.tasklist.doc.controller.auth.LoginApiDoc;
+import com.lmlasmo.tasklist.doc.controller.auth.PasswordRecoveryApiDoc;
+import com.lmlasmo.tasklist.doc.controller.auth.RefreshApiDoc;
+import com.lmlasmo.tasklist.doc.controller.auth.SignupApiDoc;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationHashDTO;
@@ -43,7 +50,8 @@ public class AuthController {
 	private ReactiveAuthenticationManager manager;
 	private EmailConfirmationService confirmationService;
 	
-	@PostMapping("/login")
+	@LoginApiDoc
+	@PostMapping(path = "/login", produces = MediaType.APPLICATION_JSON_VALUE)	
 	public Mono<ResponseEntity<DoubleJWTTokensDTO>> inByJson(@RequestBody @Valid LoginDTO login) throws Exception {		
 		Authentication auth = new UsernamePasswordAuthenticationToken(login.getLogin(), login.getPassword());
 		
@@ -58,7 +66,8 @@ public class AuthController {
 				});
 	}	
 	
-	@PostMapping("/signup")	
+	@SignupApiDoc
+	@PostMapping(path = "/signup", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(code = HttpStatus.CREATED)
 	public UserDTO upByJson(@RequestBody @Valid SignupDTO signup) {		
 		confirmationService.valideCodeHash(signup.getConfirmation(), signup.getEmail(), EmailConfirmationScope.LINK);
@@ -66,7 +75,8 @@ public class AuthController {
 		return userService.save(signup).block();
 	}	
 	
-	@PostMapping("/token/refresh")
+	@RefreshApiDoc
+	@PostMapping(path = "/token/refresh", produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<ResponseEntity<DoubleJWTTokensDTO>> refresh(@CookieValue(value = "rt", required = false) String refreshToken, @RequestBody(required = false) @Valid TokenDTO refreshTokenDto) throws Exception {
 		
 		return authJWTService.regenerateRefreshTokenDTO(refreshTokenDto != null ? refreshTokenDto.getToken() : refreshToken)
@@ -83,16 +93,19 @@ public class AuthController {
 				});
 	}	
 	
-	@PostMapping("/token/access")
+	@AccessApiDoc
+	@PostMapping(path = "/token/access", produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<JWTTokenDTO> access(@CookieValue(value = "rt", required = false) String refreshToken, @RequestBody(required = false) @Valid TokenDTO refreshTokenDto) {
 		return authJWTService.generateAccessTokenDTO(refreshTokenDto != null ? refreshTokenDto.getToken() : refreshToken);
 	}
 	
-	@PostMapping("/email/confirmation")
+	@EmailConfirmationApiDoc
+	@PostMapping(path = "/email/confirmation", produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<EmailConfirmationHashDTO> confirmEmail(@RequestBody @Valid EmailWithScope email) {
 		return confirmationService.sendConfirmationEmail(email.getEmail(), email.getScope());
 	}
 	
+	@PasswordRecoveryApiDoc
 	@PatchMapping("/recover/password")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Mono<Void> recoverPassword(@RequestBody @Valid PasswordRecoveryDTO passwordRecovery) {		

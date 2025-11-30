@@ -3,6 +3,7 @@ package com.lmlasmo.tasklist.controller;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,13 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.controller.util.ETagHelper;
+import com.lmlasmo.tasklist.doc.controller.subtask.CreateSubtaskApiDoc;
+import com.lmlasmo.tasklist.doc.controller.subtask.DeleteSubtaskApiDoc;
+import com.lmlasmo.tasklist.doc.controller.subtask.FindSubtaskApiDoc;
+import com.lmlasmo.tasklist.doc.controller.subtask.FindSubtasksApiDoc;
+import com.lmlasmo.tasklist.doc.controller.subtask.GeneralUpdateSubtaskApiDoc;
+import com.lmlasmo.tasklist.doc.controller.subtask.UpdateSubtaskPositionApiDoc;
+import com.lmlasmo.tasklist.doc.controller.subtask.UpdateSubtaskStatusApiDoc;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
@@ -42,13 +50,15 @@ public class SubtaskController {
 	private TaskStatusService taskStatusService;
 	private	AuthenticatedResourceAccess resourceAccess;
 	
-	@PostMapping
+	@CreateSubtaskApiDoc
+	@PostMapping(produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(code = HttpStatus.CREATED)
 	public Mono<SubtaskDTO> create(@RequestBody @Valid CreateSubtaskDTO create) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(create.getTaskId(), usid))
 				.then(subtaskService.save(create));
 	}
 	
+	@DeleteSubtaskApiDoc
 	@DeleteMapping(params = "subtaskIds")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Mono<Void> delete(@RequestParam List<@Min(1) Integer> subtaskIds) {		
@@ -58,14 +68,16 @@ public class SubtaskController {
 				.thenEmpty(subtaskService.delete(subtaskIds));
 	}
 	
-	@PatchMapping("/{subtaskId}")
+	@GeneralUpdateSubtaskApiDoc
+	@PatchMapping(path = "/{subtaskId}", produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<SubtaskDTO> update(@PathVariable @Min(1) int subtaskId, @RequestBody @Valid UpdateSubtaskDTO update) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskId, usid))
 				.then(ETagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
 				.filter(Boolean::booleanValue)
 				.then(subtaskService.update(subtaskId, update));
 	}
-	
+
+	@UpdateSubtaskPositionApiDoc
 	@PatchMapping(path = "/{subtaskId}/position")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Mono<Void> updateSubtaskPosition(@PathVariable @Min(1) int subtaskId, @RequestBody @Valid UpdateSubtaskPositionDTO update) {
@@ -76,6 +88,7 @@ public class SubtaskController {
 				.thenEmpty(subtaskService.updatePosition(subtaskId, update));
 	}
 	
+	@UpdateSubtaskStatusApiDoc
 	@PatchMapping(params = {"subtaskIds", "status"})
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Mono<Void> updateSubtaskStatus(@RequestParam List<@Min(1) Integer> subtaskIds, @RequestParam @NotNull TaskStatusType status) {		
@@ -84,8 +97,9 @@ public class SubtaskController {
 				.filter(Boolean::booleanValue)
 				.thenEmpty(taskStatusService.updateSubtaskStatus(status, subtaskIds));
 	}
-
-	@GetMapping(params = {"taskId"})
+	
+	@FindSubtasksApiDoc
+	@GetMapping(params = {"taskId"}, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Flux<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(taskId, usid))
 				.then(ETagHelper.checkEtag(et -> subtaskService.sumVersionByTask(taskId).map(s -> s == et)))
@@ -94,7 +108,8 @@ public class SubtaskController {
 				.as(ETagHelper::setEtag);
 	}
 	
-	@GetMapping("/{subtaskId}")	
+	@FindSubtaskApiDoc
+	@GetMapping(path = "/{subtaskId}", produces = MediaType.APPLICATION_JSON_VALUE)	
 	public Mono<SubtaskDTO> findById(@PathVariable @Min(1) int subtaskId) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskId, usid))
 				.then(ETagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
