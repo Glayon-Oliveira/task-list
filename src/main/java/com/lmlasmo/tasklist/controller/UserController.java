@@ -1,6 +1,7 @@
 package com.lmlasmo.tasklist.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -8,6 +9,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.controller.util.ETagHelper;
+import com.lmlasmo.tasklist.doc.controller.user.DeleteUserApiDoc;
+import com.lmlasmo.tasklist.doc.controller.user.GetUserApiDoc;
 import com.lmlasmo.tasklist.dto.UserDTO;
 import com.lmlasmo.tasklist.security.AuthenticatedTool;
 import com.lmlasmo.tasklist.service.UserService;
@@ -22,6 +25,7 @@ public class UserController {
 
 	private UserService userService;
 	
+	@DeleteUserApiDoc
 	@DeleteMapping("/i")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Mono<Void> delete() {
@@ -32,8 +36,9 @@ public class UserController {
 							.flatMap(c -> userService.delete(usid));
 				});
 	}
-		
-	@GetMapping("/i")	
+	
+	@GetUserApiDoc
+	@GetMapping(path = "/i", produces = MediaType.APPLICATION_JSON_VALUE)
 	public Mono<UserDTO> findByI() {
 		return AuthenticatedTool.getUserId()
 				.flatMap(usid -> {

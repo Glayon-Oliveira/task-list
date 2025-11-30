@@ -39,7 +39,8 @@ public class SecurityConf {
 				.formLogin(ServerHttpSecurity.FormLoginSpec::disable)
 				.securityContextRepository(NoOpServerSecurityContextRepository.getInstance())
 				.authorizeExchange(e -> e.pathMatchers("/api/auth/**").permitAll()
-						.anyExchange().authenticated())
+						.pathMatchers("/api/**").authenticated()
+						.anyExchange().permitAll())
 				.oauth2ResourceServer(auth2 -> auth2
 						.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtConverter)))
 				.exceptionHandling(e -> e.authenticationEntryPoint(entryPoint))

@@ -7,6 +7,7 @@ services:
    networks:
     - task-list-network
    environment:
+    SPRING_PROFILES_ACTIVE: ${PROFILES_ACTIVE}
     MYSQL_HOST: task-list-db
     MYSQL_USERNAME: ${MYSQL_USERNAME}
     MYSQL_PASSWORD: ${MYSQL_PASSWORD}

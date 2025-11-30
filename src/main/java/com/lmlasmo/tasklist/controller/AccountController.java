@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.lmlasmo.tasklist.doc.controller.account.LinkEmailApiDoc;
+import com.lmlasmo.tasklist.doc.controller.account.PrimaryEmailApiDoc;
+import com.lmlasmo.tasklist.doc.controller.account.EmailStatusApiDoc;
 import com.lmlasmo.tasklist.dto.auth.EmailDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailWithConfirmationDTO;
 import com.lmlasmo.tasklist.model.EmailStatusType;
@@ -36,6 +39,7 @@ public class AccountController {
 	private EmailConfirmationService confirmationService;
 	private	AuthenticatedResourceAccess resourceAccess;
 
+	@LinkEmailApiDoc
 	@PostMapping("/email/link")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Mono<Void> linkEmail(@RequestBody @Valid EmailWithConfirmationDTO email) {
@@ -46,6 +50,7 @@ public class AccountController {
 				}).then();
 	}
 	
+	@PrimaryEmailApiDoc
 	@PatchMapping("/email/primary/{id}")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Mono<Void> changePrimaryEmail(@PathVariable @Min(1) int id) {
@@ -54,6 +59,7 @@ public class AccountController {
 				.then();
 	}
 	
+	@EmailStatusApiDoc
 	@PatchMapping("/email/status/{status}")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	@PreAuthorize("hasAuthority('ADMIN')")
@@ -61,7 +67,8 @@ public class AccountController {
 		return userEmailService.changeEmailStatus(email.getEmail(), status)
 				.then();
 	}
-		
+	
+	@EmailStatusApiDoc
 	@PostMapping("/email/terminate")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
 	public Mono<Void> terminate(@RequestBody @Valid EmailDTO email) {

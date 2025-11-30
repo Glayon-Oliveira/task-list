@@ -4,6 +4,8 @@ services:
     target: dev
    networks:
     - task-list-dev-network
+   environment:
+    SPRING_PROFILES_ACTIVE: doc
    volumes:
     - ~/.m2:/root/.m2
     - ./src:/usr/local/app/src
