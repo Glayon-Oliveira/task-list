@@ -69,10 +69,9 @@ public class AuthController {
 	@SignupApiDoc
 	@PostMapping(path = "/signup", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(code = HttpStatus.CREATED)
-	public UserDTO upByJson(@RequestBody @Valid SignupDTO signup) {		
-		confirmationService.valideCodeHash(signup.getConfirmation(), signup.getEmail(), EmailConfirmationScope.LINK);
-		
-		return userService.save(signup).block();
+	public Mono<UserDTO> upByJson(@RequestBody @Valid SignupDTO signup) {		
+		return confirmationService.valideCodeHash(signup.getConfirmation(), signup.getEmail(), EmailConfirmationScope.LINK)
+				.then(userService.save(signup));
 	}	
 	
 	@RefreshApiDoc
