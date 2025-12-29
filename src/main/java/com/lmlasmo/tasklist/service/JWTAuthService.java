@@ -1,6 +1,5 @@
 package com.lmlasmo.tasklist.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,9 +24,6 @@ public class JWTAuthService {
 	@NonNull private JwtService jwtService;
 	@NonNull private UserService userService;
 	@NonNull private UserMapper mapper;
-	
-	@Value("${app.cookie.secure}")
-	private boolean secure;
 	
 	public Mono<JWTTokenDTO> generateAccessTokenDTO(String refreshToken) {
 		SignedJWT signed = jwtService.validateRefreshToken(refreshToken);
@@ -60,10 +56,10 @@ public class JWTAuthService {
 	public ResponseCookie createRefreshCookie(JWTTokenDTO refreshToken, String path) {
 		return ResponseCookie.from("rt", refreshToken.getToken())
 				.httpOnly(true)
-				.secure(secure)
+				.secure(true)
 				.path(path)
 				.maxAge(refreshToken.getDuration())
-				.sameSite("Strict")
+				.sameSite("none")
 				.build();
 	}
 	
