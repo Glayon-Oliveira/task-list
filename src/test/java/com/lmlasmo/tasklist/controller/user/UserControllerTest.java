@@ -159,6 +159,7 @@ public class UserControllerTest extends AbstractControllerTest {
 				.uri(baseUri)
 				.contentType(MediaType.APPLICATION_JSON)
 				.bodyValue(signIn)
+				.header("X-RefreshToken-Provider", "")
 				.exchange()
 				.expectStatus().isOk()
 				.expectBody()

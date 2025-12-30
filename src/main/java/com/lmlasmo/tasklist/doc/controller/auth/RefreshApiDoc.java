@@ -17,8 +17,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 		description = """
 					Generates a new Refresh Token from a valid token provided by the client.
 					
-					The token can be sent in the body or obtained automatically from the cookie, which has priority.
-				    The new Refresh Token is also set in the response cookies.
+					The client can provide the current refresh token either:
+				    - In the request body, in which case the new refresh token is returned in the response body.
+                    - Via a request cookie, in which case the new refresh token is returned in a response cookie.
+
+                    If both are provided, the cookie takes priority.
 					""",
 		success = @StatusResponseApiDoc(status = 200, message = "Refresh Token successfully renewed"),
 		errors = {

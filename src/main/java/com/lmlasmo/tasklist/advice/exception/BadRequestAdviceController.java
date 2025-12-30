@@ -33,7 +33,6 @@ public class BadRequestAdviceController {
 	
 	@ExceptionHandler({
 		ServerWebInputException.class,
-		ServerWebInputException.class,
 		TypeMismatchException.class,
 		UnsupportedMediaTypeStatusException.class,
 		InvalidEmailCodeException.class,

@@ -17,7 +17,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 		description = """
 					Authenticates the user in the system.
 				
-					The Refresh Token is also set in the response cookies.  
+					If the client provides the header 'X-RefreshToken-Body-Provide', 
+                    the Refresh Token is returned in the response body. 
+                    Otherwise, it is set in a response cookie.
+
+                    The Access Token is always returned in the response body.  
 					""",
 		success = @StatusResponseApiDoc(status = 200, message = "Login successful"),
 		errors = {
