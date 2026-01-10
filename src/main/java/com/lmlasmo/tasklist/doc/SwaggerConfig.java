@@ -116,6 +116,7 @@ public class SwaggerConfig {
 				apiResponse);
 	}
 	
+	@SuppressWarnings("unchecked")
 	private MediaType buildExceptionSchema() {
 	    Schema<Object> schema = new Schema<>()
 	            .type("object")

@@ -29,13 +29,6 @@ public interface FailureAuthenticateEndpointSource {
 				Arguments.of(new FailureAuthenticateEndpointData(List.of(POST), "/api/account/email/terminate"))
 				);
 	}
-	
-	public static Stream<Arguments> sourceForAuth() {
-		return Stream.of(
-				Arguments.of(new FailureAuthenticateEndpointData(List.of(POST), "/api/auth/token/refresh")),
-				Arguments.of(new FailureAuthenticateEndpointData(List.of(POST), "/api/auth/token/access"))
-				);
-	}
 
 	public static Stream<Arguments> sourceForUser(){
 		List<HttpMethod> methods = getAllMethods();
@@ -63,7 +56,6 @@ public interface FailureAuthenticateEndpointSource {
 	public static Stream<Arguments> source(){
 		return Stream.of(
 				sourceForAccount(),
-				sourceForAuth(),
 				sourceForUser(),
 				sourceForTask(),
 				sourceForSubtask()

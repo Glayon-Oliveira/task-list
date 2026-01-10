@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.controller.auth;
 
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.mockito.Mockito.when;
 
 import java.io.UnsupportedEncodingException;
@@ -7,15 +8,14 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.RepetitionInfo;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.reactive.server.WebTestClient.BodyContentSpec;
 import org.springframework.test.web.reactive.server.WebTestClient.RequestBodySpec;
-import org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec;
 
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
 import com.lmlasmo.tasklist.controller.AuthController;
@@ -62,30 +62,43 @@ public class TokenJwtTest extends AbstractControllerTest {
 		
 		when(getUserService().lastLoginToNow(getDefaultUser().getId())).thenReturn(Mono.empty());
 		
-		ResponseSpec respec = getWebTestClient().post()
-			.uri(baseUri)
-			.cookie("rt", getDefaultRefreshJwtToken())
-			.exchange();
-		
-		respec.expectStatus().isOk()
-			.expectBody()
-			.jsonPath("$.refreshToken.token").exists()
+		BodyContentSpec bodySpec = reqspec.exchange()
+				.expectStatus().isOk()
+				.expectBody();
+			
+		if(info.getCurrentRepetition() == 1) {
+			bodySpec.jsonPath("$.token").exists()
+			.jsonPath("$.type").isEqualTo(JWTTokenType.ACCESS)
+			.jsonPath("$.duration").exists();
+		}else if(info.getCurrentRepetition() == 2){
+			bodySpec.jsonPath("$.refreshToken.token").exists()
 			.jsonPath("$.refreshToken.type").isEqualTo(JWTTokenType.REFRESH)
-			.jsonPath("$.refreshToken.duration").exists()
-			.jsonPath("$.accessToken.token").exists()
-			.jsonPath("$.accessToken.type").isEqualTo(JWTTokenType.ACCESS)
-			.jsonPath("$.accessToken.duration").exists();
+			.jsonPath("$.refreshToken.duration").exists();
+		}
 	}
 	
-	@Test
-	void successAccessToken() throws UnsupportedEncodingException, Exception {
+	@RepeatedTest(2)
+	void successAccessToken(RepetitionInfo info) throws UnsupportedEncodingException, Exception {
 		String baseUri = "/api/auth/token/access";
+		
+		RequestBodySpec reqspec = getWebTestClient().post().uri(baseUri);
+		
+		if(info.getCurrentRepetition() == 1) {
+			reqspec = reqspec.cookie("rt", getDefaultRefreshJwtToken());
+		}else if(info.getCurrentRepetition() == 2) {
+			String token = """
+					{
+						"token": "%s"
+					}
+					""";
+			
+			reqspec = (RequestBodySpec) reqspec.contentType(MediaType.APPLICATION_JSON)
+						.bodyValue(String.format(token, getDefaultRefreshJwtToken()));
+		}
 		
 		when(getUserService().lastLoginToNow(getDefaultUser().getId())).thenReturn(Mono.empty());
 		
-		getWebTestClient().post().uri(baseUri)
-			.cookie("rt", getDefaultRefreshJwtToken())
-			.exchange()
+		reqspec.exchange()
 			.expectStatus().isOk()
 			.expectBody()
 				.jsonPath("$.token").exists()
@@ -93,7 +106,7 @@ public class TokenJwtTest extends AbstractControllerTest {
 				.jsonPath("$.duration").exists();
 	}
 	
-	@RepeatedTest(2)
+	@RepeatedTest(3)
 	void failureRefreshToken(RepetitionInfo info) throws UnsupportedEncodingException, Exception {
 		String baseUri = "/api/auth/token/refresh";
 		String falseToken = UUID.randomUUID().toString();
@@ -113,24 +126,40 @@ public class TokenJwtTest extends AbstractControllerTest {
 						.bodyValue(String.format(token, falseToken));
 		}
 		
+		if(info.getCurrentRepetition() == 3) {
+			reqspec.exchange().expectStatus().isBadRequest();
+			assumeFalse(true);
+		}
+		
 		reqspec.exchange().expectStatus().isUnauthorized();
 	}
 	
-	@Test
-	void failureAccessToken() throws UnsupportedEncodingException, Exception {
-		String baseUri = "/api/auth/token/access";
+	@RepeatedTest(3)
+	void failureAccessToken(RepetitionInfo info) throws UnsupportedEncodingException, Exception {
+		String baseUri = "/api/auth/token/refresh";
 		String falseToken = UUID.randomUUID().toString();
 		
-		String token = """
-				"token": "%s"
-				""";
+		RequestBodySpec reqspec = getWebTestClient().post().uri(baseUri);
 		
-		getWebTestClient().post()
-			.uri(baseUri)
-			.contentType(MediaType.APPLICATION_JSON)
-			.bodyValue(String.format(token, falseToken))
-			.exchange()
-			.expectStatus().isUnauthorized();
+		if(info.getCurrentRepetition() == 1) {
+			reqspec = reqspec.cookie("rt", falseToken);
+		}else if(info.getCurrentRepetition() == 2) {
+			String token = """
+					{
+						"token": "%s"
+					}
+					""";
+			
+			reqspec = (RequestBodySpec) reqspec.contentType(MediaType.APPLICATION_JSON)
+						.bodyValue(String.format(token, falseToken));
+		}
+		
+		if(info.getCurrentRepetition() == 3) {
+			reqspec.exchange().expectStatus().isBadRequest();
+			assumeFalse(true);
+		}
+		
+		reqspec.exchange().expectStatus().isUnauthorized();
 	}
 	
 }

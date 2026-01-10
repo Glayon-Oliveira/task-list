@@ -51,20 +51,26 @@ public class AuthController {
 	private EmailConfirmationService confirmationService;
 	
 	@LoginApiDoc
-	@PostMapping(path = "/login", produces = MediaType.APPLICATION_JSON_VALUE)	
-	public Mono<ResponseEntity<DoubleJWTTokensDTO>> inByJson(@RequestBody @Valid LoginDTO login) throws Exception {		
+	@PostMapping(path = "/login", headers = "X-RefreshToken-Provider", produces = MediaType.APPLICATION_JSON_VALUE)	
+	public Mono<DoubleJWTTokensDTO> loginWithHeader(@RequestBody @Valid LoginDTO login) {
 		Authentication auth = new UsernamePasswordAuthenticationToken(login.getLogin(), login.getPassword());
 		
 		return manager.authenticate(auth)
-				.flatMap(authJWTService::generateDoubleTokenDTO)
-				.flatMap(djt -> {
-					ResponseCookie cookie = authJWTService.createRefreshCookie(djt.getRefreshToken(), "/api/auth/token/");
-					
-					return Mono.just(ResponseEntity.ok()
-							.header(HttpHeaders.SET_COOKIE, cookie.toString())
-							.body(djt));
-				});
-	}	
+				.flatMap(authJWTService::generateDoubleTokenDTO);
+	}
+	
+	@LoginApiDoc
+	@PostMapping(path = "/login", produces = MediaType.APPLICATION_JSON_VALUE)	
+	public Mono<ResponseEntity<JWTTokenDTO>> login(@RequestBody @Valid LoginDTO login) {
+		return loginWithHeader(login)
+					.map(djt -> {
+						ResponseCookie cookie = authJWTService.createRefreshCookie(djt.getRefreshToken(), "/api/auth/token");
+						
+						return ResponseEntity.ok()
+								.header(HttpHeaders.SET_COOKIE, cookie.toString())
+								.body(djt.getAccessToken());
+					});
+	}
 	
 	@SignupApiDoc
 	@PostMapping(path = "/signup", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -75,27 +81,36 @@ public class AuthController {
 	}	
 	
 	@RefreshApiDoc
+	@PostMapping(path = "/token/refresh", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<DoubleJWTTokensDTO> refresh(@RequestBody @Valid TokenDTO refreshTokenDto) {
+		return authJWTService.regenerateRefreshTokenDTO(refreshTokenDto.getToken())
+				.flatMap(rjt -> authJWTService.generateAccessTokenDTO(rjt.getToken())
+						.map(ajt -> new DoubleJWTTokensDTO(rjt, ajt)));
+	}
+	
+	@RefreshApiDoc
 	@PostMapping(path = "/token/refresh", produces = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<ResponseEntity<DoubleJWTTokensDTO>> refresh(@CookieValue(value = "rt", required = false) String refreshToken, @RequestBody(required = false) @Valid TokenDTO refreshTokenDto) throws Exception {
-		
-		return authJWTService.regenerateRefreshTokenDTO(refreshTokenDto != null ? refreshTokenDto.getToken() : refreshToken)
-				.flatMap(rjt -> {
-					return authJWTService.generateAccessTokenDTO(rjt.getToken())
-							.map(ajt -> new DoubleJWTTokensDTO(rjt, ajt));
-				})
-				.flatMap(djt -> {
-					ResponseCookie cookie = authJWTService.createRefreshCookie(djt.getRefreshToken(), "/api/auth/token/");
+	public Mono<ResponseEntity<JWTTokenDTO>> refresh(@CookieValue(value = "rt") String refreshToken) {
+		return refresh(new TokenDTO(refreshToken))
+				.map(djt -> {
+					ResponseCookie cookie = authJWTService.createRefreshCookie(djt.getRefreshToken(), "/api/auth/token");
 					
-					return Mono.just(ResponseEntity.ok()
+					return ResponseEntity.ok()
 							.header(HttpHeaders.SET_COOKIE, cookie.toString())
-							.body(djt));
+							.body(djt.getAccessToken());
 				});
-	}	
+	}
+	
+	@AccessApiDoc
+	@PostMapping(path = "/token/access", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<JWTTokenDTO> access(@RequestBody @Valid TokenDTO refreshTokenDto) {		
+		return authJWTService.generateAccessTokenDTO(refreshTokenDto.getToken());
+	}
 	
 	@AccessApiDoc
 	@PostMapping(path = "/token/access", produces = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<JWTTokenDTO> access(@CookieValue(value = "rt", required = false) String refreshToken, @RequestBody(required = false) @Valid TokenDTO refreshTokenDto) {
-		return authJWTService.generateAccessTokenDTO(refreshTokenDto != null ? refreshTokenDto.getToken() : refreshToken);
+	public Mono<JWTTokenDTO> access(@CookieValue(value = "rt") String refreshToken) {		
+		return authJWTService.generateAccessTokenDTO(refreshToken);
 	}
 	
 	@EmailConfirmationApiDoc

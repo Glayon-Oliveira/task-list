@@ -17,7 +17,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 		description = """
 					Generates a new Access Token from a valid Refresh Token provided by the client.
 					
-				    The token can be sent in the body or obtained automatically from the cookie, which has priority.
+					The client can provide the refresh token either:
+                    - In the request body.
+                    - Via a request cookie.
+					
+				    The Access Token is always returned in the response body.
 					""",
 		success = @StatusResponseApiDoc(status = 200, message = "Successful creation of the access token"),
 		errors = {
