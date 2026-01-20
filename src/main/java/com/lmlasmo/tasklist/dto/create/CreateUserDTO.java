@@ -17,6 +17,7 @@ public class CreateUserDTO extends PasswordDTO {
 
 	@JsonProperty
 	@NotBlank
+	@Size(max = 255)
 	private String username;
 	
 	@JsonProperty
