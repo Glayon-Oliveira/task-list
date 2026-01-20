@@ -32,6 +32,12 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 	private TaskSummaryMapper mapper;
 	
 	@Override
+	public Mono<Long> countByUserId(int userId) {
+		Query query = Query.query(Criteria.where("userId").is(userId));
+		return template.count(query, Task.class);
+	}
+	
+	@Override
 	public Flux<Task> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status) {
 		Criteria criteria = Criteria.where("userId").is(userId);
 		

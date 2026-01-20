@@ -9,6 +9,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.lmlasmo.tasklist.dto.CountDTO;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
@@ -158,6 +159,11 @@ public class SubtaskService {
 		return subtaskRepository.findById(subtaskId)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id equals " + subtaskId)))
 				.map(mapper::toDTO);
+	}
+	
+	public Mono<CountDTO> countByTask(int taskId) {
+		return subtaskRepository.countByTaskId(taskId)
+				.map(c -> new CountDTO("subtask", c));
 	}
 	
 }

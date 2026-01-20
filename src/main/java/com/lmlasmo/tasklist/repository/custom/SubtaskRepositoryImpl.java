@@ -31,7 +31,7 @@ import reactor.core.publisher.Mono;
 public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements SubtaskRepositoryCustom {
 	
 	private R2dbcEntityTemplate template;
-	private SubtaskSummaryMapper mapper;
+	private SubtaskSummaryMapper mapper;	
 	
 	@Override
 	public Mono<Boolean> existsByIdAndTaskUserId(int subtaskId, int userId) {
@@ -49,6 +49,13 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.bind(1, userId)
 				.map(row -> row.get("exists", Boolean.class))
 				.one();
+	}
+	
+	@Override
+	public Mono<Long> countByTaskId(int taskId) {
+		Query query = Query.query(Criteria.where("taskId").is(taskId));
+		
+		return template.count(query, Subtask.class);
 	}
 
 	@Override

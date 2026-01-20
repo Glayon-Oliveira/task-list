@@ -16,6 +16,8 @@ import reactor.core.publisher.Mono;
 
 public interface SubtaskRepositoryCustom extends RepositoryCustom {
 	
+	public Mono<Long> countByTaskId(int userId);
+	
 	public Mono<Boolean> existsByIdAndTaskUserId(int subtaskId, int userId);
 
 	public Mono<Long> countByIdInAndTaskUserId(Collection<Integer> subtaskIds, int userId);

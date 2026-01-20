@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.controller.util.ETagHelper;
+import com.lmlasmo.tasklist.doc.controller.subtask.CountSubtasksApiDoc;
 import com.lmlasmo.tasklist.doc.controller.subtask.CreateSubtaskApiDoc;
 import com.lmlasmo.tasklist.doc.controller.subtask.DeleteSubtaskApiDoc;
 import com.lmlasmo.tasklist.doc.controller.subtask.FindSubtaskApiDoc;
@@ -25,6 +26,7 @@ import com.lmlasmo.tasklist.doc.controller.subtask.FindSubtasksApiDoc;
 import com.lmlasmo.tasklist.doc.controller.subtask.GeneralUpdateSubtaskApiDoc;
 import com.lmlasmo.tasklist.doc.controller.subtask.UpdateSubtaskPositionApiDoc;
 import com.lmlasmo.tasklist.doc.controller.subtask.UpdateSubtaskStatusApiDoc;
+import com.lmlasmo.tasklist.dto.CountDTO;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
@@ -120,6 +122,12 @@ public class SubtaskController {
 				.filter(Boolean::booleanValue)
 				.flatMap(c -> subtaskService.findById(subtaskId))
 				.as(ETagHelper::setEtag);
+	}
+	
+	@CountSubtasksApiDoc
+	@GetMapping(path = "/count/{taskId}")
+	public Mono<CountDTO> countByTask(@PathVariable @Min(1) int taskId) {
+		return subtaskService.countByTask(taskId);
 	}
 	
 }

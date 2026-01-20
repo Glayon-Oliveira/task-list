@@ -5,6 +5,7 @@ import java.util.Collection;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.lmlasmo.tasklist.dto.CountDTO;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
@@ -77,6 +78,11 @@ public class TaskService {
 		return repository.findById(taskId)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Task not found for id equals " + taskId)))
 				.map(mapper::toDTO);
-	}	
+	}
+	
+	public Mono<CountDTO> countByUser(int userId) {
+		return repository.countByUserId(userId)
+				.map(c -> new CountDTO("task", c));
+	}
 
 }

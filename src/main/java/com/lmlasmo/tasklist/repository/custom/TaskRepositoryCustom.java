@@ -14,6 +14,8 @@ import reactor.core.publisher.Mono;
 
 public interface TaskRepositoryCustom extends RepositoryCustom {
 	
+	public Mono<Long> countByUserId(int userId);
+	
 	public Flux<Task> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status);
 	
 	public Mono<StatusSummary> findStatusSummaryById(int taskId);
