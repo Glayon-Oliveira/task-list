@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
@@ -143,8 +144,8 @@ public class SubtaskService {
 		return subtaskRepository.sumVersionByTask(taskId);
 	}
 	
-	public Flux<SubtaskDTO> findByTask(int taskId){		
-		return subtaskRepository.findByTaskId(taskId)
+	public Flux<SubtaskDTO> findByTask(int taskId, Pageable pageable){		
+		return subtaskRepository.findAllByTaskId(taskId, pageable)
 				.map(mapper::toDTO);
 	}
 

@@ -2,13 +2,19 @@ package com.lmlasmo.tasklist.repository.custom;
 
 import java.util.Collection;
 
+import org.springframework.data.domain.Pageable;
+
+import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface TaskRepositoryCustom extends RepositoryCustom {
+	
+	public Flux<Task> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status);
 	
 	public Mono<StatusSummary> findStatusSummaryById(int taskId);
 

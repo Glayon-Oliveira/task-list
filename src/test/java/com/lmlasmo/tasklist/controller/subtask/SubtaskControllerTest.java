@@ -26,6 +26,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -137,7 +138,8 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		}
 		
 		when(accessService.canAccessTask(eq(1), eq(getDefaultUser().getId()))).thenReturn(Mono.empty());
-		when(subtaskService.findByTask(eq(1))).thenReturn(Flux.fromIterable((List.of(stMapper.toDTO(subtask)))));
+		when(subtaskService.findByTask(eq(1), any(Pageable.class)))
+			.thenReturn(Flux.fromIterable((List.of(stMapper.toDTO(subtask)))));
 		
 		ResponseSpec response = getWebTestClient().get()
 				.uri(ub -> ub.path(baseUri)

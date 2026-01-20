@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Criteria;
 import org.springframework.data.relational.core.query.Query;
@@ -20,6 +21,7 @@ import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
@@ -28,6 +30,27 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 
 	private R2dbcEntityTemplate template;
 	private TaskSummaryMapper mapper;
+	
+	@Override
+	public Flux<Task> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status) {
+		Criteria criteria = Criteria.where("userId").is(userId);
+		
+		if(status != null) {
+			criteria = criteria.and(Criteria.where("status").is(status));
+		}
+		
+		if(contains != null && !contains.isBlank()) {
+			String strLike = "%" + contains + "%";
+			
+			criteria = criteria.and(
+					Criteria.where("name").like(strLike)
+					.or(Criteria.where("summary").like(strLike))
+					);
+		}
+		
+		Query query = Query.query(criteria).with(pageable);
+		return template.select(query, Task.class);
+	}
 	
 	@Override
 	public Mono<StatusSummary> findStatusSummaryById(int taskId) {

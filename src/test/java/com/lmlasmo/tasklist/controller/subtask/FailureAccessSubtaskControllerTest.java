@@ -18,6 +18,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.util.LinkedMultiValueMap;
@@ -105,7 +106,7 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 
 	@Test
 	void getSubtasksByTask() throws Exception {
-		when(subtaskService.findByTask(anyInt())).thenReturn(Flux.empty());
+		when(subtaskService.findByTask(anyInt(), any(Pageable.class))).thenReturn(Flux.empty());
 		
 		getWebTestClient().get()
 			.uri(ub -> ub.path(baseUri)

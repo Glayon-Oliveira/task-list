@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Criteria;
 import org.springframework.data.relational.core.query.Query;
@@ -70,6 +71,12 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.bind(1, userId)
 				.map(row -> row.get("count", Long.class))
 				.one();
+	}
+	
+	public Flux<Subtask> findAllByTaskId(int taskId, Pageable pageable) {
+		Query query = Query.query(Criteria.where("taskId").is(taskId)).with(pageable);
+		
+		return template.select(query, Subtask.class);
 	}
 
 	@Override	

@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Pageable;
 
 import com.lmlasmo.tasklist.mapper.summary.TaskSummaryMapper;
 import com.lmlasmo.tasklist.model.Task;
@@ -46,6 +47,18 @@ public class TaskRepositoryTest extends AbstractTaskRepositoryTest{
 			List<Task> tasks = getTaskRepository().findByUserId(u.getId()).collectList().block();
 
 			assertTrue(tasks.size() == getMaxTasksPerUser());
+		});
+	}
+	
+	@Test
+	void findByUserWithFilter() {
+		getUsers().forEach(u -> {
+			Pageable pageable = Pageable.ofSize(50);
+			
+			List<Task> tasks = getTaskRepository().findAllByUserId(u.getId(), pageable, "ID", TaskStatusType.PENDING)
+					.collectList().block();
+
+			assertTrue(tasks.size() == getMaxTasksPerUser() || tasks.size() == 50);
 		});
 	}
 

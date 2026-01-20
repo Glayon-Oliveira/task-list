@@ -20,6 +20,16 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @SimpleApiDoc(
 		summary = "Find all the tasks",
 		description = """
+					Pagination supports:
+					
+					page: Defines the offset of the search. Default value is 0.
+					size: Defines the maximum number of tasks returned by page. Default value is 50.
+					
+					The following filter parameters can be used:
+					
+					status: Filters tasks by status.
+					contains: Specifies a string to search for in the name and summary fields.
+					
 					Returns all tasks belonging to the authenticated user.
 					""",
 		success = @StatusResponseApiDoc(status = 200, message = "Task list returned successfully")
