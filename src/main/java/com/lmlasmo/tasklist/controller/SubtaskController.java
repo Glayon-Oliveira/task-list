@@ -2,6 +2,7 @@ package com.lmlasmo.tasklist.controller;
 
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
@@ -36,6 +37,7 @@ import com.lmlasmo.tasklist.service.TaskStatusService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -100,11 +102,13 @@ public class SubtaskController {
 	
 	@FindSubtasksApiDoc
 	@GetMapping(params = {"taskId"}, produces = MediaType.APPLICATION_JSON_VALUE)
-	public Flux<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId) {
+	public Flux<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId, Pageable pageable,
+			@RequestParam(name = "contains", required = false) @Size(max = 125) String contains,
+			@RequestParam(name = "status", required = false) TaskStatusType status) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(taskId, usid))
-				.then(ETagHelper.checkEtag(et -> subtaskService.sumVersionByTask(taskId).map(s -> s == et)))
+				.then(ETagHelper.checkEtag(et -> subtaskService.sumVersionByTask(taskId, pageable, contains, status).map(s -> s == et)))
 				.filter(c -> !c)
-				.thenMany(subtaskService.findByTask(taskId))
+				.thenMany(subtaskService.findByTask(taskId, pageable, contains, status))
 				.as(ETagHelper::setEtag);
 	}
 	

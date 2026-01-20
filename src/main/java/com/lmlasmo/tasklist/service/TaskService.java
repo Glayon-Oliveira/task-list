@@ -11,6 +11,7 @@ import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.mapper.TaskMapper;
+import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.TaskRepository;
 import com.lmlasmo.tasklist.service.applier.UpdateTaskApplier;
 
@@ -63,13 +64,12 @@ public class TaskService {
 		return repository.sumVersionByUser(userId);
 	}
 	
-	public Flux<TaskDTO> findByUser(int id) {
-		return repository.findByUserId(id)
-				.map(mapper::toDTO);
+	public Mono<Long> sumVersionByUser(int userId, Pageable pageable, String contains, TaskStatusType status) {
+		return repository.sumVersionByUser(userId, pageable, contains, status);
 	}
 	
-	public Flux<TaskDTO> findAll(Pageable pageable){
-		return repository.findAll()
+	public Flux<TaskDTO> findByUser(int id, Pageable pageable, String contains, TaskStatusType status) {
+		return repository.findAllByUserId(id, pageable, contains, status)
 				.map(mapper::toDTO);
 	}
 

@@ -1,5 +1,7 @@
 package com.lmlasmo.tasklist.controller;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.validation.annotation.Validated;
@@ -33,6 +35,7 @@ import com.lmlasmo.tasklist.service.TaskStatusService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -87,12 +90,15 @@ public class TaskController {
 	
 	@FindTasksApiDoc
 	@GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-	public Flux<TaskDTO> findAllByI() {
+	public Flux<TaskDTO> findAllByI(@PageableDefault(size = 50) Pageable pageable,
+			@RequestParam(value = "contains", required = false) @Size(max = 125) String contains,
+			@RequestParam(value = "status", required = false) TaskStatusType status) {
+		
 		return AuthenticatedTool.getUserId()
 				.flatMapMany(usid -> {
-					return ETagHelper.checkEtag(et -> taskService.sumVersionByUser(usid).map(s -> s.equals(et)))
+					return ETagHelper.checkEtag(et -> taskService.sumVersionByUser(usid, pageable, contains, status).map(s -> s.equals(et)))
 							.filter(Boolean::valueOf)
-							.flatMapMany(c -> taskService.findByUser(usid))
+							.flatMapMany(c -> taskService.findByUser(usid, pageable, contains, status))
 							.as(ETagHelper::setEtag);
 				});
 	}

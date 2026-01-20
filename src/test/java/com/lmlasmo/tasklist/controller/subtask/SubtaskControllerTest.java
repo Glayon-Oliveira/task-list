@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +27,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -42,6 +44,7 @@ import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.mapper.MapperTestConfig;
 import com.lmlasmo.tasklist.mapper.SubtaskMapper;
 import com.lmlasmo.tasklist.model.Subtask;
+import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.param.subtask.CreateSubtaskSource;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.SubtaskService;
@@ -133,15 +136,27 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		if(info.getCurrentRepetition() == 2) {
 			String etag = Long.toString(subtask.getVersion());
 			headers.setIfNoneMatch("\""+etag+"\"");
-			when(subtaskService.sumVersionByTask(anyInt())).thenReturn(Mono.just(subtask.getVersion()));
+			when(subtaskService.sumVersionByTask(
+					anyInt(),
+					any(Pageable.class),
+					anyString(),
+					any(TaskStatusType.class)))
+				.thenReturn(Mono.just(subtask.getVersion()));
 		}
 		
 		when(accessService.canAccessTask(eq(1), eq(getDefaultUser().getId()))).thenReturn(Mono.empty());
-		when(subtaskService.findByTask(eq(1))).thenReturn(Flux.fromIterable((List.of(stMapper.toDTO(subtask)))));
+		when(subtaskService.findByTask(eq(1),
+				any(Pageable.class),
+				anyString(),
+				any(TaskStatusType.class)))
+			.thenReturn(Flux.fromIterable((List.of(stMapper.toDTO(subtask)))));
 		
 		ResponseSpec response = getWebTestClient().get()
 				.uri(ub -> ub.path(baseUri)
-						.queryParam("taskId", 1).build())
+						.queryParam("taskId", 1)
+						.queryParam("contains", "")
+						.queryParam("status", TaskStatusType.PENDING)
+						.build())
 				.headers(h -> h.addAll(headers))
 				.exchange();
 		

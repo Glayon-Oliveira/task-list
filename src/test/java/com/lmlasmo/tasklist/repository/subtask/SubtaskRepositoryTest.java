@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Pageable;
 
 import com.lmlasmo.tasklist.mapper.summary.SubtaskSummaryMapper;
 import com.lmlasmo.tasklist.model.Subtask;
@@ -31,6 +32,36 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 	
 	@Autowired
 	private SubtaskSummaryMapper mapper;
+	
+	@Test
+	void findByTask() {
+		getTasks().forEach(t -> {
+			List<Subtask> subtasks = getSubtaskRepository().findAllByTaskId(
+					t.getId(), 
+					Pageable.ofSize(50), 
+					null, 
+					null
+					)
+					.collectList().block();
+			
+			assertTrue(subtasks.size() == getMaxSubtaskPerTask() || subtasks.size() == 50);
+		});
+	}
+	
+	@Test
+	void findByTaskWithFilter() {
+		getTasks().forEach(t -> {
+			List<Subtask> subtasks = getSubtaskRepository().findAllByTaskId(
+					t.getId(), 
+					Pageable.ofSize(50), 
+					"ID", 
+					TaskStatusType.PENDING
+					)
+					.collectList().block();
+			
+			assertTrue(subtasks.size() == getMaxSubtaskPerTask() || subtasks.size() == 50);
+		});
+	}
 	
 	@Test
 	void findPositionSummaryByTaskId() {
@@ -377,5 +408,27 @@ public class SubtaskRepositoryTest extends AbstractSubtaskRepositoryTest {
 		});
 	}
 
+	@Test
+	void sumVersionWithFilter() {
+		getTasks().forEach(t -> {
+			
+			List<Subtask> subtasks = getSubtasks().stream()
+					.filter(s -> t.getId().equals(s.getTaskId()))
+					.toList();
+			
+			long sumByTask = subtasks.stream()
+					.map(Subtask::getVersion)
+					.reduce(Long::sum)
+					.orElse(0L);
+			
+			assertEquals(
+					sumByTask,
+					getSubtaskRepository().sumVersionByTask(
+							t.getId(), 
+							Pageable.ofSize(getMaxSubtaskPerTask()),
+							"ID", 
+							TaskStatusType.PENDING).block());
+		});
+	}
 
 }

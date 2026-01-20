@@ -32,7 +32,7 @@ public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryT
 			
 			assertTrue(subtasks.size() >= 5);
 			
-			PositionSummary subtask = subtasks.get(maxSubtaskPerTask-1);
+			PositionSummary subtask = subtasks.get(getMaxSubtaskPerTask()-1);
 			PositionSummary anchor = subtasks.get(0);
 			PositionSummary second = subtasks.get(1);
 			
@@ -46,7 +46,7 @@ public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryT
 			assertTrue(subtask.getPosition().compareTo(second.getPosition()) < 0);
 			
 			subtask = subtasks.get(0);
-			anchor = subtasks.get(maxSubtaskPerTask-2);
+			anchor = subtasks.get(getMaxSubtaskPerTask()-2);
 			update.setAnchorSubtaskId(anchor.getId());
 			
 			subtaskService.updatePosition(subtask.getId(), update).block();
@@ -66,8 +66,8 @@ public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryT
 			assertTrue(subtasks.size() >= 5);
 			
 			PositionSummary subtask = subtasks.get(0);
-			PositionSummary anchor = subtasks.get(maxSubtaskPerTask-1);
-			PositionSummary second = subtasks.get(maxSubtaskPerTask-2);
+			PositionSummary anchor = subtasks.get(getMaxSubtaskPerTask()-1);
+			PositionSummary second = subtasks.get(getMaxSubtaskPerTask()-2);
 			
 			UpdateSubtaskPositionDTO update = new UpdateSubtaskPositionDTO();
 			update.setMoveType(MovePositionType.BEFORE);
@@ -78,7 +78,7 @@ public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryT
 			
 			assertTrue(subtask.getPosition().compareTo(second.getPosition()) > 0);
 			
-			subtask = subtasks.get(maxSubtaskPerTask-1);
+			subtask = subtasks.get(getMaxSubtaskPerTask()-1);
 			anchor = subtasks.get(1);
 			update.setAnchorSubtaskId(anchor.getId());
 			
