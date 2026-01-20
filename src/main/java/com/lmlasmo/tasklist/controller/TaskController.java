@@ -17,12 +17,14 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.lmlasmo.tasklist.controller.util.ETagHelper;
+import com.lmlasmo.tasklist.doc.controller.task.CountTasksApiDoc;
 import com.lmlasmo.tasklist.doc.controller.task.CreateTaskApiDoc;
 import com.lmlasmo.tasklist.doc.controller.task.DeleteTaskApiDoc;
 import com.lmlasmo.tasklist.doc.controller.task.FindTaskApiDoc;
 import com.lmlasmo.tasklist.doc.controller.task.FindTasksApiDoc;
 import com.lmlasmo.tasklist.doc.controller.task.GeneralUpdateTaskApiDoc;
 import com.lmlasmo.tasklist.doc.controller.task.UpdateTaskStatusApiDoc;
+import com.lmlasmo.tasklist.dto.CountDTO;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
@@ -111,6 +113,13 @@ public class TaskController {
 				.filter(Boolean::valueOf)
 				.flatMap(c -> taskService.findById(taskId))
 				.as(ETagHelper::setEtag);
+	}
+	
+	@CountTasksApiDoc
+	@GetMapping(path = "/count", produces = MediaType.APPLICATION_JSON_VALUE)
+	public Mono<CountDTO> countByUser() {
+		return AuthenticatedTool.getUserId()
+				.flatMap(taskService::countByUser);
 	}
 	
 }
