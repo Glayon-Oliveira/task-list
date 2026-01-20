@@ -15,11 +15,12 @@ import lombok.Setter;
 public class UpdateSubtaskDTO {
 
 	@JsonProperty
-	@Size(max = 255)
+	@Size(max = 128)
 	@Pattern(regexp = ".*\\S.*", message = "Not can blank")
 	private String name;
 	
 	@JsonProperty
+	@Size(max = 2048)
 	@Pattern(regexp = ".*\\S.*", message = "Not can blank")
 	private String summary;
 	

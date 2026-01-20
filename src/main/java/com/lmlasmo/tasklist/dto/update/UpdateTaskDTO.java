@@ -16,11 +16,12 @@ import lombok.Setter;
 public class UpdateTaskDTO {
 
 	@JsonProperty(required = false)
-	@Size(max = 255)
+	@Size(max = 128)
 	@Pattern(regexp = ".*\\S.*", message = "Not can blank")
 	private String name;
 	
 	@JsonProperty(required = false)
+	@Size(max = 4096)
 	@Pattern(regexp = ".*\\S.*", message = "Not can blank")
 	private String summary;
 	
