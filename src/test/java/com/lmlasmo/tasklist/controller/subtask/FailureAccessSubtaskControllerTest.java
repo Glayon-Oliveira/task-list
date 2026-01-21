@@ -3,6 +3,7 @@ package com.lmlasmo.tasklist.controller.subtask;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.util.LinkedMultiValueMap;
@@ -29,6 +31,7 @@ import com.lmlasmo.tasklist.controller.SubtaskController;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.Subtask;
+import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
@@ -105,7 +108,12 @@ public class FailureAccessSubtaskControllerTest extends AbstractControllerTest{
 
 	@Test
 	void getSubtasksByTask() throws Exception {
-		when(subtaskService.findByTask(anyInt())).thenReturn(Flux.empty());
+		when(subtaskService.findByTask(
+				anyInt(),
+				any(Pageable.class),
+				anyString(),
+				any(TaskStatusType.class)))
+			.thenReturn(Flux.empty());
 		
 		getWebTestClient().get()
 			.uri(ub -> ub.path(baseUri)

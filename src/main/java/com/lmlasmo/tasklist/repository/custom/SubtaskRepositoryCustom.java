@@ -3,6 +3,9 @@ package com.lmlasmo.tasklist.repository.custom;
 import java.math.BigDecimal;
 import java.util.Collection;
 
+import org.springframework.data.domain.Pageable;
+
+import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
@@ -13,9 +16,13 @@ import reactor.core.publisher.Mono;
 
 public interface SubtaskRepositoryCustom extends RepositoryCustom {
 	
+	public Mono<Long> countByTaskId(int userId);
+	
 	public Mono<Boolean> existsByIdAndTaskUserId(int subtaskId, int userId);
 
 	public Mono<Long> countByIdInAndTaskUserId(Collection<Integer> subtaskIds, int userId);
+	
+	public Flux<Subtask> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status);
 		
 	public Flux<SubtaskSummary.PositionSummary> findPositionSummaryByTaskIdOrderByASC(int taskId);
 		
@@ -44,5 +51,7 @@ public interface SubtaskRepositoryCustom extends RepositoryCustom {
 	public Mono<Long> sumVersionByids(Collection<Integer> ids);
 	
 	public Mono<Long> sumVersionByTask(int taskId);
+	
+	public Mono<Long> sumVersionByTask(int taskId, Pageable pageable, String contains, TaskStatusType status);
 	
 }

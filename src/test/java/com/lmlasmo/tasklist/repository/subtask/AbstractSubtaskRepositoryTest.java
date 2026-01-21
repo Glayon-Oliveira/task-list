@@ -22,7 +22,8 @@ public class AbstractSubtaskRepositoryTest extends AbstractTaskRepositoryTest {
 	@Autowired
 	private SubtaskRepository subtaskRepository;
 
-	public static final int maxSubtaskPerTask = 5;
+	@Getter
+	private final int maxSubtaskPerTask = 5;
 
 	@Getter
 	private List<Subtask> subtasks = new ArrayList<>();

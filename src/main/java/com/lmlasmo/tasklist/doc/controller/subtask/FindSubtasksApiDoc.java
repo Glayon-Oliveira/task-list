@@ -20,6 +20,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @SimpleApiDoc(
 		summary = "Find all subtasks",
 		description = """
+					Pagination supports:
+					
+					page: Defines the offset of the search. Default value is 0.
+					size: Defines the maximum number of tasks returned by page. Default value is 50.
+					
 					Returns all subtasks associated with a task.
 					""",
 		success = @StatusResponseApiDoc(status = 200, message = "List of subtasks returned successfully"),

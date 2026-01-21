@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Criteria;
 import org.springframework.data.relational.core.query.Query;
@@ -20,6 +21,7 @@ import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
@@ -28,6 +30,33 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 
 	private R2dbcEntityTemplate template;
 	private TaskSummaryMapper mapper;
+	
+	@Override
+	public Mono<Long> countByUserId(int userId) {
+		Query query = Query.query(Criteria.where("userId").is(userId));
+		return template.count(query, Task.class);
+	}
+	
+	@Override
+	public Flux<Task> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status) {
+		Criteria criteria = Criteria.where("userId").is(userId);
+		
+		if(status != null) {
+			criteria = criteria.and(Criteria.where("status").is(status));
+		}
+		
+		if(contains != null && !contains.isBlank()) {
+			String strLike = "%" + contains + "%";
+			
+			criteria = criteria.and(
+					Criteria.where("name").like(strLike)
+					.or(Criteria.where("summary").like(strLike))
+					);
+		}
+		
+		Query query = Query.query(criteria).with(pageable);
+		return template.select(query, Task.class);
+	}
 	
 	@Override
 	public Mono<StatusSummary> findStatusSummaryById(int taskId) {
@@ -87,6 +116,33 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 		
 		return template.getDatabaseClient()
 				.sql(sql)
+				.bind(0, userId)
+				.map(row -> row.get(0, Long.class))
+				.one();
+	}
+	
+	@Override
+	public Mono<Long> sumVersionByUser(int userId, Pageable pageable, String contains, TaskStatusType status) {
+		StringBuilder sql = new StringBuilder("SELECT COALESCE(CAST(SUM(t.row_version) AS BIGINT), 0) FROM tasks t ")
+				.append("JOIN users u ON t.user_id = u.id ")
+				.append("WHERE u.id = ? ");
+		
+		if(status != null) {
+			sql.append("AND t.status = '" + status.name() + "'");
+		}
+		
+		if(contains != null && !contains.isBlank()) {
+			String strLike= "%" + contains + "%";
+			
+			sql.append(" AND (t.name LIKE '" + strLike + "'")
+			   	.append(" OR t.summary LIKE '" + strLike + "')");
+		}
+		
+		sql.append(" LIMIT " + pageable.getPageSize())
+	   		.append(" OFFSET " + pageable.getOffset());
+		
+		return template.getDatabaseClient()
+				.sql(sql.toString())
 				.bind(0, userId)
 				.map(row -> row.get(0, Long.class))
 				.one();

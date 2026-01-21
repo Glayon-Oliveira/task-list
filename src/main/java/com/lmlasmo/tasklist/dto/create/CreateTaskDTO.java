@@ -8,6 +8,7 @@ import com.lmlasmo.tasklist.validation.ValidZoneId;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -19,9 +20,11 @@ public class CreateTaskDTO {
 	
 	@JsonProperty
 	@NotEmpty
+	@Size(max = 128)
 	private String name;
 	
 	@JsonProperty(required = false)
+	@Size(max = 4096)
 	private String summary;
 	
 	@JsonProperty(required = false)

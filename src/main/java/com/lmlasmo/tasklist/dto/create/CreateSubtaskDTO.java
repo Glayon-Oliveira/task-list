@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,9 +16,11 @@ public class CreateSubtaskDTO {
 	
 	@JsonProperty
 	@NotBlank
+	@Size(max = 128)
 	private String name;
 	
 	@JsonProperty(required = false)
+	@Size(max = 2048)
 	private String summary;
 	
 	@JsonProperty(required = false)

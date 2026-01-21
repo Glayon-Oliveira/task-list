@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -23,8 +24,10 @@ import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.data.web.SpringDataWebAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -51,7 +54,7 @@ import reactor.core.publisher.Mono;
 
 @WebFluxTest(controllers = TaskController.class)
 @TestInstance(Lifecycle.PER_CLASS)
-@Import(MapperTestConfig.class)
+@Import({MapperTestConfig.class, SpringDataWebAutoConfiguration.class})
 public class TaskControllerTest extends AbstractControllerTest{
 
 	@MockitoBean
@@ -126,7 +129,13 @@ public class TaskControllerTest extends AbstractControllerTest{
 
 	@RepeatedTest(2)
 	public void getTasksByUser(RepetitionInfo info) throws Exception {
-		when(taskService.findByUser(eq(getDefaultUser().getId()))).thenReturn(Flux.fromIterable(List.of(taskMapper.toDTO(task))));
+		when(taskService.findByUser(
+				eq(getDefaultUser().getId()),
+				any(Pageable.class),
+				anyString(),
+				any(TaskStatusType.class)
+				))
+			.thenReturn(Flux.fromIterable(List.of(taskMapper.toDTO(task))));
 		
 		HttpHeaders headers = new HttpHeaders();
 		headers.setBearerAuth(getDefaultAccessJwtToken());
@@ -134,11 +143,20 @@ public class TaskControllerTest extends AbstractControllerTest{
 		if(info.getCurrentRepetition() == 2) {
 			String etag = Long.toString(task.getVersion());
 			headers.setIfNoneMatch("\""+etag+"\"");
-			when(taskService.sumVersionByUser(getDefaultUser().getId())).thenReturn(Mono.just(task.getVersion()));
+			when(taskService.sumVersionByUser(
+					eq(getDefaultUser().getId()),
+					any(Pageable.class),
+					anyString(),
+					any(TaskStatusType.class)))
+				.thenReturn(Mono.just(task.getVersion()));
 		}
 		
 		ResponseSpec response = getWebTestClient().get()
-				.uri(baseUri)
+				.uri(builder -> builder						
+						.path(baseUri)
+						.queryParam("contains", "")
+						.queryParam("status", TaskStatusType.PENDING)
+						.build())
 				.headers(h -> h.addAll(headers))
 				.exchange();
 		

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Criteria;
 import org.springframework.data.relational.core.query.Query;
@@ -30,7 +31,7 @@ import reactor.core.publisher.Mono;
 public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements SubtaskRepositoryCustom {
 	
 	private R2dbcEntityTemplate template;
-	private SubtaskSummaryMapper mapper;
+	private SubtaskSummaryMapper mapper;	
 	
 	@Override
 	public Mono<Boolean> existsByIdAndTaskUserId(int subtaskId, int userId) {
@@ -48,6 +49,13 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.bind(1, userId)
 				.map(row -> row.get("exists", Boolean.class))
 				.one();
+	}
+	
+	@Override
+	public Mono<Long> countByTaskId(int taskId) {
+		Query query = Query.query(Criteria.where("taskId").is(taskId));
+		
+		return template.count(query, Subtask.class);
 	}
 
 	@Override
@@ -70,6 +78,26 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.bind(1, userId)
 				.map(row -> row.get("count", Long.class))
 				.one();
+	}
+	
+	public Flux<Subtask> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status) {
+		Criteria criteria = Criteria.where("taskId").is(taskId);
+		
+		if(status != null) {
+			criteria = criteria.and(Criteria.where("status").is(status));
+		}
+		
+		if(contains != null && !contains.isBlank()) {
+			String strLike = "%" + contains + "%";
+			
+			criteria = criteria.and(
+					Criteria.where("name").like(strLike)
+					.or(Criteria.where("summary").like(strLike))
+					);
+		}
+		
+		Query query = Query.query(criteria).with(pageable);
+		return template.select(query, Subtask.class);
 	}
 
 	@Override	
@@ -286,6 +314,33 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 		StringBuilder sql = new StringBuilder("SELECT COALESCE(CAST(SUM(s.row_version) AS BIGINT), 0) FROM subtasks s ")
 				.append("JOIN tasks t ON s.task_id = t.id ")
 				.append("WHERE t.id = ?");
+		
+		return template.getDatabaseClient()
+				.sql(sql.toString())
+				.bind(0, taskId)
+				.map(row -> row.get(0, Long.class))
+				.one();
+	}
+	
+	@Override
+	public Mono<Long> sumVersionByTask(int taskId, Pageable pageable, String contains, TaskStatusType status) {
+		StringBuilder sql = new StringBuilder("SELECT COALESCE(CAST(SUM(s.row_version) AS BIGINT), 0) FROM subtasks s ")
+				.append("JOIN tasks t ON s.task_id = t.id ")
+				.append("WHERE t.id = ? ");
+		
+		if(status != null) {
+			sql.append("AND s.status = '" + status.name() + "'");
+		}
+		
+		if(contains != null && !contains.isBlank()) {
+			String strLike= "%" + contains + "%";
+			
+			sql.append(" AND (s.name LIKE '" + strLike + "'")
+			   	.append(" OR s.summary LIKE '" + strLike + "')");
+		}
+		
+		sql.append(" LIMIT " + pageable.getPageSize())
+	   		.append(" OFFSET " + pageable.getOffset());
 		
 		return template.getDatabaseClient()
 				.sql(sql.toString())

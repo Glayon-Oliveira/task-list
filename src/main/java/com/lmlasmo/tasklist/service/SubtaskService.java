@@ -6,8 +6,10 @@ import java.util.Collection;
 import java.util.List;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.lmlasmo.tasklist.dto.CountDTO;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
@@ -17,6 +19,7 @@ import com.lmlasmo.tasklist.exception.InvalidDataRequestException;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.mapper.SubtaskMapper;
 import com.lmlasmo.tasklist.mapper.summary.SubtaskSummaryMapper;
+import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.service.applier.UpdateSubtaskApplier;
@@ -143,8 +146,12 @@ public class SubtaskService {
 		return subtaskRepository.sumVersionByTask(taskId);
 	}
 	
-	public Flux<SubtaskDTO> findByTask(int taskId){		
-		return subtaskRepository.findByTaskId(taskId)
+	public Mono<Long> sumVersionByTask(int taskId, Pageable pageable, String contains, TaskStatusType status) {
+		return subtaskRepository.sumVersionByTask(taskId, pageable, contains, status);
+	}
+	
+	public Flux<SubtaskDTO> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status){		
+		return subtaskRepository.findAllByTaskId(taskId, pageable, contains, status)
 				.map(mapper::toDTO);
 	}
 
@@ -152,6 +159,11 @@ public class SubtaskService {
 		return subtaskRepository.findById(subtaskId)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id equals " + subtaskId)))
 				.map(mapper::toDTO);
+	}
+	
+	public Mono<CountDTO> countByTask(int taskId) {
+		return subtaskRepository.countByTaskId(taskId)
+				.map(c -> new CountDTO("subtask", c));
 	}
 	
 }
