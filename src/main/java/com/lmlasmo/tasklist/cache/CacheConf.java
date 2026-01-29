@@ -7,7 +7,6 @@ import java.util.concurrent.TimeUnit;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
@@ -64,8 +63,15 @@ public class CacheConf {
 	}
 	
 	@Bean
-	public Cache cache(CacheManager cacheManager) {
-		return cacheManager.getCache("cache");
+	@ConditionalOnProperty(name = "app.cache.type", havingValue = "caffeine", matchIfMissing = true)
+	public ReactiveCache caffeineCache(CacheManager cacheManager) {
+		return new ReactiveCache(cacheManager.getCache("cache"), false);
+	}
+	
+	@Bean
+	@ConditionalOnProperty(name = "app.cache.type", havingValue = "redis")
+	public ReactiveCache redisCache(CacheManager cacheManager) {
+		return new ReactiveCache(cacheManager.getCache("cache"), true);
 	}
 	
 }
