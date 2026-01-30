@@ -1,10 +1,12 @@
 package com.lmlasmo.tasklist.service;
 
 import java.util.Collection;
+import java.util.Objects;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.lmlasmo.tasklist.cache.ReactiveCache;
 import com.lmlasmo.tasklist.dto.CountDTO;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
@@ -23,9 +25,16 @@ import reactor.core.publisher.Mono;
 @AllArgsConstructor
 @Service
 public class TaskService {
+		
+	public static final String CV_FIND_USERID_TEMPLATE = "uId:%d;pfh:%d;find";
+	public static final String CV_FIND_ID_TEMPLATE = "tId:%d;find";
+	public static final String CV_SUM_VERSION_TEMPLATE = "uId:%d;pfh:%d;sum&version";
+	public static final String CV_COUNT_TEMPLATE = "uId:%d;count";
+	public static final String CV_EXISTS_ID_VERSION_TEMPLATE = "tId:%d;pfh:%d;exists&version";
 	
 	private TaskRepository repository;
 	private TaskMapper mapper;
+	private ReactiveCache cache;
 
 	public Mono<TaskDTO> save(CreateTaskDTO create, int userId) {
 		return Mono.just(mapper.toEntity(create))
@@ -54,7 +63,9 @@ public class TaskService {
 	}	
 	
 	public Mono<Boolean> existsByIdAndVersion(int id, long version) {
-		return repository.existsByIdAndVersion(id, version);
+		return cache.get(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), Boolean.class)
+				.switchIfEmpty(repository.existsByIdAndVersion(id, version)
+						.doOnNext(e -> cache.put(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), e)));
 	}
 	
 	public Mono<Long> sumVersionByIds(Collection<Integer> ids) {
@@ -62,26 +73,58 @@ public class TaskService {
 	}
 	
 	public Mono<Long> sumVersionByUser(int userId) {
-		return repository.sumVersionByUser(userId);
+		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(userId,-1), Long.class)
+				.switchIfEmpty(repository.sumVersionByUser(userId)
+						.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(userId, -1), s)));
 	}
 	
 	public Mono<Long> sumVersionByUser(int userId, Pageable pageable, String contains, TaskStatusType status) {
-		return repository.sumVersionByUser(userId, pageable, contains, status);
+		int pfh = Objects.hash(
+				pageable.getPageNumber(),
+				pageable.getPageSize(),
+				pageable.getSort(),
+				contains,
+				status
+				);
+		
+		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(userId), Long.class)
+				.switchIfEmpty(repository.sumVersionByUser(userId, pageable, contains, status)
+							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(userId, pfh), s)));
 	}
 	
+	@SuppressWarnings("unchecked")
 	public Flux<TaskDTO> findByUser(int id, Pageable pageable, String contains, TaskStatusType status) {
-		return repository.findAllByUserId(id, pageable, contains, status)
-				.map(mapper::toDTO);
+		int pfh = Objects.hash(
+					pageable.getPageNumber(),
+					pageable.getPageSize(),
+					pageable.getSort(),
+					contains,
+					status
+					);
+		
+		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), Collection.class)
+				.switchIfEmpty(repository.findAllByUserId(id, pageable, contains, status)
+							.map(mapper::toDTO)
+							.collectList()
+							.doOnNext(dtos -> cache.put(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), dtos))
+						)
+				.flatMapMany(Flux::fromIterable);
 	}
 
 	public Mono<TaskDTO> findById(int taskId) {
-		return repository.findById(taskId)
-				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Task not found for id equals " + taskId)))
-				.map(mapper::toDTO);
+		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(taskId), TaskDTO.class)
+				.switchIfEmpty(repository.findById(taskId)
+						.switchIfEmpty(
+								Mono.error(new ResourceNotFoundException("Task not found for id equals " + taskId))
+								)
+						.map(mapper::toDTO)
+						.doOnNext(dto -> cache.put(CV_FIND_ID_TEMPLATE.formatted(taskId), dto)));
 	}
 	
 	public Mono<CountDTO> countByUser(int userId) {
-		return repository.countByUserId(userId)
+		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(userId), Long.class)
+				.switchIfEmpty(repository.countByUserId(userId)
+						.doOnNext(c -> cache.put(CV_COUNT_TEMPLATE.formatted(userId), c)))
 				.map(c -> new CountDTO("task", c));
 	}
 

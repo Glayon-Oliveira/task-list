@@ -4,11 +4,13 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import com.lmlasmo.tasklist.cache.ReactiveCache;
 import com.lmlasmo.tasklist.dto.CountDTO;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
@@ -32,10 +34,17 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 @Service
 public class SubtaskService {
+	
+	private static final String CV_FIND_TASKID_TEMPLATE = "tId:%d;pfh:%d;find";
+	private static final String CV_FIND_ID_TEMPLATE = "stId:%s;find";
+	private static final String CV_SUM_VERSION_TEMPLATE = "tId:%d;pfh:%d;sum&version";
+	private static final String CV_COUNT_TEMPLATE = "tId:%d;count";
+	private static final String CV_EXISTS_ID_VERSION_TEMPLATE = "stId:%d;exists&version";
 
 	@NonNull private SubtaskRepository subtaskRepository;
 	@NonNull private SubtaskMapper mapper;
 	@NonNull private SubtaskSummaryMapper summaryMapper;
+	@NonNull private ReactiveCache cache;
 	private final BigDecimal positionStep = BigDecimal.valueOf(1024);
 		
 	public Mono<SubtaskDTO> save(CreateSubtaskDTO create) {
@@ -74,9 +83,7 @@ public class SubtaskService {
 				.flatMap(s -> {
 					return subtaskRepository.findPositionSummaryById(update.getAnchorSubtaskId())
 							.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id " + update.getAnchorSubtaskId())))
-							.flatMap(a -> {
-								return updatePositionForMidOrLimit(s, a, update.getMoveType());
-							});
+							.flatMap(a -> updatePositionForMidOrLimit(s, a, update.getMoveType()));
 				});
 	}
 	
@@ -135,34 +142,71 @@ public class SubtaskService {
 	}
 	
 	public Mono<Boolean> existsByIdAndVersion(int id, long version) {
-		return subtaskRepository.existsByIdAndVersion(id, version);
+		return cache.get(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), Boolean.class)
+				.switchIfEmpty(subtaskRepository.existsByIdAndVersion(id, version)
+							.doOnNext(e -> cache.put(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), e))
+						);
 	}
-	
+		
 	public Mono<Long> sumVersionByIds(Collection<Integer> ids) {
 		return subtaskRepository.sumVersionByids(ids);
 	}
 	
 	public Mono<Long> sumVersionByTask(int taskId) {
-		return subtaskRepository.sumVersionByTask(taskId);
+		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(taskId, 0), Long.class)
+				.switchIfEmpty(subtaskRepository.sumVersionByTask(taskId)
+							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(taskId), s))
+						);
 	}
-	
+		
 	public Mono<Long> sumVersionByTask(int taskId, Pageable pageable, String contains, TaskStatusType status) {
-		return subtaskRepository.sumVersionByTask(taskId, pageable, contains, status);
+		int pfh = Objects.hash(
+				pageable.getPageNumber(),
+				pageable.getPageSize(),
+				pageable.getSort(),
+				contains,
+				status
+				);
+		
+		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(taskId, pfh), Long.class)
+				.switchIfEmpty(subtaskRepository.sumVersionByTask(taskId, pageable, contains, status)
+							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(taskId), s))
+						);
 	}
 	
-	public Flux<SubtaskDTO> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status){		
-		return subtaskRepository.findAllByTaskId(taskId, pageable, contains, status)
-				.map(mapper::toDTO);
+	@SuppressWarnings("unchecked")
+	public Flux<SubtaskDTO> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status){
+		int pfh = Objects.hash(
+				pageable.getPageNumber(),
+				pageable.getPageSize(),
+				pageable.getSort(),
+				contains,
+				status
+				);
+		
+		return cache.get(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), Collection.class)
+				.switchIfEmpty(subtaskRepository.findAllByTaskId(taskId, pageable, contains, status)
+							.map(mapper::toDTO)
+							.collectList()
+							.doOnNext(dto -> cache.put(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), dto))
+						)
+				.flatMapMany(Flux::fromIterable);
 	}
-
+	
 	public Mono<SubtaskDTO> findById(int subtaskId) {
-		return subtaskRepository.findById(subtaskId)
-				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id equals " + subtaskId)))
-				.map(mapper::toDTO);
+		return cache.get(CV_FIND_ID_TEMPLATE.formatted(subtaskId), SubtaskDTO.class)
+				.switchIfEmpty(subtaskRepository.findById(subtaskId)
+							.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id equals " + subtaskId)))
+							.map(mapper::toDTO)
+							.doOnNext(dto -> cache.put(CV_FIND_ID_TEMPLATE.formatted(subtaskId), dto))
+						);
 	}
-	
+		
 	public Mono<CountDTO> countByTask(int taskId) {
-		return subtaskRepository.countByTaskId(taskId)
+		return cache.get(CV_COUNT_TEMPLATE.formatted(taskId), Long.class)
+				.switchIfEmpty(subtaskRepository.countByTaskId(taskId)
+							.doOnNext(c -> cache.put(CV_COUNT_TEMPLATE.formatted(taskId), c))
+						)
 				.map(c -> new CountDTO("subtask", c));
 	}
 	

@@ -11,13 +11,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 
+import com.lmlasmo.tasklist.cache.CacheConf;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskPositionDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskPositionDTO.MovePositionType;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.service.SubtaskService;
 
-@Import(SubtaskService.class)
+@Import({SubtaskService.class, CacheConf.class})
 public class SubtaskRepositoryWithServiceTest extends AbstractSubtaskRepositoryTest{
 
 	@Autowired

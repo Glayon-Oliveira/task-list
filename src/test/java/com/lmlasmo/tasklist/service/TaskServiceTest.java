@@ -16,10 +16,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
+import com.lmlasmo.tasklist.cache.CacheCaffeineProperties;
+import com.lmlasmo.tasklist.cache.CacheCaffeineProperties.Expire;
+import com.lmlasmo.tasklist.cache.CacheConf;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.exception.ResourceNotDeletableException;
@@ -32,7 +38,7 @@ import com.lmlasmo.tasklist.repository.TaskRepository;
 import reactor.core.publisher.Mono;
 
 @ExtendWith({SpringExtension.class, MockitoExtension.class})
-@Import({MapperTestConfig.class, TaskService.class})
+@Import({MapperTestConfig.class, TaskService.class, CacheConf.class})
 public class TaskServiceTest {
 
 	@MockitoBean
@@ -43,6 +49,17 @@ public class TaskServiceTest {
 
 	@Autowired
 	private TaskService taskService;
+	
+	@Configuration
+	public static class CachePropsConf {
+		
+		@Bean
+		@Primary
+		public CacheCaffeineProperties cacheCaffeineProperties() {
+			return new CacheCaffeineProperties(500, new Expire(15, 15));
+		}
+		
+	}
 
 	@Test
 	void create() {
