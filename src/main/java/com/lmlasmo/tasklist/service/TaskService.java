@@ -92,18 +92,24 @@ public class TaskService {
 							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(userId, pfh), s)));
 	}
 	
-	@SuppressWarnings("unchecked")
+	
 	public Flux<TaskDTO> findByUser(int id, Pageable pageable, String contains, TaskStatusType status) {
+		return findByUser(id, pageable, contains, status, new String[0]);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public Flux<TaskDTO> findByUser(int id, Pageable pageable, String contains, TaskStatusType status, String... fields) {
 		int pfh = Objects.hash(
 					pageable.getPageNumber(),
 					pageable.getPageSize(),
 					pageable.getSort(),
 					contains,
-					status
+					status,
+					fields
 					);
 		
 		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), Collection.class)
-				.switchIfEmpty(repository.findAllByUserId(id, pageable, contains, status)
+				.switchIfEmpty(repository.findAllByUserId(id, pageable, contains, status, fields)
 							.map(mapper::toDTO)
 							.collectList()
 							.doOnNext(dtos -> cache.put(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), dtos))

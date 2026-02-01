@@ -106,11 +106,12 @@ public class SubtaskController {
 	@GetMapping(params = {"taskId"}, produces = MediaType.APPLICATION_JSON_VALUE)
 	public Flux<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId, Pageable pageable,
 			@RequestParam(name = "contains", required = false) @Size(max = 125) String contains,
-			@RequestParam(name = "status", required = false) TaskStatusType status) {
+			@RequestParam(name = "status", required = false) TaskStatusType status,
+			@RequestParam(name = "fields", required = false) String... fields) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(taskId, usid))
 				.then(ETagHelper.checkEtag(et -> subtaskService.sumVersionByTask(taskId, pageable, contains, status).map(s -> s == et)))
 				.filter(c -> !c)
-				.thenMany(subtaskService.findByTask(taskId, pageable, contains, status))
+				.thenMany(subtaskService.findByTask(taskId, pageable, contains, status, fields))
 				.as(ETagHelper::setEtag);
 	}
 	

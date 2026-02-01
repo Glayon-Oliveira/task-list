@@ -148,7 +148,8 @@ public class SubtaskControllerTest extends AbstractControllerTest{
 		when(subtaskService.findByTask(eq(1),
 				any(Pageable.class),
 				anyString(),
-				any(TaskStatusType.class)))
+				any(TaskStatusType.class),
+				any()))
 			.thenReturn(Flux.fromIterable((List.of(stMapper.toDTO(subtask)))));
 		
 		ResponseSpec response = getWebTestClient().get()

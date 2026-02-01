@@ -23,6 +23,8 @@ public interface SubtaskRepositoryCustom extends RepositoryCustom {
 	public Mono<Long> countByIdInAndTaskUserId(Collection<Integer> subtaskIds, int userId);
 	
 	public Flux<Subtask> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status);
+	
+	public Flux<SubtaskSummary> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields);
 		
 	public Flux<SubtaskSummary.PositionSummary> findPositionSummaryByTaskIdOrderByASC(int taskId);
 		
