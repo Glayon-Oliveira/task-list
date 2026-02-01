@@ -133,8 +133,8 @@ public class TaskControllerTest extends AbstractControllerTest{
 				eq(getDefaultUser().getId()),
 				any(Pageable.class),
 				anyString(),
-				any(TaskStatusType.class)
-				))
+				any(TaskStatusType.class),
+				any()))
 			.thenReturn(Flux.fromIterable(List.of(taskMapper.toDTO(task))));
 		
 		HttpHeaders headers = new HttpHeaders();

@@ -94,13 +94,14 @@ public class TaskController {
 	@GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
 	public Flux<TaskDTO> findAllByI(@PageableDefault(size = 50) Pageable pageable,
 			@RequestParam(value = "contains", required = false) @Size(max = 125) String contains,
-			@RequestParam(value = "status", required = false) TaskStatusType status) {
+			@RequestParam(value = "status", required = false) TaskStatusType status,
+			@RequestParam(value = "fields", required = false) String... fields ) {
 		
 		return AuthenticatedTool.getUserId()
 				.flatMapMany(usid -> {
 					return ETagHelper.checkEtag(et -> taskService.sumVersionByUser(usid, pageable, contains, status).map(s -> s.equals(et)))
 							.filter(Boolean::valueOf)
-							.flatMapMany(c -> taskService.findByUser(usid, pageable, contains, status))
+							.flatMapMany(c -> taskService.findByUser(usid, pageable, contains, status, fields))
 							.as(ETagHelper::setEtag);
 				});
 	}

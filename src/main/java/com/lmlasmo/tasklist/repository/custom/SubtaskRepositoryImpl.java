@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -19,6 +20,7 @@ import com.lmlasmo.tasklist.mapper.summary.SubtaskSummaryMapper;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
+import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.StatusSummary;
 
@@ -98,6 +100,35 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 		
 		Query query = Query.query(criteria).with(pageable);
 		return template.select(query, Subtask.class);
+	}
+	
+	@Override
+	public Flux<SubtaskSummary> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields) {
+		
+		Criteria criteria = Criteria.where("taskId").is(taskId);
+		
+		if(status != null) {
+			criteria = criteria.and(Criteria.where("status").is(status));
+		}
+		
+		if(contains != null && !contains.isBlank()) {
+			String strLike = "%" + contains + "%";
+			
+			criteria = criteria.and(
+					Criteria.where("name").like(strLike)
+					.or(Criteria.where("summary").like(strLike))
+					);
+		}
+		
+		Query query = Query.query(criteria).with(pageable);
+		
+		if(fields != null && fields.length > 0) {
+			Set<String> requiredFields = Set.of("id", "version", "createdAt", "updatedAt");
+			
+			query = query.columns(requiredFields).columns(fields);
+		}
+		
+		return template.select(query, SubtaskSummary.class);
 	}
 
 	@Override	

@@ -7,11 +7,14 @@ import org.mapstruct.Mappings;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
+import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 
 @Mapper(componentModel = "spring")
 public interface SubtaskMapper {
 
 	SubtaskDTO toDTO(Subtask subtask);
+	
+	SubtaskDTO toDTO(SubtaskSummary subtask);
 	
 	@Mappings({
 		@Mapping(target = "id", ignore = true),

@@ -174,18 +174,23 @@ public class SubtaskService {
 						);
 	}
 	
-	@SuppressWarnings("unchecked")
 	public Flux<SubtaskDTO> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status){
+		return findByTask(taskId, pageable, contains, status, new String[0]);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public Flux<SubtaskDTO> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields){
 		int pfh = Objects.hash(
 				pageable.getPageNumber(),
 				pageable.getPageSize(),
 				pageable.getSort(),
 				contains,
-				status
+				status,
+				fields
 				);
 		
 		return cache.get(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), Collection.class)
-				.switchIfEmpty(subtaskRepository.findAllByTaskId(taskId, pageable, contains, status)
+				.switchIfEmpty(subtaskRepository.findAllByTaskId(taskId, pageable, contains, status, fields)
 							.map(mapper::toDTO)
 							.collectList()
 							.doOnNext(dto -> cache.put(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), dto))

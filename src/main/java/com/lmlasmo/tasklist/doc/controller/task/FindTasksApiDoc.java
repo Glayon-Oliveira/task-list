@@ -24,11 +24,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 					
 					page: Defines the offset of the search. Default value is 0.
 					size: Defines the maximum number of tasks returned by page. Default value is 50.
+					sort: Defines the sorting based on a field. The format is "field,ASC/DESC".
 					
-					The following filter parameters can be used:
+					The following additional parameters a can be used:
 					
 					status: Filters tasks by status.
 					contains: Specifies a string to search for in the name and summary fields.
+					fields: Filters which fields are included in the response. If empty, all fields
+						are returned. Some fields are automatically included in the response.
 					
 					Returns all tasks belonging to the authenticated user.
 					""",
