@@ -1,4 +1,4 @@
-package com.lmlasmo.tasklist.controller;
+package com.lmlasmo.tasklist.web.controller;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lmlasmo.tasklist.controller.util.ETagHelper;
 import com.lmlasmo.tasklist.doc.controller.task.CountTasksApiDoc;
 import com.lmlasmo.tasklist.doc.controller.task.CreateTaskApiDoc;
 import com.lmlasmo.tasklist.doc.controller.task.DeleteTaskApiDoc;
@@ -33,6 +32,7 @@ import com.lmlasmo.tasklist.security.AuthenticatedResourceAccess;
 import com.lmlasmo.tasklist.security.AuthenticatedTool;
 import com.lmlasmo.tasklist.service.TaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
+import com.lmlasmo.tasklist.web.util.ETagHelper;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -63,9 +63,9 @@ public class TaskController {
 	@DeleteTaskApiDoc
 	@DeleteMapping(path = "/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Mono<Void> delete(@PathVariable @Min(1) int id) {
+	public Mono<Void> delete(ETagHelper etagHelper, @PathVariable @Min(1) int id) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(id, usid))
-				.then(ETagHelper.checkEtag(et -> taskService.existsByIdAndVersion(id, et)))
+				.then(etagHelper.checkEtag(et -> taskService.existsByIdAndVersion(id, et)))
 				.filter(Boolean::booleanValue)
 				.flatMap(c -> taskService.delete(id));
 	}
@@ -73,9 +73,11 @@ public class TaskController {
 	@GeneralUpdateTaskApiDoc
 	@PatchMapping(path = "/{taskId}", produces = MediaType.APPLICATION_JSON_VALUE)
 	@ResponseStatus(code = HttpStatus.OK)	
-	public Mono<TaskDTO> update(@PathVariable @Min(1) int taskId, @RequestBody @Valid UpdateTaskDTO update) {
+	public Mono<TaskDTO> update(ETagHelper etagHelper, @PathVariable @Min(1) int taskId,
+			@RequestBody @Valid UpdateTaskDTO update) {
+		
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(taskId, usid))
-				.then(ETagHelper.checkEtag(et -> taskService.existsByIdAndVersion(taskId, et)))
+				.then(etagHelper.checkEtag(et -> taskService.existsByIdAndVersion(taskId, et)))
 				.filter(Boolean::booleanValue)
 				.flatMap(c -> taskService.update(taskId, update));
 	}
@@ -83,37 +85,40 @@ public class TaskController {
 	@UpdateTaskStatusApiDoc
 	@PatchMapping(path = "/{taskId}", params = {"status"})
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Mono<Void> updateTaskStatus(@PathVariable @Min(1) int taskId, @RequestParam @NotNull TaskStatusType status) {
+	public Mono<Void> updateTaskStatus(ETagHelper etagHelper, @PathVariable @Min(1) int taskId, 
+			@RequestParam @NotNull TaskStatusType status) {
+		
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(taskId, usid))
-				.then(ETagHelper.checkEtag(et -> taskService.existsByIdAndVersion(taskId, et)))
+				.then(etagHelper.checkEtag(et -> taskService.existsByIdAndVersion(taskId, et)))
 				.filter(Boolean::booleanValue)
 				.flatMap(c -> taskStatusService.updateTaskStatus(taskId, status));
 	}
 	
 	@FindTasksApiDoc
 	@GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-	public Flux<TaskDTO> findAllByI(@PageableDefault(size = 50) Pageable pageable,
+	public Flux<TaskDTO> findAllByI(ETagHelper etagHelper,
+			@PageableDefault(size = 50) Pageable pageable,
 			@RequestParam(value = "contains", required = false) @Size(max = 125) String contains,
 			@RequestParam(value = "status", required = false) TaskStatusType status,
 			@RequestParam(value = "fields", required = false) String... fields ) {
 		
 		return AuthenticatedTool.getUserId()
 				.flatMapMany(usid -> {
-					return ETagHelper.checkEtag(et -> taskService.sumVersionByUser(usid, pageable, contains, status).map(s -> s.equals(et)))
+					return etagHelper.checkEtag(et -> taskService.sumVersionByUser(usid, pageable, contains, status).map(s -> s.equals(et)))
 							.filter(Boolean::valueOf)
 							.flatMapMany(c -> taskService.findByUser(usid, pageable, contains, status, fields))
-							.as(ETagHelper::setEtag);
+							.as(etagHelper::setEtag);
 				});
 	}
 	
 	@FindTaskApiDoc
 	@GetMapping(path = "/{taskId}", produces = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<TaskDTO> findById(@PathVariable @Min(1) int taskId) {
+	public Mono<TaskDTO> findById(ETagHelper etagHelper, @PathVariable @Min(1) int taskId) {
 		return resourceAccess.canAccess((u, r) -> r.canAccessTask(taskId, u))
-				.then(ETagHelper.checkEtag(et -> taskService.existsByIdAndVersion(taskId, et)))
+				.then(etagHelper.checkEtag(et -> taskService.existsByIdAndVersion(taskId, et)))
 				.filter(Boolean::valueOf)
 				.flatMap(c -> taskService.findById(taskId))
-				.as(ETagHelper::setEtag);
+				.as(etagHelper::setEtag);
 	}
 	
 	@CountTasksApiDoc

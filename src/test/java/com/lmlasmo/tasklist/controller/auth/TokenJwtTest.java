@@ -18,12 +18,12 @@ import org.springframework.test.web.reactive.server.WebTestClient.BodyContentSpe
 import org.springframework.test.web.reactive.server.WebTestClient.RequestBodySpec;
 
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
-import com.lmlasmo.tasklist.controller.AuthController;
 import com.lmlasmo.tasklist.dto.auth.JWTTokenDTO.JWTTokenType;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.UserEmailService;
+import com.lmlasmo.tasklist.web.controller.AuthController;
 
 import reactor.core.publisher.Mono;
 

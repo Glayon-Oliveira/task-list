@@ -1,4 +1,4 @@
-package com.lmlasmo.tasklist.controller;
+package com.lmlasmo.tasklist.web.controller;
 
 import java.util.List;
 
@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.lmlasmo.tasklist.controller.util.ETagHelper;
 import com.lmlasmo.tasklist.doc.controller.subtask.CountSubtasksApiDoc;
 import com.lmlasmo.tasklist.doc.controller.subtask.CreateSubtaskApiDoc;
 import com.lmlasmo.tasklist.doc.controller.subtask.DeleteSubtaskApiDoc;
@@ -35,6 +34,7 @@ import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.security.AuthenticatedResourceAccess;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
+import com.lmlasmo.tasklist.web.util.ETagHelper;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -65,18 +65,20 @@ public class SubtaskController {
 	@DeleteSubtaskApiDoc
 	@DeleteMapping(params = "subtaskIds")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Mono<Void> delete(@RequestParam List<@Min(1) Integer> subtaskIds) {		
+	public Mono<Void> delete(ETagHelper etagHelper, @RequestParam List<@Min(1) Integer> subtaskIds) {		
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskIds, usid))
-				.then(ETagHelper.checkEtag(et -> subtaskService.sumVersionByIds(subtaskIds).map(s -> s == et)))
+				.then(etagHelper.checkEtag(et -> subtaskService.sumVersionByIds(subtaskIds).map(s -> s == et)))
 				.filter(Boolean::booleanValue)
 				.thenEmpty(subtaskService.delete(subtaskIds));
 	}
 	
 	@GeneralUpdateSubtaskApiDoc
 	@PatchMapping(path = "/{subtaskId}", produces = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<SubtaskDTO> update(@PathVariable @Min(1) int subtaskId, @RequestBody @Valid UpdateSubtaskDTO update) {
+	public Mono<SubtaskDTO> update(ETagHelper etagHelper, @PathVariable @Min(1) int subtaskId, 
+			@RequestBody @Valid UpdateSubtaskDTO update) {
+		
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskId, usid))
-				.then(ETagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
+				.then(etagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
 				.filter(Boolean::booleanValue)
 				.then(subtaskService.update(subtaskId, update));
 	}
@@ -84,10 +86,12 @@ public class SubtaskController {
 	@UpdateSubtaskPositionApiDoc
 	@PatchMapping(path = "/{subtaskId}/position")
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Mono<Void> updateSubtaskPosition(@PathVariable @Min(1) int subtaskId, @RequestBody @Valid UpdateSubtaskPositionDTO update) {
+	public Mono<Void> updateSubtaskPosition(ETagHelper etagHelper, @PathVariable @Min(1) int subtaskId,
+			@RequestBody @Valid UpdateSubtaskPositionDTO update) {
+		
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskId, usid))
 				.then(resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(update.getAnchorSubtaskId(), usid)))
-				.then(ETagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
+				.then(etagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
 				.filter(Boolean::booleanValue)
 				.thenEmpty(subtaskService.updatePosition(subtaskId, update));
 	}
@@ -95,34 +99,39 @@ public class SubtaskController {
 	@UpdateSubtaskStatusApiDoc
 	@PatchMapping(params = {"subtaskIds", "status"})
 	@ResponseStatus(code = HttpStatus.NO_CONTENT)
-	public Mono<Void> updateSubtaskStatus(@RequestParam List<@Min(1) Integer> subtaskIds, @RequestParam @NotNull TaskStatusType status) {		
+	public Mono<Void> updateSubtaskStatus(ETagHelper etagHelper,
+			@RequestParam List<@Min(1) Integer> subtaskIds,
+			@RequestParam @NotNull TaskStatusType status) {
+		
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskIds, usid))
-				.then(ETagHelper.checkEtag(et -> subtaskService.sumVersionByIds(subtaskIds).map(s -> s == et)))
+				.then(etagHelper.checkEtag(et -> subtaskService.sumVersionByIds(subtaskIds).map(s -> s == et)))
 				.filter(Boolean::booleanValue)
 				.thenEmpty(taskStatusService.updateSubtaskStatus(status, subtaskIds));
 	}
 	
 	@FindSubtasksApiDoc
 	@GetMapping(params = {"taskId"}, produces = MediaType.APPLICATION_JSON_VALUE)
-	public Flux<SubtaskDTO> findByTask(@RequestParam @Min(1) int taskId, Pageable pageable,
+	public Flux<SubtaskDTO> findByTask(ETagHelper etagHelper,
+			@RequestParam @Min(1) int taskId, Pageable pageable,
 			@RequestParam(name = "contains", required = false) @Size(max = 125) String contains,
 			@RequestParam(name = "status", required = false) TaskStatusType status,
 			@RequestParam(name = "fields", required = false) String... fields) {
+		
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(taskId, usid))
-				.then(ETagHelper.checkEtag(et -> subtaskService.sumVersionByTask(taskId, pageable, contains, status).map(s -> s == et)))
+				.then(etagHelper.checkEtag(et -> subtaskService.sumVersionByTask(taskId, pageable, contains, status).map(s -> s == et)))
 				.filter(c -> !c)
 				.thenMany(subtaskService.findByTask(taskId, pageable, contains, status, fields))
-				.as(ETagHelper::setEtag);
+				.as(etagHelper::setEtag);
 	}
 	
 	@FindSubtaskApiDoc
 	@GetMapping(path = "/{subtaskId}", produces = MediaType.APPLICATION_JSON_VALUE)	
-	public Mono<SubtaskDTO> findById(@PathVariable @Min(1) int subtaskId) {
+	public Mono<SubtaskDTO> findById(ETagHelper etagHelper, @PathVariable @Min(1) int subtaskId) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskId, usid))
-				.then(ETagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
+				.then(etagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
 				.filter(Boolean::booleanValue)
 				.flatMap(c -> subtaskService.findById(subtaskId))
-				.as(ETagHelper::setEtag);
+				.as(etagHelper::setEtag);
 	}
 	
 	@CountSubtasksApiDoc

@@ -38,7 +38,6 @@ import org.springframework.util.MultiValueMap;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
-import com.lmlasmo.tasklist.controller.SubtaskController;
 import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateSubtaskDTO;
 import com.lmlasmo.tasklist.mapper.MapperTestConfig;
@@ -49,6 +48,7 @@ import com.lmlasmo.tasklist.param.subtask.CreateSubtaskSource;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.SubtaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
+import com.lmlasmo.tasklist.web.controller.SubtaskController;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
