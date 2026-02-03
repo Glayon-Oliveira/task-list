@@ -21,21 +21,21 @@ public class ReactiveCache {
 		return elastic
 				? Mono.fromCallable(() -> cache.get(key))
 						.subscribeOn(Schedulers.boundedElastic())
-				: Mono.just(cache.get(key));
+				: Mono.justOrEmpty(cache.get(key));
 	}
 	
 	public <T> Mono<T> get(Object key, Class<T> type) {
 		return elastic
 				? Mono.fromCallable(() -> cache.get(key, type))
 						.subscribeOn(Schedulers.boundedElastic())
-				: Mono.just(cache.get(key, type));
+				: Mono.justOrEmpty(cache.get(key, type));
 	}
 	
 	public <T> Mono<T> get(Object key, Callable<T> valueLoader) {
 		return elastic
 				? Mono.fromCallable(() -> cache.get(key, valueLoader))
 						.subscribeOn(Schedulers.boundedElastic())
-				: Mono.just(cache.get(key, valueLoader));
+				: Mono.justOrEmpty(cache.get(key, valueLoader));
 	}
 	
 	public void put(Object key, Object value) {
