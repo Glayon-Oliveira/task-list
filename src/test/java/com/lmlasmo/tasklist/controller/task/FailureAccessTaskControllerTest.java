@@ -20,7 +20,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
-import com.lmlasmo.tasklist.controller.TaskController;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.model.Task;
@@ -28,6 +27,7 @@ import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.TaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
+import com.lmlasmo.tasklist.web.controller.TaskController;
 
 import reactor.core.publisher.Mono;
 

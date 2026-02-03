@@ -36,7 +36,6 @@ import org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
-import com.lmlasmo.tasklist.controller.TaskController;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.dto.update.UpdateTaskDTO;
@@ -48,6 +47,7 @@ import com.lmlasmo.tasklist.param.task.CreateTaskSource;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.TaskService;
 import com.lmlasmo.tasklist.service.TaskStatusService;
+import com.lmlasmo.tasklist.web.controller.TaskController;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

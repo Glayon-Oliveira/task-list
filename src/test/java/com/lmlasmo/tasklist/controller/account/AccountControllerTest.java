@@ -14,7 +14,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
-import com.lmlasmo.tasklist.controller.AccountController;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.exception.ResourceAlreadyExistsException;
 import com.lmlasmo.tasklist.mapper.MapperTestConfig;
@@ -23,6 +22,7 @@ import com.lmlasmo.tasklist.model.EmailStatusType;
 import com.lmlasmo.tasklist.model.UserEmail;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
+import com.lmlasmo.tasklist.web.controller.AccountController;
 import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.UserEmailService;

@@ -1,4 +1,4 @@
-package com.lmlasmo.tasklist.controller;
+package com.lmlasmo.tasklist.web.controller;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;

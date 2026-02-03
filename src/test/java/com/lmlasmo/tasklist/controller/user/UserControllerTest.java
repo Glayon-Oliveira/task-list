@@ -29,8 +29,6 @@ import org.springframework.test.web.reactive.server.WebTestClient.ResponseSpec;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.lmlasmo.tasklist.controller.AbstractControllerTest;
-import com.lmlasmo.tasklist.controller.AuthController;
-import com.lmlasmo.tasklist.controller.UserController;
 import com.lmlasmo.tasklist.dto.auth.DoubleJWTTokensDTO;
 import com.lmlasmo.tasklist.dto.auth.EmailConfirmationCodeHashDTO;
 import com.lmlasmo.tasklist.dto.create.CreateUserDTO;
@@ -40,6 +38,8 @@ import com.lmlasmo.tasklist.param.user.SignUpSource;
 import com.lmlasmo.tasklist.param.user.UpdatePasswordOfDefaultUserSource;
 import com.lmlasmo.tasklist.service.EmailConfirmationService;
 import com.lmlasmo.tasklist.service.EmailConfirmationService.EmailConfirmationScope;
+import com.lmlasmo.tasklist.web.controller.AuthController;
+import com.lmlasmo.tasklist.web.controller.UserController;
 import com.lmlasmo.tasklist.service.EmailService;
 import com.lmlasmo.tasklist.service.ResourceAccessService;
 import com.lmlasmo.tasklist.service.UserEmailService;
