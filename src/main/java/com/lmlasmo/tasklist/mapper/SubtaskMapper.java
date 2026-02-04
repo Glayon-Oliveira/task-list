@@ -19,7 +19,7 @@ public interface SubtaskMapper {
 	@Mappings({
 		@Mapping(target = "id", ignore = true),
 		@Mapping(target = "status", ignore = true),
-		@Mapping(target = "position", ignore = true),
+		@Mapping(target = "position", ignore = true, defaultExpression = "java(BigDecimal.ZERO)"),
 		@Mapping(target = "createdAt", ignore = true),
 		@Mapping(target = "updatedAt", ignore = true),
 		@Mapping(target = "version", ignore = true),
