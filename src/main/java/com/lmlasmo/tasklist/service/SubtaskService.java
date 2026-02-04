@@ -53,7 +53,9 @@ public class SubtaskService {
 					return subtaskRepository.findPositionSummaryByTaskIdOrderByASC(create.getTaskId())
 							.map(PositionSummary::getPosition)
 							.reduce(BigDecimal::max)
-							.doOnNext(m -> s.setPosition(m.add(positionStep)))
+							.map(positionStep::add)
+							.switchIfEmpty(Mono.just(BigDecimal.ZERO))
+							.doOnNext(s::setPosition)
 							.thenReturn(s);
 				})
 				.flatMap(subtaskRepository::save)
