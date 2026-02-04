@@ -118,7 +118,7 @@ public class TaskService {
 	}
 
 	public Mono<TaskDTO> findById(int taskId) {
-		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(taskId), TaskDTO.class)
+		return cache.get(CV_FIND_ID_TEMPLATE.formatted(taskId), TaskDTO.class)
 				.switchIfEmpty(repository.findById(taskId)
 						.switchIfEmpty(
 								Mono.error(new ResourceNotFoundException("Task not found for id equals " + taskId))
