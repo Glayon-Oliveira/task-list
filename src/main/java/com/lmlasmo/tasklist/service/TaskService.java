@@ -87,7 +87,7 @@ public class TaskService {
 				status
 				);
 		
-		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(userId), Long.class)
+		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(userId, pfh), Long.class)
 				.switchIfEmpty(repository.sumVersionByUser(userId, pageable, contains, status)
 							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(userId, pfh), s)));
 	}
@@ -128,7 +128,7 @@ public class TaskService {
 	}
 	
 	public Mono<CountDTO> countByUser(int userId) {
-		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(userId), Long.class)
+		return cache.get(CV_COUNT_TEMPLATE.formatted(userId), Long.class)
 				.switchIfEmpty(repository.countByUserId(userId)
 						.doOnNext(c -> cache.put(CV_COUNT_TEMPLATE.formatted(userId), c)))
 				.map(c -> new CountDTO("task", c));

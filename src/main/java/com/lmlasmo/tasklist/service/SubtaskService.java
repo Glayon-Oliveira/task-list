@@ -157,7 +157,7 @@ public class SubtaskService {
 	public Mono<Long> sumVersionByTask(int taskId) {
 		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(taskId, 0), Long.class)
 				.switchIfEmpty(subtaskRepository.sumVersionByTask(taskId)
-							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(taskId), s))
+							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(taskId, 0), s))
 						);
 	}
 		
@@ -172,7 +172,7 @@ public class SubtaskService {
 		
 		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(taskId, pfh), Long.class)
 				.switchIfEmpty(subtaskRepository.sumVersionByTask(taskId, pageable, contains, status)
-							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(taskId), s))
+							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(taskId, pfh), s))
 						);
 	}
 	
