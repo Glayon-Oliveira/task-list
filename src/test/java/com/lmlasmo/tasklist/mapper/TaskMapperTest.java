@@ -16,7 +16,9 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.model.Task;
+import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.model.User;
+import com.lmlasmo.tasklist.repository.summary.TaskSummary;
 
 @ExtendWith(SpringExtension.class)
 @Import(MapperTestConfig.class)
@@ -60,6 +62,23 @@ public class TaskMapperTest {
 		task.setCreatedAt(createdAt);
 		task.setUpdatedAt(updateAt);
 		task.setUserId(user.getId());
+
+		TaskDTO dto = mapper.toDTO(task);
+
+		assertTrue(task.getName().equals(dto.getName()));
+		assertTrue(task.getSummary().equals(dto.getSummary()));
+		assertTrue(task.getDeadline().equals(dto.getDeadline().toInstant()));
+		assertTrue(task.getDeadlineZone().equals(dto.getDeadlineZone()));
+		assertTrue(task.getCreatedAt().equals(dto.getCreatedAt()));
+		assertTrue(task.getUpdatedAt().equals(dto.getUpdatedAt()));
+	}
+	
+	@Test
+	void taskSummaryToDTO() {
+		TaskSummary task = new TaskSummary(
+				1, name, summary, TaskStatusType.COMPLETED, deadline.toInstant(), deadlineZone,
+				1L, createdAt, updateAt, user.getId()
+				);
 
 		TaskDTO dto = mapper.toDTO(task);
 
