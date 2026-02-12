@@ -2,6 +2,7 @@ package com.lmlasmo.tasklist.repository.summary;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Set;
 
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
@@ -17,6 +18,11 @@ import lombok.Getter;
 @AllArgsConstructor
 @Table("subtasks")
 public class SubtaskSummary {
+	
+	public static final Set<String> FIELDS = Set.of(
+			"id", "name", "summary", "status", "position", "durationMinutes", "taskId",
+			"version", "createdAt", "updatedAt"
+			);
 		
 	private int id;
 	private String name;

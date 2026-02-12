@@ -1,6 +1,7 @@
 package com.lmlasmo.tasklist.repository.summary;
 
 import java.time.Instant;
+import java.util.Set;
 
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
@@ -18,6 +19,11 @@ import lombok.ToString;
 @AllArgsConstructor
 @Table("tasks")
 public class TaskSummary {
+	
+	public static final Set<String> FIELDS = Set.of(
+			"id", "name", "summary", "status", "deadline", "deadlineZone",
+			"version", "createdAt", "updatedAt"
+			);
 	
 	private int id;
 	private String name;
