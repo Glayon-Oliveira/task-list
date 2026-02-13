@@ -30,11 +30,12 @@ public class SubtaskSummary {
 	private TaskStatusType status = TaskStatusType.PENDING;	
 	private BigDecimal position;
 	
-	@Column("duration_minutes") private int durationMinutes;
+	@Column("duration_minutes") private Integer durationMinutes;
+	
+	@Column("row_version") private Long version;
 	@Column("created_at") private Instant createdAt;
-	@Column("updated_at") private Instant updatedAt;	
-	@Column("row_version") private long version;	
-	@Column("task_id") private Long taskId;
+	@Column("updated_at") private Instant updatedAt;
+	@Column("task_id") private Integer taskId;
 		
 	public static interface BasicSubtaskSummary extends BasicSummary {
 		

@@ -31,11 +31,12 @@ public class TaskSummary {
 	private TaskStatusType status;
 	private Instant deadline;
 	
-	@Column("row_version") private long version;
 	@Column("deadline_zone") private String deadlineZone;
+	
+	@Column("row_version") private Long version;
 	@Column("created_at") private Instant createdAt;
 	@Column("updated_at") private Instant updatedAt;
-	@Column("user_id") private Long userId;
+	@Column("user_id") private Integer userId;
 	
 	public static interface StatusSummary extends BasicSummary {
 		
