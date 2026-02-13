@@ -337,7 +337,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 
 	@Override
 	public Mono<Void> updateStatus(Collection<? extends BasicSummary> basics, TaskStatusType status) {
-		if(basics.isEmpty()) return Mono.just(null);
+		if(basics.isEmpty()) return Mono.empty();
 		
 		return Flux.fromIterable(basics)
 				.flatMap(b -> {
