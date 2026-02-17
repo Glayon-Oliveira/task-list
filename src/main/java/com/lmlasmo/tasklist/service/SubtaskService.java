@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -144,9 +145,11 @@ public class SubtaskService {
 	}
 	
 	public Mono<Boolean> existsByIdAndVersion(int id, long version) {
-		return cache.get(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), Boolean.class)
+		ParameterizedTypeReference<Boolean> booleanType = new ParameterizedTypeReference<Boolean>() {};
+		
+		return cache.get(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), booleanType)
 				.switchIfEmpty(subtaskRepository.existsByIdAndVersion(id, version)
-							.doOnNext(e -> cache.put(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), e))
+							.doOnNext(e -> cache.asyncPut(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), e))
 						);
 	}
 		
@@ -155,9 +158,11 @@ public class SubtaskService {
 	}
 	
 	public Mono<Long> sumVersionByTask(int taskId) {
-		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(taskId, 0), Long.class)
+		ParameterizedTypeReference<Long> longType = new ParameterizedTypeReference<Long>() {};
+		
+		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(taskId, 0), longType)
 				.switchIfEmpty(subtaskRepository.sumVersionByTask(taskId)
-							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(taskId), s))
+							.doOnNext(s -> cache.asyncPut(CV_SUM_VERSION_TEMPLATE.formatted(taskId, 0), s))
 						);
 	}
 		
@@ -170,9 +175,11 @@ public class SubtaskService {
 				status
 				);
 		
-		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(taskId, pfh), Long.class)
+		ParameterizedTypeReference<Long> longType = new ParameterizedTypeReference<Long>() {};
+		
+		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(taskId, pfh), longType)
 				.switchIfEmpty(subtaskRepository.sumVersionByTask(taskId, pageable, contains, status)
-							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(taskId), s))
+							.doOnNext(s -> cache.asyncPut(CV_SUM_VERSION_TEMPLATE.formatted(taskId, pfh), s))
 						);
 	}
 	
@@ -180,7 +187,6 @@ public class SubtaskService {
 		return findByTask(taskId, pageable, contains, status, new String[0]);
 	}
 	
-	@SuppressWarnings("unchecked")
 	public Flux<SubtaskDTO> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields){
 		int pfh = Objects.hash(
 				pageable.getPageNumber(),
@@ -191,28 +197,34 @@ public class SubtaskService {
 				fields
 				);
 		
-		return cache.get(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), Collection.class)
+		ParameterizedTypeReference<Collection<SubtaskDTO>> dtoCollectionType = new ParameterizedTypeReference<Collection<SubtaskDTO>>() {};
+		
+		return cache.get(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), dtoCollectionType)
 				.switchIfEmpty(subtaskRepository.findAllByTaskId(taskId, pageable, contains, status, fields)
 							.map(mapper::toDTO)
 							.collectList()
-							.doOnNext(dto -> cache.put(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), dto))
+							.doOnNext(dto -> cache.asyncPut(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), dto))
 						)
 				.flatMapMany(Flux::fromIterable);
 	}
 	
 	public Mono<SubtaskDTO> findById(int subtaskId) {
-		return cache.get(CV_FIND_ID_TEMPLATE.formatted(subtaskId), SubtaskDTO.class)
+		ParameterizedTypeReference<SubtaskDTO> dtoType = new ParameterizedTypeReference<SubtaskDTO>() {};
+		
+		return cache.get(CV_FIND_ID_TEMPLATE.formatted(subtaskId), dtoType)
 				.switchIfEmpty(subtaskRepository.findById(subtaskId)
 							.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtask not found for id equals " + subtaskId)))
 							.map(mapper::toDTO)
-							.doOnNext(dto -> cache.put(CV_FIND_ID_TEMPLATE.formatted(subtaskId), dto))
+							.doOnNext(dto -> cache.asyncPut(CV_FIND_ID_TEMPLATE.formatted(subtaskId), dto))
 						);
 	}
 		
 	public Mono<CountDTO> countByTask(int taskId) {
-		return cache.get(CV_COUNT_TEMPLATE.formatted(taskId), Long.class)
+		ParameterizedTypeReference<Long> longType = new ParameterizedTypeReference<Long>() {};
+		
+		return cache.get(CV_COUNT_TEMPLATE.formatted(taskId), longType)
 				.switchIfEmpty(subtaskRepository.countByTaskId(taskId)
-							.doOnNext(c -> cache.put(CV_COUNT_TEMPLATE.formatted(taskId), c))
+							.doOnNext(c -> cache.asyncPut(CV_COUNT_TEMPLATE.formatted(taskId), c))
 						)
 				.map(c -> new CountDTO("subtask", c));
 	}

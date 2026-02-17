@@ -21,7 +21,9 @@ public class EmailDTO {
 	private String email;
 	
 	public void setEmail(String email) {
-		this.email = email.toLowerCase();
+		if(email != null) {
+			this.email = email.toLowerCase();
+		}
 	}
 	
 }

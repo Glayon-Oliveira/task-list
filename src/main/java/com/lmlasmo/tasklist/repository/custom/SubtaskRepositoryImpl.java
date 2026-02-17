@@ -1,14 +1,19 @@
 package com.lmlasmo.tasklist.repository.custom;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Criteria;
 import org.springframework.data.relational.core.query.Query;
@@ -37,7 +42,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 	
 	@Override
 	public Mono<Boolean> existsByIdAndTaskUserId(int subtaskId, int userId) {
-		String sql = "SELECT EXISTS (%s) AS exists ";
+		String sql = "SELECT EXISTS (%s) AS exists_result ";
 		sql = String.format(sql, new StringBuilder()
 				.append("SELECT 1 FROM subtasks s ")
 				.append("JOIN tasks t ON s.task_id = t.id ")
@@ -49,7 +54,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.sql(sql)
 				.bind(0, subtaskId)
 				.bind(1, userId)
-				.map(row -> row.get("exists", Boolean.class))
+				.map(row -> row.get("exists_result", Boolean.class))
 				.one();
 	}
 	
@@ -64,20 +69,24 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 	public Mono<Long> countByIdInAndTaskUserId(Collection<Integer> subtaskIds, int userId) {
 		if(subtaskIds.isEmpty()) return Mono.just(0L);
 		
-		String sql = new StringBuilder("SELECT COUNT(*) AS count FROM subtasks s ")
-				.append("JOIN tasks t ON s.task_id = t.id ")
-				.append("WHERE s.id IN (?) ")
-				.append("AND t.user_id = ?")
-				.toString();
-		
-		String placeholders = subtaskIds.stream()
-				.map(String::valueOf)
+		String clauses = subtaskIds.stream()
+				.map(sid -> "?")
 				.collect(Collectors.joining(", "));
+		
+		String sql = """
+				SELECT COUNT(*) AS count FROM subtasks s
+				JOIN tasks t ON s.task_id = t.id
+				WHERE s.id IN (%s)
+				AND t.user_id = ?
+				""".formatted(clauses);
+		
+		List<Object> placeholders = new LinkedList<>();
+		placeholders.addAll(subtaskIds);
+		placeholders.add(userId);
 		
 		return template.getDatabaseClient()
 				.sql(sql)
-				.bind(0, placeholders)
-				.bind(1, userId)
+				.bindValues(placeholders)
 				.map(row -> row.get("count", Long.class))
 				.one();
 	}
@@ -89,46 +98,77 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 			criteria = criteria.and(Criteria.where("status").is(status));
 		}
 		
-		if(contains != null && !contains.isBlank()) {
-			String strLike = "%" + contains + "%";
-			
-			criteria = criteria.and(
-					Criteria.where("name").like(strLike)
-					.or(Criteria.where("summary").like(strLike))
-					);
+		criteria = buildCriteriaWithContains(criteria, contains);
+		
+		Query query = Query.query(criteria);
+		Pageable normalizedPageable = normalizePropertiesOfPageable(pageable);
+		
+		if(normalizedPageable != null) {
+			query = query.with(normalizedPageable);
 		}
 		
-		Query query = Query.query(criteria).with(pageable);
 		return template.select(query, Subtask.class);
 	}
 	
 	@Override
 	public Flux<SubtaskSummary> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields) {
-		
 		Criteria criteria = Criteria.where("taskId").is(taskId);
 		
 		if(status != null) {
 			criteria = criteria.and(Criteria.where("status").is(status));
 		}
 		
-		if(contains != null && !contains.isBlank()) {
-			String strLike = "%" + contains + "%";
-			
-			criteria = criteria.and(
-					Criteria.where("name").like(strLike)
-					.or(Criteria.where("summary").like(strLike))
-					);
-		}
+		criteria = buildCriteriaWithContains(criteria, contains);
 		
-		Query query = Query.query(criteria).with(pageable);
+		Query query = Query.query(criteria);
+		Pageable normalizedPageable = normalizePropertiesOfPageable(pageable);
+		
+		if(normalizedPageable != null) {
+			query = query.with(normalizedPageable);
+		}
 		
 		if(fields != null && fields.length > 0) {
 			Set<String> requiredFields = Set.of("id", "version", "createdAt", "updatedAt");
 			
-			query = query.columns(requiredFields).columns(fields);
+			Set<String> filtedFields = Arrays.stream(fields)
+					.map(String::trim)
+					.filter(SubtaskSummary.FIELDS::contains)
+					.collect(Collectors.toSet());
+			
+			query = query.columns(requiredFields).columns(filtedFields);
 		}
 		
 		return template.select(query, SubtaskSummary.class);
+	}
+	
+	private Pageable normalizePropertiesOfPageable(Pageable pageable) {
+		if(pageable != null) {
+			Order[] orders = pageable.getSort()
+				 	.stream()
+				 	.filter(o -> SubtaskSummary.FIELDS.contains(o.getProperty()))
+				 	.toArray(Order[]::new);
+			
+			return PageRequest.of(
+						pageable.getPageNumber(),
+						pageable.getPageSize(),
+						Sort.by(orders)
+					);
+		}
+		
+		return null;
+	}
+	
+	private Criteria buildCriteriaWithContains(Criteria criteria, String contains) {
+		if(contains != null && !contains.isBlank()) {
+			String strLike = "%" + contains + "%";
+			
+			return criteria.and(
+						Criteria.where("name").like(strLike)
+						.or(Criteria.where("summary").like(strLike))
+					);
+		}
+		
+		return criteria;
 	}
 
 	@Override	
@@ -297,7 +337,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 
 	@Override
 	public Mono<Void> updateStatus(Collection<? extends BasicSummary> basics, TaskStatusType status) {
-		if(basics.isEmpty()) return Mono.just(null);
+		if(basics.isEmpty()) return Mono.empty();
 		
 		return Flux.fromIterable(basics)
 				.flatMap(b -> {

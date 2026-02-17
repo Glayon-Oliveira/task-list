@@ -123,8 +123,8 @@ public class UserService {
 		return repository.existsById(id)
 				.filter(Boolean::valueOf)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("User not found")))
-				.flatMap(e -> repository.deleteById(id))
-				.flatMap(v -> repository.existsById(id))
+				.then(repository.deleteById(id))
+				.then(repository.existsById(id))
 				.filter(e -> !e)
 				.switchIfEmpty(Mono.error(new ResourceNotDeletableException("User not deleted")))
 				.then(); 		

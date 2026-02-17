@@ -66,7 +66,7 @@ public class UserRepositoryCustomImpl extends RepositoryCustomImpl implements Us
 
 	@Override
 	public Mono<Void> changeStatusByIds(Collection<Integer> userIds, UserStatusType status) {
-		if(userIds.isEmpty()) return Mono.just(null);
+		if(userIds.isEmpty()) return Mono.empty();
 		
 		return template.update(
 					Query.query(Criteria.where("id").in(userIds)),

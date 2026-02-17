@@ -17,7 +17,7 @@ public interface UserEmailRepository extends ReactiveCrudRepository<UserEmail, I
 	
 	public Flux<UserEmail> findByUserId(int userId);
 	
-	public Mono<UserEmail> findByUserIdAndPrimary(int userId, boolean primary);
+	public Flux<UserEmail> findByUserIdAndPrimary(int userId, boolean primary);
 	
 	public Mono<Boolean> existsByEmail(String email);
 	

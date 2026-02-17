@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.repository.custom;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -7,7 +8,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.Sort.Order;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.data.relational.core.query.Criteria;
 import org.springframework.data.relational.core.query.Query;
@@ -19,6 +23,7 @@ import com.lmlasmo.tasklist.mapper.summary.TaskSummaryMapper;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
+import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
@@ -47,16 +52,15 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 			criteria = criteria.and(Criteria.where("status").is(status));
 		}
 		
-		if(contains != null && !contains.isBlank()) {
-			String strLike = "%" + contains + "%";
-			
-			criteria = criteria.and(
-					Criteria.where("name").like(strLike)
-					.or(Criteria.where("summary").like(strLike))
-					);
+		criteria = buildCriteriaWithContains(criteria, contains);
+		
+		Query query = Query.query(criteria);
+		Pageable normalizedPageable = normalizePropertiesOfPageable(pageable);
+		
+		if(normalizedPageable != null) {
+			query = query.with(normalizedPageable);
 		}
 		
-		Query query = Query.query(criteria).with(pageable);
 		return template.select(query, Task.class);
 	}
 	
@@ -68,24 +72,57 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 			criteria = criteria.and(Criteria.where("status").is(status));
 		}
 		
-		if(contains != null && !contains.isBlank()) {
-			String strLike = "%" + contains + "%";
-			
-			criteria = criteria.and(
-					Criteria.where("name").like(strLike)
-					.or(Criteria.where("summary").like(strLike))
-					);
-		}
+		criteria = buildCriteriaWithContains(criteria, contains);
 		
-		Query query = Query.query(criteria).with(pageable);
+		Query query = Query.query(criteria);
+		Pageable normalizedPageable = normalizePropertiesOfPageable(pageable);
+		
+		if(normalizedPageable != null) {
+			query = query.with(normalizedPageable);
+		}
 		
 		if(fields != null && fields.length > 0) {
 			Set<String> requiredFields = Set.of("id", "version", "createdAt", "updatedAt");
 			
-			query = query.columns(requiredFields).columns(fields);
+			Set<String> filtedFields = Arrays.stream(fields)
+				.map(String::trim)
+				.filter(TaskSummary.FIELDS::contains)
+				.collect(Collectors.toSet());
+			
+			query = query.columns(requiredFields).columns(filtedFields);
 		}
 		
 		return template.select(query, TaskSummary.class);
+	}
+	
+	private Pageable normalizePropertiesOfPageable(Pageable pageable) {
+		if(pageable != null) {
+			Order[] orders = pageable.getSort()
+				 	.stream()
+				 	.filter(o -> SubtaskSummary.FIELDS.contains(o.getProperty()))
+				 	.toArray(Order[]::new);
+			
+			return PageRequest.of(
+						pageable.getPageNumber(),
+						pageable.getPageSize(),
+						Sort.by(orders)
+					);
+		}
+		
+		return null;
+	}
+	
+	private Criteria buildCriteriaWithContains(Criteria criteria, String contains) {
+		if(contains != null && !contains.isBlank()) {
+			String strLike = "%" + contains + "%";
+			
+			return criteria.and(
+						Criteria.where("name").like(strLike)
+						.or(Criteria.where("summary").like(strLike))
+					);
+		}
+		
+		return criteria;
 	}
 	
 	@Override

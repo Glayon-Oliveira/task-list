@@ -1,6 +1,5 @@
 package com.lmlasmo.tasklist.service;
 
-import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.dto.UserEmailDTO;
@@ -13,7 +12,6 @@ import com.lmlasmo.tasklist.repository.UserEmailRepository;
 
 import lombok.AllArgsConstructor;
 import reactor.core.publisher.Mono;
-import reactor.util.function.Tuple2;
 
 @AllArgsConstructor
 @Service
@@ -32,22 +30,18 @@ public class UserEmailService {
 	}
 	
 	public Mono<UserEmailDTO> changePrimaryEmail(int emailId, int userId) {
-		Mono<UserEmail> targetEmail =  emailRepository.findById(emailId)
+		return emailRepository.findById(emailId)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Email not found")))
+				.flatMap(ue -> emailRepository.findByUserIdAndPrimary(userId, true)
+						.filter(uep -> uep.getId() != ue.getId())
+						.doOnNext(uep -> ue.setPrimary(false))
+						.flatMap(emailRepository::save)
+						.then(Mono.just(ue))
+				)
 				.doOnNext(ue -> ue.setPrimary(true))
 				.flatMap(emailRepository::save)
-				.switchIfEmpty(Mono.error(new OptimisticLockingFailureException("Email was updated by another transaction")));
-		
-		Mono<UserEmail> primaryEmail = emailRepository.findByUserIdAndPrimary(userId, true)
-				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Email primary not found")))
-				.doOnNext(ue -> ue.setPrimary(false))
-				.flatMap(emailRepository::save)
-				.switchIfEmpty(Mono.error(new OptimisticLockingFailureException("Email was updated by another transaction")));
-		
-		return Mono.zip(targetEmail, primaryEmail)
-				.map(Tuple2::getT1)
-				.map(mapper::toDTO)
-				.as(m -> emailRepository.getOperator().transactional(m));
+				.as(m -> emailRepository.getOperator().transactional(m))
+				.map(mapper::toDTO);
 	}
 	
 	public Mono<UserEmailDTO> changeEmailStatus(String email, EmailStatusType status) {

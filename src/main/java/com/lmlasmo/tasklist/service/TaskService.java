@@ -3,6 +3,7 @@ package com.lmlasmo.tasklist.service;
 import java.util.Collection;
 import java.util.Objects;
 
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -63,9 +64,11 @@ public class TaskService {
 	}	
 	
 	public Mono<Boolean> existsByIdAndVersion(int id, long version) {
-		return cache.get(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), Boolean.class)
+		ParameterizedTypeReference<Boolean> booleanType = new ParameterizedTypeReference<Boolean>() {};
+		
+		return cache.get(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), booleanType)
 				.switchIfEmpty(repository.existsByIdAndVersion(id, version)
-						.doOnNext(e -> cache.put(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), e)));
+						.doOnNext(e -> cache.asyncPut(CV_EXISTS_ID_VERSION_TEMPLATE.formatted(id, version), e)));
 	}
 	
 	public Mono<Long> sumVersionByIds(Collection<Integer> ids) {
@@ -73,9 +76,11 @@ public class TaskService {
 	}
 	
 	public Mono<Long> sumVersionByUser(int userId) {
-		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(userId,-1), Long.class)
+		ParameterizedTypeReference<Long> longType = new ParameterizedTypeReference<Long>() {};
+		
+		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(userId,-1), longType)
 				.switchIfEmpty(repository.sumVersionByUser(userId)
-						.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(userId, -1), s)));
+						.doOnNext(s -> cache.asyncPut(CV_SUM_VERSION_TEMPLATE.formatted(userId, -1), s)));
 	}
 	
 	public Mono<Long> sumVersionByUser(int userId, Pageable pageable, String contains, TaskStatusType status) {
@@ -87,9 +92,11 @@ public class TaskService {
 				status
 				);
 		
-		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(userId), Long.class)
+		ParameterizedTypeReference<Long> longType = new ParameterizedTypeReference<Long>() {};
+		
+		return cache.get(CV_SUM_VERSION_TEMPLATE.formatted(userId, pfh), longType)
 				.switchIfEmpty(repository.sumVersionByUser(userId, pageable, contains, status)
-							.doOnNext(s -> cache.put(CV_SUM_VERSION_TEMPLATE.formatted(userId, pfh), s)));
+							.doOnNext(s -> cache.asyncPut(CV_SUM_VERSION_TEMPLATE.formatted(userId, pfh), s)));
 	}
 	
 	
@@ -97,7 +104,6 @@ public class TaskService {
 		return findByUser(id, pageable, contains, status, new String[0]);
 	}
 	
-	@SuppressWarnings("unchecked")
 	public Flux<TaskDTO> findByUser(int id, Pageable pageable, String contains, TaskStatusType status, String... fields) {
 		int pfh = Objects.hash(
 					pageable.getPageNumber(),
@@ -108,29 +114,35 @@ public class TaskService {
 					fields
 					);
 		
-		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), Collection.class)
+		ParameterizedTypeReference<Collection<TaskDTO>> dtoCollectionType = new ParameterizedTypeReference<Collection<TaskDTO>>() {};
+		
+		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), dtoCollectionType)
 				.switchIfEmpty(repository.findAllByUserId(id, pageable, contains, status, fields)
 							.map(mapper::toDTO)
 							.collectList()
-							.doOnNext(dtos -> cache.put(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), dtos))
+							.doOnNext(dtos -> cache.asyncPut(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), dtos))
 						)
 				.flatMapMany(Flux::fromIterable);
 	}
 
 	public Mono<TaskDTO> findById(int taskId) {
-		return cache.get(CV_FIND_ID_TEMPLATE.formatted(taskId), TaskDTO.class)
+		ParameterizedTypeReference<TaskDTO> dtoType = new ParameterizedTypeReference<TaskDTO>() {};
+		
+		return cache.get(CV_FIND_ID_TEMPLATE.formatted(taskId), dtoType)
 				.switchIfEmpty(repository.findById(taskId)
 						.switchIfEmpty(
 								Mono.error(new ResourceNotFoundException("Task not found for id equals " + taskId))
 								)
 						.map(mapper::toDTO)
-						.doOnNext(dto -> cache.put(CV_FIND_ID_TEMPLATE.formatted(taskId), dto)));
+						.doOnNext(dto -> cache.asyncPut(CV_FIND_ID_TEMPLATE.formatted(taskId), dto)));
 	}
 	
 	public Mono<CountDTO> countByUser(int userId) {
-		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(userId), Long.class)
+		ParameterizedTypeReference<Long> longType = new ParameterizedTypeReference<Long>() {};
+		
+		return cache.get(CV_COUNT_TEMPLATE.formatted(userId), longType)
 				.switchIfEmpty(repository.countByUserId(userId)
-						.doOnNext(c -> cache.put(CV_COUNT_TEMPLATE.formatted(userId), c)))
+						.doOnNext(c -> cache.asyncPut(CV_COUNT_TEMPLATE.formatted(userId), c)))
 				.map(c -> new CountDTO("task", c));
 	}
 
