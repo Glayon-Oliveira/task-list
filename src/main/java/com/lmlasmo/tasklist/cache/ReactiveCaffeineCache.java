@@ -1,6 +1,5 @@
 package com.lmlasmo.tasklist.cache;
 
-import java.time.Instant;
 import java.util.concurrent.Callable;
 
 import org.springframework.cache.Cache.ValueWrapper;
@@ -43,9 +42,7 @@ public class ReactiveCaffeineCache implements ReactiveCache {
 	@Override
 	@Async
 	public void asyncPut(Object key, Object value) {
-		System.out.println(Instant.now());
 		cache.put(key, value);
-		System.out.println(Instant.now());
 	}
 
 	@Override

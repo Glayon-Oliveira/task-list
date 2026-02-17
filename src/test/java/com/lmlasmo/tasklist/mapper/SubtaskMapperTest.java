@@ -16,6 +16,8 @@ import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateSubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.Task;
+import com.lmlasmo.tasklist.model.TaskStatusType;
+import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 
 @ExtendWith(SpringExtension.class)
 @Import(MapperTestConfig.class)
@@ -59,6 +61,24 @@ public class SubtaskMapperTest {
 		subtask.setCreatedAt(createdAt);
 		subtask.setUpdatedAt(updatedAt);
 		subtask.setTaskId(task.getId());
+
+		SubtaskDTO dto = mapper.toDTO(subtask);
+
+		assertTrue(dto.getId() == subtask.getId());
+		assertTrue(dto.getName().equals(subtask.getName()));
+		assertTrue(dto.getSummary().equals(subtask.getSummary()));
+		assertTrue(dto.getDurationMinutes() == subtask.getDurationMinutes());
+		assertTrue(dto.getPosition() == subtask.getPosition());
+		assertTrue(dto.getCreatedAt().equals(subtask.getCreatedAt()));
+		assertTrue(dto.getUpdatedAt().equals(subtask.getUpdatedAt()));
+	}
+	
+	@Test
+	void subtaskSummaryToDTO() {
+		SubtaskSummary subtask = new SubtaskSummary(
+				1, name, summary, TaskStatusType.COMPLETED, position, durationMinutes, 1L, 
+				createdAt, updatedAt, task.getId()
+				);
 
 		SubtaskDTO dto = mapper.toDTO(subtask);
 
