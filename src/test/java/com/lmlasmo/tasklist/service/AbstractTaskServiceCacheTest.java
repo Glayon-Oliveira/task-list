@@ -7,14 +7,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-import com.lmlasmo.tasklist.TaskListApplicationTests;
 import com.lmlasmo.tasklist.cache.ReactiveCache;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.model.Task;
@@ -25,9 +22,8 @@ import com.lmlasmo.tasklist.repository.summary.TaskSummary;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-@TestInstance(Lifecycle.PER_CLASS)
-public class TaskServiceCacheTest extends TaskListApplicationTests {
-	
+public abstract class AbstractTaskServiceCacheTest {
+
 	@Autowired
 	private TaskService taskService;
 	
@@ -52,7 +48,7 @@ public class TaskServiceCacheTest extends TaskListApplicationTests {
 			.thenReturn(Mono.just(true));
 		
 		boolean noCache = taskService.existsByIdAndVersion(taskId, version).block();
-		Thread.sleep(100);
+		Thread.sleep(500);
 		
 		when(taskRepository.existsByIdAndVersion(taskId, version))
 			.thenReturn(Mono.just(false));
@@ -70,7 +66,7 @@ public class TaskServiceCacheTest extends TaskListApplicationTests {
 			.thenReturn(Mono.just(1L));
 		
 		long noCache = taskService.sumVersionByUser(userId).block();
-		Thread.sleep(100);
+		Thread.sleep(500);
 		
 		when(taskRepository.sumVersionByUser(userId))
 			.thenReturn(Mono.just(2L));
@@ -91,7 +87,7 @@ public class TaskServiceCacheTest extends TaskListApplicationTests {
 			.thenReturn(Mono.just(1L));
 		
 		long noCache = taskService.sumVersionByUser(userId, pageable, contains, status).block();
-		Thread.sleep(100);
+		Thread.sleep(500);
 		
 		when(taskRepository.sumVersionByUser(userId, pageable, contains, status))
 			.thenReturn(Mono.just(2L));
@@ -110,24 +106,24 @@ public class TaskServiceCacheTest extends TaskListApplicationTests {
 		String[] fields = new String[] {"name"};
 		
 		when(taskRepository.findAllByUserId(userId, pageable, contains, status, fields))
-			.thenReturn(Flux.empty());
+			.thenReturn(Flux.just(
+					new TaskSummary(1, null, null, null, null, null, null, null, null, null)
+					));
 		
 		List<TaskDTO> noCache = taskService.findByUser(userId, pageable, contains, status, fields)
 				.collectList()
 				.block();
 		
-		Thread.sleep(100);
+		Thread.sleep(500);
 		
 		when(taskRepository.findAllByUserId(userId, pageable, contains, status, fields))
-			.thenReturn(Flux.just(
-					new TaskSummary(1, null, null, null, null, null, null, null, null, null)
-					));
+			.thenReturn(Flux.empty());
 		
 		List<TaskDTO> cache = taskService.findByUser(userId, pageable, contains, status, fields)
 				.collectList()
 				.block();
 		
-		assertEquals(noCache, cache);
+		assertEquals(noCache.get(0).getId(), cache.get(0).getId());
 	}
 	
 	@Test
@@ -137,18 +133,18 @@ public class TaskServiceCacheTest extends TaskListApplicationTests {
 		when(taskRepository.existsById(taskId)).thenReturn(Mono.just(true));
 		
 		when(taskRepository.findById(taskId))
-			.thenReturn(Mono.just(new Task()));
+			.thenReturn(Mono.just(new Task(1)));
 		
 		TaskDTO noCache = taskService.findById(taskId).block();
 		
-		Thread.sleep(100);
+		Thread.sleep(500);
 		
 		when(taskRepository.findById(taskId))
 			.thenReturn(Mono.just(new Task()));
 		
 		TaskDTO cache = taskService.findById(taskId).block();
 		
-		assertEquals(noCache, cache);
+		assertEquals(noCache.getId(), cache.getId());
 	}
 	
 	@Test
@@ -162,7 +158,7 @@ public class TaskServiceCacheTest extends TaskListApplicationTests {
 				.block()
 				.getTotal();
 		
-		Thread.sleep(100);
+		Thread.sleep(500);
 		
 		when(taskRepository.countByUserId(userId))
 			.thenReturn(Mono.just(2L));

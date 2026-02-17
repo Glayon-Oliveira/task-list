@@ -29,7 +29,7 @@ services:
    restart: on-failure
    depends_on:
     - task-list-db
-   command: ["./wait-for-it.sh", "task-list-db:3306", "--timeout=300", "--strict", "java", "-jar", "/opt/app/task-list.jar"]
+   entrypoint: ["./wait-for-it.sh", "task-list-db:3306", "--timeout=300", "--strict", "--", "java", "-jar", "/opt/app/task-list.jar"]
 
  task-list-db:
   image: mysql:8.0

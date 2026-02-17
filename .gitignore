@@ -33,3 +33,4 @@ build/
 .vscode/
 
 *.env
+/.apt_generated_tests/
