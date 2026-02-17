@@ -9,10 +9,12 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.CacheKeyPrefix;
+import org.springframework.data.redis.cache.RedisCache;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -48,6 +50,7 @@ public class CacheConf {
 	@ConditionalOnProperty(name = "app.cache.type", havingValue = "redis")
 	public CacheManager redisCacheManager(RedisConnectionFactory connectionFactory, ObjectMapper objMapper,
 			@Value("${app.cache.redis.ttl}") long ttl) {
+		
 		GenericJackson2JsonRedisSerializer redisSerializer = new GenericJackson2JsonRedisSerializer(objMapper);
 		
 		return RedisCacheManager.builder(connectionFactory)
@@ -65,13 +68,13 @@ public class CacheConf {
 	@Bean
 	@ConditionalOnProperty(name = "app.cache.type", havingValue = "caffeine", matchIfMissing = true)
 	public ReactiveCache caffeineCache(CacheManager cacheManager) {
-		return new ReactiveCache(cacheManager.getCache("cache"), false);
+		return new ReactiveCaffeineCache((CaffeineCache) cacheManager.getCache("cache"));
 	}
 	
 	@Bean
 	@ConditionalOnProperty(name = "app.cache.type", havingValue = "redis")
-	public ReactiveCache redisCache(CacheManager cacheManager) {
-		return new ReactiveCache(cacheManager.getCache("cache"), true);
+	public ReactiveCache redisCache(CacheManager cacheManager, ObjectMapper mapper) {
+		return new ReactiveRedisCache((RedisCache) cacheManager.getCache("cache"), mapper);
 	}
 	
 }

@@ -2,56 +2,33 @@ package com.lmlasmo.tasklist.cache;
 
 import java.util.concurrent.Callable;
 
-import org.springframework.cache.Cache;
 import org.springframework.cache.Cache.ValueWrapper;
+import org.springframework.core.ParameterizedTypeReference;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
-@Getter
-@AllArgsConstructor
-public class ReactiveCache {
+public interface ReactiveCache {
 	
-	private Cache cache;
-	private boolean elastic = false;
+	public Mono<ValueWrapper> get(Object key);
 	
-	public Mono<ValueWrapper> get(Object key) {
-		return elastic
-				? Mono.fromCallable(() -> cache.get(key))
-						.subscribeOn(Schedulers.boundedElastic())
-				: Mono.justOrEmpty(cache.get(key));
-	}
+	public <T> Mono<T> get(Object key, ParameterizedTypeReference<T> type);
 	
-	public <T> Mono<T> get(Object key, Class<T> type) {
-		return elastic
-				? Mono.fromCallable(() -> cache.get(key, type))
-						.subscribeOn(Schedulers.boundedElastic())
-				: Mono.justOrEmpty(cache.get(key, type));
-	}
+	public <T> Mono<T> get(Object key, Callable<T> valueLoader);
 	
-	public <T> Mono<T> get(Object key, Callable<T> valueLoader) {
-		return elastic
-				? Mono.fromCallable(() -> cache.get(key, valueLoader))
-						.subscribeOn(Schedulers.boundedElastic())
-				: Mono.justOrEmpty(cache.get(key, valueLoader));
-	}
+	public <T> Mono<T> put(Object key, T value);
 	
-	public void put(Object key, Object value) {
-		run(() -> cache.put(key, value));
-	}
+	public void asyncPut(Object key, Object value);
 	
-	public void evict(Object key) {
-		run(() -> cache.evict(key));
-	}
+	public Mono<Void> evict(Object key);
 	
-	public void clear() {
-		run(() -> cache.clear());
-	}
+	public <T> Mono<T> evict(Object key, ParameterizedTypeReference<T> type);
 	
-	private void run(Runnable run) {
-		Schedulers.boundedElastic().schedule(run);
-	}
+	public Mono<Boolean> evictIfPresent(Object key);
+	
+	public void asyncEvict(Object key);
+	
+	public Mono<Void> clear();
+	
+	public void asyncClear();
 	
 }
