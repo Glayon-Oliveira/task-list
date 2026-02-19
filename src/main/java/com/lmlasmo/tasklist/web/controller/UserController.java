@@ -43,7 +43,7 @@ public class UserController {
 		return AuthenticatedTool.getUserId()
 				.flatMap(usid -> {
 					return etagHelper.checkEtag(et -> userService.existsByIdAndVersion(usid, et))
-							.filter(Boolean::booleanValue)
+							.filter(c -> !c)
 							.flatMap(c -> userService.findById(usid))
 							.as(etagHelper::setEtag);
 				});

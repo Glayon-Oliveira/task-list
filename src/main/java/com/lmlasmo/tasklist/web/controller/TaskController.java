@@ -105,7 +105,7 @@ public class TaskController {
 		return AuthenticatedTool.getUserId()
 				.flatMapMany(usid -> {
 					return etagHelper.checkEtag(et -> taskService.sumVersionByUser(usid, pageable, contains, status).map(s -> s.equals(et)))
-							.filter(Boolean::valueOf)
+							.filter(c -> !c)
 							.flatMapMany(c -> taskService.findByUser(usid, pageable, contains, status, fields))
 							.as(etagHelper::setEtag);
 				});
@@ -116,7 +116,7 @@ public class TaskController {
 	public Mono<TaskDTO> findById(ETagHelper etagHelper, @PathVariable @Min(1) int taskId) {
 		return resourceAccess.canAccess((u, r) -> r.canAccessTask(taskId, u))
 				.then(etagHelper.checkEtag(et -> taskService.existsByIdAndVersion(taskId, et)))
-				.filter(Boolean::valueOf)
+				.filter(c -> !c)
 				.flatMap(c -> taskService.findById(taskId))
 				.as(etagHelper::setEtag);
 	}

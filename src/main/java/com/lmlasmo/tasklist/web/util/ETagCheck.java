@@ -30,7 +30,7 @@ public interface ETagCheck {
 		
 		Mono<Long> etag = ETagCheck.extractEtag(req);
 		
-		return etag.filter(e -> e > 0)
+		return etag.filter(e -> e >= 0)
 				.flatMap(e -> {
 					if(getIfMatchMathods().contains(req.getMethod())) {
 						return checkPrecondition(e, check);
@@ -38,7 +38,7 @@ public interface ETagCheck {
 						return checkIfNotModified(e, res, check);
 					}
 					return Mono.empty();
-				}).defaultIfEmpty(true);
+				}).defaultIfEmpty(false);
 	}
 	
 	private static Mono<Boolean> checkPrecondition(long etag, LongFunction<Mono<Boolean>> check) {

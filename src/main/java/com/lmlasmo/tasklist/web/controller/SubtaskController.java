@@ -129,7 +129,7 @@ public class SubtaskController {
 	public Mono<SubtaskDTO> findById(ETagHelper etagHelper, @PathVariable @Min(1) int subtaskId) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskId, usid))
 				.then(etagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
-				.filter(Boolean::booleanValue)
+				.filter(c -> !c)
 				.flatMap(c -> subtaskService.findById(subtaskId))
 				.as(etagHelper::setEtag);
 	}

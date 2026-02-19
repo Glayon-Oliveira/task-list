@@ -746,7 +746,9 @@ public class SubtaskControllerTest extends TaskListApplicationTests {
 					h.setIfNoneMatch("\""+ sumVersions +"\"");
 				})
 				.exchange()
-				.expectStatus().isNotModified();
+				.expectStatus().isNotModified()
+				.expectBody()
+				.isEmpty();
 			});
 		});
 	}
@@ -811,7 +813,9 @@ public class SubtaskControllerTest extends TaskListApplicationTests {
 					h.setIfNoneMatch("\"" + st.getVersion() + "\"");
 				})
 				.exchange()
-				.expectStatus().isNotModified();
+				.expectStatus().isNotModified()
+				.expectBody()
+				.isEmpty();
 			});
 		});
 	}
