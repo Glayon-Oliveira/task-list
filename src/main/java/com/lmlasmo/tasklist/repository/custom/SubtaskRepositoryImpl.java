@@ -282,7 +282,6 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 	@Override
 	public Mono<StatusSummary> findStatusSummaryById(int subtaskId) {
 		String sql = new StringBuilder("SELECT s.id, s.row_version, s.status, s.task_id FROM subtasks s ")
-				.append("JOIN tasks t ON s.task_id = t.id ")
 				.append("WHERE s.id = ?")
 				.toString();
 		
@@ -291,6 +290,20 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.bind(0, subtaskId)
 				.map(mapper::toStatusSummary)
 				.one();
+	}
+	
+	@Override
+	public Flux<SubtaskSummary.StatusSummary> findStatusSummaryByTaskId(int taskId) {
+		String sql = new StringBuilder("SELECT s.id, s.row_version, s.status, s.task_id FROM subtasks s ")
+				.append("JOIN tasks t ON s.task_id = t.id ")
+				.append("WHERE t.id = ?")
+				.toString();
+		
+		return template.getDatabaseClient()
+				.sql(sql)
+				.bind(0, taskId)
+				.map(mapper::toStatusSummary)
+				.all();
 	}
 
 	@Override
@@ -361,6 +374,18 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				})
 				.then()
 				.as(getOperator()::transactional);
+	}
+	
+	@Override
+	public Mono<Void> updateStatusByTaskId(int taskId, TaskStatusType status) {
+		Query query = Query.query(Criteria.where("task_id").is(taskId));
+		
+		Update update = Update.from(Map.of(
+					SqlIdentifier.unquoted("status"), status
+				));
+		
+		return template.update(query, update, Subtask.class)
+				.then();
 	}
 	
 	@Override

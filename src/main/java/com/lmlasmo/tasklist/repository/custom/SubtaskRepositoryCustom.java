@@ -44,11 +44,15 @@ public interface SubtaskRepositoryCustom extends RepositoryCustom {
 	
 	public Mono<SubtaskSummary.StatusSummary> findStatusSummaryById(int subtaskId);
 	
+	public Flux<SubtaskSummary.StatusSummary> findStatusSummaryByTaskId(int taskId);
+	
 	public Flux<SubtaskSummary.StatusSummary> findStatusSummaryByIds(Collection<Integer> subtaskIds);
 	
 	public Mono<Void> updateStatus(BasicSummary basic, TaskStatusType status);
 	
 	public Mono<Void> updateStatus(Collection<? extends BasicSummary> basics, TaskStatusType status);
+	
+	public Mono<Void> updateStatusByTaskId(int taskId, TaskStatusType status);
 	
 	public Mono<Long> sumVersionByids(Collection<Integer> ids);
 	

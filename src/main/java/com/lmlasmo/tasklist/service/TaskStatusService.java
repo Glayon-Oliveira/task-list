@@ -5,7 +5,6 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
-import com.lmlasmo.tasklist.exception.TaskHasSubtasksException;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.TaskRepository;
@@ -24,13 +23,8 @@ public class TaskStatusService {
 	public Mono<Void> updateTaskStatus(int taskId, TaskStatusType status) {
 		return taskRepository.findStatusSummaryById(taskId)
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Task not found for id " + taskId)))
-				.flatMap(t -> {
-					return subtaskRepository.countByTaskId(taskId)
-							.filter(l -> l == 0)
-							.switchIfEmpty(Mono.error(new TaskHasSubtasksException("Status of Task has subtasks is defined by subtasks")))
-							.thenReturn(t);
-				})
 				.flatMap(t -> taskRepository.updateStatus(t, status))
+				.flatMap(sts -> subtaskRepository.updateStatusByTaskId(taskId, status))
 				.as(m -> taskRepository.getOperator().transactional(m));
 	}
 	
@@ -47,7 +41,7 @@ public class TaskStatusService {
 				.flatMapIterable(ss -> ss)
 				.map(s -> s.getTaskId())
 				.distinct()
-				.flatMap(i -> updateTaskStatus(i))
+				.flatMap(i -> updateTaskStatusFromExistingSubtaskStatus(i, status))
 				.then();
 		
 		return updateSummaries
@@ -55,17 +49,24 @@ public class TaskStatusService {
 				.as(m -> taskRepository.getOperator().transactional(m));
 	}
 	
-	private Mono<Void> updateTaskStatus(int taskId) {
+	private Mono<Void> updateTaskStatusFromExistingSubtaskStatus(int taskId, TaskStatusType status) {
 		return taskRepository.findStatusSummaryById(taskId)
-				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Task not found for id " + taskId)))
 				.flatMap(t -> {
-					if(t.getStatus().equals(TaskStatusType.IN_PROGRESS)) {
-						return taskRepository.updateStatus(t, TaskStatusType.IN_PROGRESS);
-					}else if(t.getStatus().equals(TaskStatusType.COMPLETED)){
-						return taskRepository.updateStatus(t, TaskStatusType.COMPLETED);
-					}else {
-						return taskRepository.updateStatus(t, TaskStatusType.PENDING);
-					}
+					return assumeTaskStatusFromExistingSubtaskStatus(taskId, status)
+							.flatMap(ss -> taskRepository.updateStatus(t, ss))
+							.then();
+				});
+	}
+	
+	private Mono<TaskStatusType> assumeTaskStatusFromExistingSubtaskStatus(int taskId, TaskStatusType presentStatus) {
+		if(presentStatus == TaskStatusType.IN_PROGRESS) {
+			return Mono.just(TaskStatusType.IN_PROGRESS);
+		}
+		
+		return subtaskRepository.existsByTaskIdAndStatusNot(taskId, presentStatus)
+				.map(ed -> {
+					return ed ? TaskStatusType.IN_PROGRESS
+							 : presentStatus;
 				});
 	}
 

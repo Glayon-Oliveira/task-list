@@ -15,6 +15,8 @@ public interface SubtaskRepository extends ReactiveCrudRepository<Subtask, Integ
 	
 	public Mono<Boolean> existsByTaskIdAndStatus(int taskId, TaskStatusType status);
 	
+	public Mono<Boolean> existsByTaskIdAndStatusNot(int taskId, TaskStatusType status);
+	
 	public Mono<Boolean> existsByIdAndVersion(int id, long version);
 		
 	public Mono<Long> countByTaskId(int taskId);
