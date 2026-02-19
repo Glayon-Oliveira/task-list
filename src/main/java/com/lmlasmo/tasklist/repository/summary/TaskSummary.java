@@ -2,41 +2,42 @@ package com.lmlasmo.tasklist.repository.summary;
 
 import java.time.Instant;
 import java.util.Set;
-
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.lmlasmo.tasklist.model.TaskStatusType;
 
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.ToString;
 
 @Getter
-@ToString
 @EqualsAndHashCode
 @AllArgsConstructor
-@Table("tasks")
-public class TaskSummary {
+public class TaskSummary implements Summary<Integer> {
 	
-	public static final Set<String> FIELDS = Set.of(
-			"id", "name", "summary", "status", "deadline", "deadlineZone",
-			"version", "createdAt", "updatedAt"
-			);
+	public static final Set<String> REQUIRED_FIELDS = Stream.concat(
+			Summary.REQUIRED_FIELDS.stream(), 
+			Stream.of("userId"))
+			.collect(Collectors.toSet());
 	
-	private int id;
-	private String name;
-	private String summary;
-	private TaskStatusType status;
-	private Instant deadline;
+	public static final Set<String> FIELDS = Stream.concat(
+			REQUIRED_FIELDS.stream(), 
+			Stream.of("name", "summary", "status", "deadline", "deadlineZone"))
+			.collect(Collectors.toSet());
 	
-	@Column("deadline_zone") private String deadlineZone;
+	private Field<Integer> id;
+	private Field<String> name;
+	private Field<String> summary;
+	private Field<TaskStatusType> status;
+	private Field<Instant> deadline;
 	
-	@Column("row_version") private Long version;
-	@Column("created_at") private Instant createdAt;
-	@Column("updated_at") private Instant updatedAt;
-	@Column("user_id") private Integer userId;
+	private Field<String> deadlineZone;
+	
+	private Field<Long> version;
+	private Field<Instant> createdAt;
+	private Field<Instant> updatedAt;
+	private Field<Integer> userId;
 	
 	public static interface StatusSummary extends BasicSummary {
 		

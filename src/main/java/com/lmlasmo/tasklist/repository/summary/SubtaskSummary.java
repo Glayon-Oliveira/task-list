@@ -3,9 +3,8 @@ package com.lmlasmo.tasklist.repository.summary;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Set;
-
-import org.springframework.data.relational.core.mapping.Column;
-import org.springframework.data.relational.core.mapping.Table;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.lmlasmo.tasklist.model.TaskStatusType;
 
@@ -16,26 +15,30 @@ import lombok.Getter;
 @Getter
 @EqualsAndHashCode
 @AllArgsConstructor
-@Table("subtasks")
-public class SubtaskSummary {
+public class SubtaskSummary implements Summary<Integer> {
 	
-	public static final Set<String> FIELDS = Set.of(
-			"id", "name", "summary", "status", "position", "durationMinutes", "taskId",
-			"version", "createdAt", "updatedAt"
-			);
+	public static final Set<String> REQUIRED_FIELDS = Stream.concat(
+			Summary.REQUIRED_FIELDS.stream(), 
+			Stream.of("taskId"))
+			.collect(Collectors.toSet());
+	
+	public static final Set<String> FIELDS = Stream.concat(
+			REQUIRED_FIELDS.stream(), 
+			Stream.of("name", "summary", "status", "position", "durationMinutes"))
+			.collect(Collectors.toSet());
 		
-	private int id;
-	private String name;
-	private String summary;
-	private TaskStatusType status = TaskStatusType.PENDING;	
-	private BigDecimal position;
+	private Field<Integer> id;
+	private Field<String> name;
+	private Field<String> summary;
+	private Field<TaskStatusType> status;	
+	private Field<BigDecimal> position;
 	
-	@Column("duration_minutes") private Integer durationMinutes;
+	private Field<Integer> durationMinutes;
 	
-	@Column("row_version") private Long version;
-	@Column("created_at") private Instant createdAt;
-	@Column("updated_at") private Instant updatedAt;
-	@Column("task_id") private Integer taskId;
+	private Field<Long> version;
+	private Field<Instant> createdAt;
+	private Field<Instant> updatedAt;
+	private Field<Integer> taskId;
 		
 	public static interface BasicSubtaskSummary extends BasicSummary {
 		

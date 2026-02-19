@@ -1,9 +1,11 @@
 package com.lmlasmo.tasklist.service;
 
+import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +28,7 @@ import com.lmlasmo.tasklist.dto.SubtaskDTO;
 import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
+import com.lmlasmo.tasklist.repository.summary.Field;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 
 import reactor.core.publisher.Flux;
@@ -117,23 +120,32 @@ public abstract class AbstractSubtaskServiceCacheTest {
 		
 		when(subtaskRepository.findAllByTaskId(taskId, pageable, contains, status, fields))
 		.thenReturn(Flux.just(
-				new SubtaskSummary(1, null, null, null, null, null, null, null, null, null)
+				new SubtaskSummary(
+						Field.of(1), Field.absent(), Field.absent(), Field.absent(), Field.absent(), 
+						Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent()
+						)
 				));
 		
-		List<SubtaskDTO> noCache = subtaskService.findByTask(taskId, pageable, contains, status, fields)
+		List<Map<String, Object>> noCache = subtaskService.findByTask(taskId, pageable, contains, status, fields)
 				.collectList()
 				.block();
 		
 		Thread.sleep(500);
 		
 		when(subtaskRepository.findAllByTaskId(taskId, pageable, contains, status, fields))
-		.thenReturn(Flux.empty());
+		.thenReturn(Flux.just(
+				new SubtaskSummary(
+						Field.of(1), Field.of("no cache"), Field.absent(), Field.absent(), Field.absent(), 
+						Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent()
+						)
+				));
 		
-		List<SubtaskDTO> cache = subtaskService.findByTask(taskId, pageable, contains, status, fields)
+		List<Map<String, Object>> cache = subtaskService.findByTask(taskId, pageable, contains, status, fields)
 				.collectList()
 				.block();
 		
-		assertEquals(noCache.get(0).getId(), cache.get(0).getId());
+		assertEquals(noCache.get(0).get("id"), cache.get(0).get("id"));
+		assertNull(cache.get(0).get("name"));
 	}
 	
 	@Test

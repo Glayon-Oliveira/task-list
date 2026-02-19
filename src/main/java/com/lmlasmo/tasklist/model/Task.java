@@ -50,9 +50,9 @@ public class Task {
 	
 	@Column("row_version")
 	@Version
-	private long version;
+	private Long version;
 	
 	@Column("user_id")
-	private int userId;
+	private Integer userId;
 
 }

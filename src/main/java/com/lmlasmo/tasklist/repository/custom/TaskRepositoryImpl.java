@@ -2,6 +2,7 @@ package com.lmlasmo.tasklist.repository.custom;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +24,6 @@ import com.lmlasmo.tasklist.mapper.summary.TaskSummaryMapper;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
-import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
@@ -64,8 +64,32 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 		return template.select(query, Task.class);
 	}
 	
+	public Flux<TaskSummary> findAllByUserId(int userId, String... includedFields) {
+		Criteria criteria = Criteria.where("userId").is(userId);
+		
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
+		
+		Query query = Query.query(criteria).columns(normalizedIncludedFields);
+		
+		return template.select(query, Task.class)
+				.map(t -> mapper.toSummary(t, normalizedIncludedFields));
+	}
+	
+	public Flux<TaskSummary> findAllByUserId(int userId, TaskStatusType status, String... includedFields) {
+		if(status == null) throw new IllegalArgumentException("status argument cannot be null");
+		
+		Criteria criteria = Criteria.where("userId").is(userId);
+		
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
+		
+		Query query = Query.query(criteria).columns(normalizedIncludedFields);
+		
+		return template.select(query, Task.class)
+				.map(t -> mapper.toSummary(t, normalizedIncludedFields));
+	}
+	
 	@Override
-	public Flux<TaskSummary> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status, String... fields) {
+	public Flux<TaskSummary> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status, String... includedFields) {
 		Criteria criteria = Criteria.where("userId").is(userId);
 		
 		if(status != null) {
@@ -81,25 +105,38 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 			query = query.with(normalizedPageable);
 		}
 		
-		if(fields != null && fields.length > 0) {
-			Set<String> requiredFields = Set.of("id", "version", "createdAt", "updatedAt");
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
+		
+		query = query.columns(normalizedIncludedFields);
+		
+		return template.select(query, Task.class)
+				.map(t -> mapper.toSummary(t, normalizedIncludedFields));
+	}
+	
+	private Set<String> normalizeIncludedFields(String... includedFields) {
+		Set<String> normalizedIncludedFields = new LinkedHashSet<>();
+		normalizedIncludedFields.addAll(TaskSummary.REQUIRED_FIELDS);
+		
+		if(includedFields != null && includedFields.length > 0) {
+			Set<String> filtedFields = Arrays.stream(includedFields)
+					.map(String::trim)
+					.filter(TaskSummary.FIELDS::contains)
+					.collect(Collectors.toSet());
 			
-			Set<String> filtedFields = Arrays.stream(fields)
-				.map(String::trim)
-				.filter(TaskSummary.FIELDS::contains)
-				.collect(Collectors.toSet());
-			
-			query = query.columns(requiredFields).columns(filtedFields);
+			normalizedIncludedFields.addAll(filtedFields);
+		}else {
+			normalizedIncludedFields.addAll(TaskSummary.FIELDS);
 		}
 		
-		return template.select(query, TaskSummary.class);
+		
+		return normalizedIncludedFields;
 	}
 	
 	private Pageable normalizePropertiesOfPageable(Pageable pageable) {
 		if(pageable != null) {
 			Order[] orders = pageable.getSort()
 				 	.stream()
-				 	.filter(o -> SubtaskSummary.FIELDS.contains(o.getProperty()))
+				 	.filter(o -> TaskSummary.FIELDS.contains(o.getProperty()))
 				 	.toArray(Order[]::new);
 			
 			return PageRequest.of(
@@ -164,7 +201,7 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 				.map(i -> "?")
 				.collect(Collectors.joining(", "));
 		
-		String sql = "SELECT COALESCE(CAST(SUM(t.row_version) AS BIGINT), 0) FROM tasks t WHERE id IN (%s)"
+		String sql = "SELECT COALESCE(SUM(t.row_version), 0) FROM tasks t WHERE id IN (%s)"
 				.formatted(placeholders);
 		
 		return template.getDatabaseClient()
@@ -176,7 +213,7 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 
 	@Override
 	public Mono<Long> sumVersionByUser(int userId) {
-		String sql = new StringBuilder("SELECT COALESCE(CAST(SUM(t.row_version) AS BIGINT), 0) FROM tasks t ")
+		String sql = new StringBuilder("SELECT COALESCE(SUM(t.row_version), 0) FROM tasks t ")
 				.append("JOIN users u ON t.user_id = u.id ")
 				.append("WHERE u.id = ?")
 				.toString();

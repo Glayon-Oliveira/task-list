@@ -1,6 +1,7 @@
 package com.lmlasmo.tasklist.web.util;
 
-import java.util.List;
+import java.util.Collection;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -12,6 +13,23 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface ETagWriter {
+	
+	public static Mono<Map<String, Object>> setEtagWithMap(ServerWebExchange exchange, Mono<Map<String, Object>> body) {
+		return body.flatMap(b -> {
+				return ETagWriter.extractVersion(b)
+						.doOnNext(v -> setETag(v, exchange))
+						.map(v -> b);
+		});
+	}
+	
+	public static Flux<Map<String, Object>> setEtagWithMap(ServerWebExchange exchange, Flux<Map<String, Object>> body) {
+		return body.collectList()
+				.flatMapMany(b -> {
+					return ETagWriter.extractVersion(b)
+							.doOnNext(v -> setETag(v, exchange))
+							.flatMapMany(v -> Flux.fromIterable(b));
+				});
+	}
 	
 	public static <T extends VersionedDTO> Mono<T> setEtag(ServerWebExchange exchange, Mono<T> body) {
 		return body.flatMap(b -> {
@@ -35,11 +53,16 @@ public interface ETagWriter {
 				
 	    if (body instanceof ResponseEntity<?> entity) return extractVersion(entity.getBody());
 	    
-	    if(body instanceof List<?> list) {
+	    if(body instanceof Collection<?> list) {
 	    	return Flux.fromIterable(list)
-	    			.filter(b -> b instanceof VersionedDTO)
 	    			.flatMap(ETagWriter::extractVersion)
 	    			.reduce(Long::sum);
+	    }
+	    
+	    if(body instanceof Map<?, ?> map) {
+	    	return Mono.justOrEmpty(map.get("version"))
+	    			.cast(Long.class)
+	    			.switchIfEmpty(Mono.just(0L));
 	    }
 	    
 	    return Mono.just(-1L);

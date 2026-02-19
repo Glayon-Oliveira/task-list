@@ -1,6 +1,7 @@
 package com.lmlasmo.tasklist.service;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
 
 import org.springframework.core.ParameterizedTypeReference;
@@ -17,6 +18,7 @@ import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.mapper.TaskMapper;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.TaskRepository;
+import com.lmlasmo.tasklist.repository.summary.TaskSummary;
 import com.lmlasmo.tasklist.service.applier.UpdateTaskApplier;
 
 import lombok.AllArgsConstructor;
@@ -100,11 +102,11 @@ public class TaskService {
 	}
 	
 	
-	public Flux<TaskDTO> findByUser(int id, Pageable pageable, String contains, TaskStatusType status) {
+	public Flux<Map<String, Object>> findByUser(int id, Pageable pageable, String contains, TaskStatusType status) {
 		return findByUser(id, pageable, contains, status, new String[0]);
 	}
 	
-	public Flux<TaskDTO> findByUser(int id, Pageable pageable, String contains, TaskStatusType status, String... fields) {
+	public Flux<Map<String, Object>> findByUser(int id, Pageable pageable, String contains, TaskStatusType status, String... fields) {
 		int pfh = Objects.hash(
 					pageable.getPageNumber(),
 					pageable.getPageSize(),
@@ -114,11 +116,11 @@ public class TaskService {
 					fields
 					);
 		
-		ParameterizedTypeReference<Collection<TaskDTO>> dtoCollectionType = new ParameterizedTypeReference<Collection<TaskDTO>>() {};
+		ParameterizedTypeReference<Collection<Map<String, Object>>> dtoCollectionType = new ParameterizedTypeReference<Collection<Map<String, Object>>>() {};
 		
 		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), dtoCollectionType)
 				.switchIfEmpty(repository.findAllByUserId(id, pageable, contains, status, fields)
-							.map(mapper::toDTO)
+							.map(TaskSummary::toMap)
 							.collectList()
 							.doOnNext(dtos -> cache.asyncPut(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), dtos))
 						)

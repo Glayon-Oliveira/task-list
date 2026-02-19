@@ -19,7 +19,11 @@ public interface TaskRepositoryCustom extends RepositoryCustom {
 	
 	public Flux<Task> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status);
 	
-	public Flux<TaskSummary> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status, String... fields);
+	public Flux<TaskSummary> findAllByUserId(int userId, String... includedFields);
+	
+	public Flux<TaskSummary> findAllByUserId(int userId, TaskStatusType status, String... includedFields);
+	
+	public Flux<TaskSummary> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status, String... includedFields);
 	
 	public Mono<StatusSummary> findStatusSummaryById(int taskId);
 

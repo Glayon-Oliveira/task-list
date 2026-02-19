@@ -1,6 +1,7 @@
 package com.lmlasmo.tasklist.web.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -111,7 +112,7 @@ public class SubtaskController {
 	
 	@FindSubtasksApiDoc
 	@GetMapping(params = {"taskId"}, produces = MediaType.APPLICATION_JSON_VALUE)
-	public Flux<SubtaskDTO> findByTask(ETagHelper etagHelper,
+	public Flux<Map<String, Object>> findByTask(ETagHelper etagHelper,
 			@RequestParam @Min(1) int taskId, Pageable pageable,
 			@RequestParam(name = "contains", required = false) @Size(max = 125) String contains,
 			@RequestParam(name = "status", required = false) TaskStatusType status,
@@ -120,8 +121,8 @@ public class SubtaskController {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(taskId, usid))
 				.then(etagHelper.checkEtag(et -> subtaskService.sumVersionByTask(taskId, pageable, contains, status).map(s -> s == et)))
 				.filter(c -> !c)
-				.thenMany(subtaskService.findByTask(taskId, pageable, contains, status, fields))
-				.as(etagHelper::setEtag);
+				.flatMapMany(c -> subtaskService.findByTask(taskId, pageable, contains, status, fields))
+				.as(etagHelper::setETagWithMap);
 	}
 	
 	@FindSubtaskApiDoc

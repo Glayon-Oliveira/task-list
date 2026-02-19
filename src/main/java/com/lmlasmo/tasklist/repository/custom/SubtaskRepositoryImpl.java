@@ -3,6 +3,7 @@ package com.lmlasmo.tasklist.repository.custom;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -92,6 +93,7 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.one();
 	}
 	
+	@Override
 	public Flux<Subtask> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status) {
 		Criteria criteria = Criteria.where("taskId").is(taskId);
 		
@@ -112,7 +114,33 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 	}
 	
 	@Override
-	public Flux<SubtaskSummary> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields) {
+	public Flux<SubtaskSummary> findAllByTaskId(int taskId, String... includedFields) {
+		Criteria criteria = Criteria.where("taskId").is(taskId);
+		
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields); 
+		
+		Query query = Query.query(criteria).columns(normalizedIncludedFields);
+		
+		return template.select(query, Subtask.class)
+				.map(st -> mapper.toSummary(st, normalizedIncludedFields));
+	}
+	
+	@Override
+	public Flux<SubtaskSummary> findAllByTaskId(int taskId, TaskStatusType status, String... includedFields) {
+		if(status == null) throw new IllegalArgumentException("status argument cannot be null");
+		
+		Criteria criteria = Criteria.where("taskId").is(taskId);
+		
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
+		
+		Query query = Query.query(criteria).columns(normalizedIncludedFields);
+		
+		return template.select(query, Subtask.class)
+				.map(st -> mapper.toSummary(st, normalizedIncludedFields));
+	}
+	
+	@Override
+	public Flux<SubtaskSummary> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status, String... includedFields) {
 		Criteria criteria = Criteria.where("taskId").is(taskId);
 		
 		if(status != null) {
@@ -128,18 +156,31 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 			query = query.with(normalizedPageable);
 		}
 		
-		if(fields != null && fields.length > 0) {
-			Set<String> requiredFields = Set.of("id", "version", "createdAt", "updatedAt");
-			
-			Set<String> filtedFields = Arrays.stream(fields)
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields); 
+		
+		query = query.columns(normalizedIncludedFields);
+		
+		return template.select(query, Subtask.class)
+				.map(st -> mapper.toSummary(st, normalizedIncludedFields));
+	}
+	
+	private Set<String> normalizeIncludedFields(String... includedFields) {
+		Set<String> normalizedIncludedFields = new LinkedHashSet<>();
+		normalizedIncludedFields.addAll(SubtaskSummary.REQUIRED_FIELDS);
+		
+		if(includedFields != null && includedFields.length > 0) {
+			Set<String> filtedFields = Arrays.stream(includedFields)
 					.map(String::trim)
 					.filter(SubtaskSummary.FIELDS::contains)
 					.collect(Collectors.toSet());
 			
-			query = query.columns(requiredFields).columns(filtedFields);
+			normalizedIncludedFields.addAll(filtedFields);
+		}else {
+			normalizedIncludedFields.addAll(SubtaskSummary.FIELDS);
 		}
 		
-		return template.select(query, SubtaskSummary.class);
+		
+		return normalizedIncludedFields;
 	}
 	
 	private Pageable normalizePropertiesOfPageable(Pageable pageable) {

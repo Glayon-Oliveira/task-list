@@ -1,5 +1,7 @@
 package com.lmlasmo.tasklist.web.controller;
 
+import java.util.Map;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -96,7 +98,7 @@ public class TaskController {
 	
 	@FindTasksApiDoc
 	@GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-	public Flux<TaskDTO> findAllByI(ETagHelper etagHelper,
+	public Flux<Map<String, Object>> findAllByI(ETagHelper etagHelper,
 			@PageableDefault(size = 50) Pageable pageable,
 			@RequestParam(value = "contains", required = false) @Size(max = 125) String contains,
 			@RequestParam(value = "status", required = false) TaskStatusType status,
@@ -107,7 +109,7 @@ public class TaskController {
 					return etagHelper.checkEtag(et -> taskService.sumVersionByUser(usid, pageable, contains, status).map(s -> s.equals(et)))
 							.filter(c -> !c)
 							.flatMapMany(c -> taskService.findByUser(usid, pageable, contains, status, fields))
-							.as(etagHelper::setEtag);
+							.as(etagHelper::setETagWithMap);
 				});
 	}
 	

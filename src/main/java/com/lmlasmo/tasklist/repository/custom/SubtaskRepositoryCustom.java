@@ -24,7 +24,11 @@ public interface SubtaskRepositoryCustom extends RepositoryCustom {
 	
 	public Flux<Subtask> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status);
 	
-	public Flux<SubtaskSummary> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields);
+	public Flux<SubtaskSummary> findAllByTaskId(int taskId, String... includedFields);
+	
+	public Flux<SubtaskSummary> findAllByTaskId(int taskId, TaskStatusType status, String... includedFields);
+	
+	public Flux<SubtaskSummary> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status, String... includedFields);
 		
 	public Flux<SubtaskSummary.PositionSummary> findPositionSummaryByTaskIdOrderByASC(int taskId);
 		

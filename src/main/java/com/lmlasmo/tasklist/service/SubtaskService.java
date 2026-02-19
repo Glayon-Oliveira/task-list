@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.springframework.core.ParameterizedTypeReference;
@@ -24,6 +25,7 @@ import com.lmlasmo.tasklist.mapper.SubtaskMapper;
 import com.lmlasmo.tasklist.mapper.summary.SubtaskSummaryMapper;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
+import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
 import com.lmlasmo.tasklist.service.applier.UpdateSubtaskApplier;
 
@@ -183,11 +185,11 @@ public class SubtaskService {
 						);
 	}
 	
-	public Flux<SubtaskDTO> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status){
+	public Flux<Map<String, Object>> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status){
 		return findByTask(taskId, pageable, contains, status, new String[0]);
 	}
 	
-	public Flux<SubtaskDTO> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields){
+	public Flux<Map<String, Object>> findByTask(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields){
 		int pfh = Objects.hash(
 				pageable.getPageNumber(),
 				pageable.getPageSize(),
@@ -197,11 +199,11 @@ public class SubtaskService {
 				fields
 				);
 		
-		ParameterizedTypeReference<Collection<SubtaskDTO>> dtoCollectionType = new ParameterizedTypeReference<Collection<SubtaskDTO>>() {};
+		ParameterizedTypeReference<Collection<Map<String, Object>>> dtoCollectionType = new ParameterizedTypeReference<Collection<Map<String, Object>>>() {};
 		
 		return cache.get(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), dtoCollectionType)
 				.switchIfEmpty(subtaskRepository.findAllByTaskId(taskId, pageable, contains, status, fields)
-							.map(mapper::toDTO)
+							.map(SubtaskSummary::toMap)
 							.collectList()
 							.doOnNext(dto -> cache.asyncPut(CV_FIND_TASKID_TEMPLATE.formatted(taskId, pfh), dto))
 						)
