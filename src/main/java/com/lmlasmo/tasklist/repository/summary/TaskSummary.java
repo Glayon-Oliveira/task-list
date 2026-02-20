@@ -1,6 +1,8 @@
 package com.lmlasmo.tasklist.repository.summary;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -14,10 +16,10 @@ import lombok.Getter;
 @Getter
 @EqualsAndHashCode
 @AllArgsConstructor
-public class TaskSummary implements Summary<Integer> {
+public class TaskSummary implements BasicSummary<Integer> {
 	
 	public static final Set<String> REQUIRED_FIELDS = Stream.concat(
-			Summary.REQUIRED_FIELDS.stream(), 
+			BasicSummary.REQUIRED_FIELDS.stream(), 
 			Stream.of("userId"))
 			.collect(Collectors.toSet());
 	
@@ -39,10 +41,12 @@ public class TaskSummary implements Summary<Integer> {
 	private Field<Instant> updatedAt;
 	private Field<Integer> userId;
 	
-	public static interface StatusSummary extends BasicSummary {
+	@Override
+	public Map<String, Object> toMap() {
+		Map<String,Object> map = new LinkedHashMap<>(BasicSummary.super.toMap());
+		map.remove("userId");
 		
-		public TaskStatusType getStatus();
-		
+		return map;
 	}
 	
 }

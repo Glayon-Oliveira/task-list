@@ -2,6 +2,7 @@ package com.lmlasmo.tasklist.web.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -116,7 +117,7 @@ public class SubtaskController {
 			@RequestParam @Min(1) int taskId, Pageable pageable,
 			@RequestParam(name = "contains", required = false) @Size(max = 125) String contains,
 			@RequestParam(name = "status", required = false) TaskStatusType status,
-			@RequestParam(name = "fields", required = false) String... fields) {
+			@RequestParam(name = "fields", required = false) Set<String> fields) {
 		
 		return resourceAccess.canAccess((usid, can) -> can.canAccessTask(taskId, usid))
 				.then(etagHelper.checkEtag(et -> subtaskService.sumVersionByTask(taskId, pageable, contains, status).map(s -> s == et)))
@@ -127,12 +128,13 @@ public class SubtaskController {
 	
 	@FindSubtaskApiDoc
 	@GetMapping(path = "/{subtaskId}", produces = MediaType.APPLICATION_JSON_VALUE)	
-	public Mono<SubtaskDTO> findById(ETagHelper etagHelper, @PathVariable @Min(1) int subtaskId) {
+	public Mono<Map<String, Object>> findById(ETagHelper etagHelper, @PathVariable @Min(1) int subtaskId,
+			@RequestParam(value = "fields", required = false) Set<String> fields) {
 		return resourceAccess.canAccess((usid, can) -> can.canAccessSubtask(subtaskId, usid))
 				.then(etagHelper.checkEtag(et -> subtaskService.existsByIdAndVersion(subtaskId, et)))
 				.filter(c -> !c)
-				.flatMap(c -> subtaskService.findById(subtaskId))
-				.as(etagHelper::setEtag);
+				.flatMap(c -> subtaskService.findById(subtaskId, fields))
+				.as(etagHelper::setETagWithMap);
 	}
 	
 	@CountSubtasksApiDoc

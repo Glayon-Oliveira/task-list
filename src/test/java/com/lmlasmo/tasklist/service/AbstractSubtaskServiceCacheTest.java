@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -116,9 +117,9 @@ public abstract class AbstractSubtaskServiceCacheTest {
 		Pageable pageable = PageRequest.of(0, 5);
 		String contains = "Task name";
 		TaskStatusType status = TaskStatusType.COMPLETED;
-		String[] fields = new String[] {"name"};
+		Set<String> fields = Set.of("name");
 		
-		when(subtaskRepository.findAllByTaskId(taskId, pageable, contains, status, fields))
+		when(subtaskRepository.findSummariesByTaskId(taskId, pageable, contains, status, fields))
 		.thenReturn(Flux.just(
 				new SubtaskSummary(
 						Field.of(1), Field.absent(), Field.absent(), Field.absent(), Field.absent(), 
@@ -132,7 +133,7 @@ public abstract class AbstractSubtaskServiceCacheTest {
 		
 		Thread.sleep(500);
 		
-		when(subtaskRepository.findAllByTaskId(taskId, pageable, contains, status, fields))
+		when(subtaskRepository.findSummariesByTaskId(taskId, pageable, contains, status, fields))
 		.thenReturn(Flux.just(
 				new SubtaskSummary(
 						Field.of(1), Field.of("no cache"), Field.absent(), Field.absent(), Field.absent(), 
@@ -152,8 +153,6 @@ public abstract class AbstractSubtaskServiceCacheTest {
 	void findById() throws InterruptedException {
 		int subtaskId = 1;
 		
-		when(subtaskRepository.existsById(subtaskId)).thenReturn(Mono.just(true));
-		
 		when(subtaskRepository.findById(subtaskId))
 			.thenReturn(Mono.just(new Subtask()));
 		
@@ -162,11 +161,37 @@ public abstract class AbstractSubtaskServiceCacheTest {
 		Thread.sleep(500);
 		
 		when(subtaskRepository.findById(subtaskId))
-			.thenReturn(Mono.just(new Subtask()));
+			.thenReturn(Mono.empty());
 		
 		SubtaskDTO cache = subtaskService.findById(subtaskId).block();
 		
 		assertEquals(noCache.getId(), cache.getId());
+	}
+	
+	@Test
+	void findByIdWithFields() throws InterruptedException {
+		int subtaskId = 1;
+		
+		when(subtaskRepository.findSummaryById(subtaskId, Set.of("name")))
+			.thenReturn(Mono.just(
+					new SubtaskSummary(
+							Field.of(1), Field.of("name"), Field.absent(), Field.absent(), Field.absent(),
+							Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent()
+							)
+					));
+		
+		Map<String, Object> noCache = subtaskService.findById(subtaskId, Set.of("name")).block();
+		
+		Thread.sleep(500);
+		
+		when(subtaskRepository.findSummaryById(subtaskId, Set.of("name")))
+			.thenReturn(Mono.empty());
+		
+		Map<String, Object> cache = subtaskService.findById(subtaskId, Set.of("name")).block();
+		
+		assertEquals(noCache.get("id"), cache.get("id"));
+		assertEquals(noCache.get("name"), cache.get("name"));
+		assertNull(cache.get("summary"));
 	}
 	
 	@Test

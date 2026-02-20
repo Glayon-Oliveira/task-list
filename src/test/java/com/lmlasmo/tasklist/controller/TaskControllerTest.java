@@ -569,7 +569,38 @@ public class TaskControllerTest extends TaskListApplicationTests {
 				.jsonPath("$.status").isNotEmpty()
 				.jsonPath("$.version").isNotEmpty()
 				.jsonPath("$.createdAt").isNotEmpty()
-				.jsonPath("$.updatedAt").isNotEmpty();
+				.jsonPath("$.updatedAt").isNotEmpty()
+				.jsonPath("$.userId").doesNotExist();
+			});
+		});
+	}
+	
+	@Test
+	void findByIdWithIncludeFields() {
+		String baseUri = this.baseUri + "/{id}";
+		
+		authTestTool.runWithUniqueAuth(at -> {
+			taskTestTool.runWithUser(at.getUser(), t -> {
+				String accessToken = at.getTokens().getAccessToken().getToken();
+				
+				webTClient.get()
+				.uri(uri -> uri.path(baseUri)
+						.queryParam("fields", "name")
+						.build(t.getId()))
+				.headers(h -> h.setBearerAuth(accessToken))
+				.exchange()
+				.expectStatus().isOk()
+				.expectBody()
+				.jsonPath("$.id").isNotEmpty()
+				.jsonPath("$.name").isNotEmpty()
+				.jsonPath("$.summary").doesNotExist()
+				.jsonPath("$.deadline").doesNotExist()
+				.jsonPath("$.deadlineZone").doesNotExist()
+				.jsonPath("$.status").doesNotExist()
+				.jsonPath("$.version").isNotEmpty()
+				.jsonPath("$.createdAt").isNotEmpty()
+				.jsonPath("$.updatedAt").isNotEmpty()
+				.jsonPath("$.userId").doesNotExist();
 			});
 		});
 	}

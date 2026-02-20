@@ -7,6 +7,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.junit.jupiter.api.RepeatedTest;
+import org.junit.jupiter.api.RepetitionInfo;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
@@ -771,8 +773,8 @@ public class SubtaskControllerTest extends TaskListApplicationTests {
 		});
 	}
 	
-	@Test
-	void findById() {
+	@RepeatedTest(2)
+	void findById(RepetitionInfo info) {
 		String baseUri = this.baseUri + "/{id}";
 		
 		authTestTool.runWithUniqueAuth(at -> {

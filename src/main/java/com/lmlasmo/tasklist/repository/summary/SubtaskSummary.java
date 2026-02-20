@@ -15,10 +15,10 @@ import lombok.Getter;
 @Getter
 @EqualsAndHashCode
 @AllArgsConstructor
-public class SubtaskSummary implements Summary<Integer> {
+public class SubtaskSummary implements BasicSummary<Integer> {
 	
 	public static final Set<String> REQUIRED_FIELDS = Stream.concat(
-			Summary.REQUIRED_FIELDS.stream(), 
+			BasicSummary.REQUIRED_FIELDS.stream(), 
 			Stream.of("taskId"))
 			.collect(Collectors.toSet());
 	
@@ -39,23 +39,5 @@ public class SubtaskSummary implements Summary<Integer> {
 	private Field<Instant> createdAt;
 	private Field<Instant> updatedAt;
 	private Field<Integer> taskId;
-		
-	public static interface BasicSubtaskSummary extends BasicSummary {
-		
-		public int getTaskId();
-		
-	}
-		
-	public static interface PositionSummary extends BasicSubtaskSummary {
-		
-		public BigDecimal getPosition();
-	}
-		
-	public static interface StatusSummary extends BasicSubtaskSummary{
-		
-		public TaskStatusType getStatus();
-		public  int getTaskId();
-		
-	}
 
 }

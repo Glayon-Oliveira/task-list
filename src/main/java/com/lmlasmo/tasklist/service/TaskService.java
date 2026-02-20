@@ -3,6 +3,7 @@ package com.lmlasmo.tasklist.service;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.Pageable;
@@ -30,7 +31,7 @@ import reactor.core.publisher.Mono;
 public class TaskService {
 		
 	public static final String CV_FIND_USERID_TEMPLATE = "uId:%d;pfh:%d;find";
-	public static final String CV_FIND_ID_TEMPLATE = "tId:%d;find";
+	public static final String CV_FIND_ID_TEMPLATE = "tId:%d;phf:%d;find";
 	public static final String CV_SUM_VERSION_TEMPLATE = "uId:%d;pfh:%d;sum&version";
 	public static final String CV_COUNT_TEMPLATE = "uId:%d;count";
 	public static final String CV_EXISTS_ID_VERSION_TEMPLATE = "tId:%d;pfh:%d;exists&version";
@@ -103,10 +104,10 @@ public class TaskService {
 	
 	
 	public Flux<Map<String, Object>> findByUser(int id, Pageable pageable, String contains, TaskStatusType status) {
-		return findByUser(id, pageable, contains, status, new String[0]);
+		return findByUser(id, pageable, contains, status, Set.of());
 	}
 	
-	public Flux<Map<String, Object>> findByUser(int id, Pageable pageable, String contains, TaskStatusType status, String... fields) {
+	public Flux<Map<String, Object>> findByUser(int id, Pageable pageable, String contains, TaskStatusType status, Set<String> fields) {
 		int pfh = Objects.hash(
 					pageable.getPageNumber(),
 					pageable.getPageSize(),
@@ -119,7 +120,7 @@ public class TaskService {
 		ParameterizedTypeReference<Collection<Map<String, Object>>> dtoCollectionType = new ParameterizedTypeReference<Collection<Map<String, Object>>>() {};
 		
 		return cache.get(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), dtoCollectionType)
-				.switchIfEmpty(repository.findAllByUserId(id, pageable, contains, status, fields)
+				.switchIfEmpty(repository.findSummariesByUserId(id, pageable, contains, status, fields)
 							.map(TaskSummary::toMap)
 							.collectList()
 							.doOnNext(dtos -> cache.asyncPut(CV_FIND_USERID_TEMPLATE.formatted(id, pfh), dtos))
@@ -130,13 +131,27 @@ public class TaskService {
 	public Mono<TaskDTO> findById(int taskId) {
 		ParameterizedTypeReference<TaskDTO> dtoType = new ParameterizedTypeReference<TaskDTO>() {};
 		
-		return cache.get(CV_FIND_ID_TEMPLATE.formatted(taskId), dtoType)
+		return cache.get(CV_FIND_ID_TEMPLATE.formatted(taskId, 0), dtoType)
 				.switchIfEmpty(repository.findById(taskId)
 						.switchIfEmpty(
 								Mono.error(new ResourceNotFoundException("Task not found for id equals " + taskId))
 								)
 						.map(mapper::toDTO)
-						.doOnNext(dto -> cache.asyncPut(CV_FIND_ID_TEMPLATE.formatted(taskId), dto)));
+						.doOnNext(dto -> cache.asyncPut(CV_FIND_ID_TEMPLATE.formatted(taskId, 0), dto)));
+	}
+	
+	public Mono<Map<String, Object>> findById(int taskId, Set<String> fields) {
+		long pfh = Objects.hash(taskId, fields);
+		
+		ParameterizedTypeReference<Map<String, Object>> dtoType = new ParameterizedTypeReference<Map<String, Object>>() {};
+		
+		return cache.get(CV_FIND_ID_TEMPLATE.formatted(taskId, pfh), dtoType)
+				.switchIfEmpty(repository.findSummaryById(taskId, fields)
+						.switchIfEmpty(
+								Mono.error(new ResourceNotFoundException("Task not found for id equals " + taskId))
+								)
+						.map(TaskSummary::toMap)
+						.doOnNext(dto -> cache.asyncPut(CV_FIND_ID_TEMPLATE.formatted(taskId, pfh), dto)));
 	}
 	
 	public Mono<CountDTO> countByUser(int userId) {

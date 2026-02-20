@@ -1,6 +1,5 @@
 package com.lmlasmo.tasklist.repository.custom;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -25,7 +24,6 @@ import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary;
-import com.lmlasmo.tasklist.repository.summary.TaskSummary.StatusSummary;
 
 import lombok.AllArgsConstructor;
 import reactor.core.publisher.Flux;
@@ -45,51 +43,19 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 	}
 	
 	@Override
-	public Flux<Task> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status) {
-		Criteria criteria = Criteria.where("userId").is(userId);
-		
-		if(status != null) {
-			criteria = criteria.and(Criteria.where("status").is(status));
-		}
-		
-		criteria = buildCriteriaWithContains(criteria, contains);
-		
-		Query query = Query.query(criteria);
-		Pageable normalizedPageable = normalizePropertiesOfPageable(pageable);
-		
-		if(normalizedPageable != null) {
-			query = query.with(normalizedPageable);
-		}
-		
-		return template.select(query, Task.class);
-	}
-	
-	public Flux<TaskSummary> findAllByUserId(int userId, String... includedFields) {
-		Criteria criteria = Criteria.where("userId").is(userId);
+	public Mono<TaskSummary> findSummaryById(int id, Set<String> includedFields) {
+		Criteria criteria = Criteria.where("id").is(id);
 		
 		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
 		
 		Query query = Query.query(criteria).columns(normalizedIncludedFields);
 		
-		return template.select(query, Task.class)
-				.map(t -> mapper.toSummary(t, normalizedIncludedFields));
-	}
-	
-	public Flux<TaskSummary> findAllByUserId(int userId, TaskStatusType status, String... includedFields) {
-		if(status == null) throw new IllegalArgumentException("status argument cannot be null");
-		
-		Criteria criteria = Criteria.where("userId").is(userId);
-		
-		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
-		
-		Query query = Query.query(criteria).columns(normalizedIncludedFields);
-		
-		return template.select(query, Task.class)
+		return template.selectOne(query, Task.class)
 				.map(t -> mapper.toSummary(t, normalizedIncludedFields));
 	}
 	
 	@Override
-	public Flux<TaskSummary> findAllByUserId(int userId, Pageable pageable, String contains, TaskStatusType status, String... includedFields) {
+	public Flux<TaskSummary> findSummariesByUserId(int userId, Pageable pageable, String contains, TaskStatusType status, Set<String> includedFields) {
 		Criteria criteria = Criteria.where("userId").is(userId);
 		
 		if(status != null) {
@@ -112,77 +78,24 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 		return template.select(query, Task.class)
 				.map(t -> mapper.toSummary(t, normalizedIncludedFields));
 	}
-	
-	private Set<String> normalizeIncludedFields(String... includedFields) {
-		Set<String> normalizedIncludedFields = new LinkedHashSet<>();
-		normalizedIncludedFields.addAll(TaskSummary.REQUIRED_FIELDS);
-		
-		if(includedFields != null && includedFields.length > 0) {
-			Set<String> filtedFields = Arrays.stream(includedFields)
-					.map(String::trim)
-					.filter(TaskSummary.FIELDS::contains)
-					.collect(Collectors.toSet());
-			
-			normalizedIncludedFields.addAll(filtedFields);
-		}else {
-			normalizedIncludedFields.addAll(TaskSummary.FIELDS);
-		}
-		
-		
-		return normalizedIncludedFields;
-	}
-	
-	private Pageable normalizePropertiesOfPageable(Pageable pageable) {
-		if(pageable != null) {
-			Order[] orders = pageable.getSort()
-				 	.stream()
-				 	.filter(o -> TaskSummary.FIELDS.contains(o.getProperty()))
-				 	.toArray(Order[]::new);
-			
-			return PageRequest.of(
-						pageable.getPageNumber(),
-						pageable.getPageSize(),
-						Sort.by(orders)
-					);
-		}
-		
-		return null;
-	}
-	
-	private Criteria buildCriteriaWithContains(Criteria criteria, String contains) {
-		if(contains != null && !contains.isBlank()) {
-			String strLike = "%" + contains + "%";
-			
-			return criteria.and(
-						Criteria.where("name").like(strLike)
-						.or(Criteria.where("summary").like(strLike))
-					);
-		}
-		
-		return criteria;
-	}
-	
-	@Override
-	public Mono<StatusSummary> findStatusSummaryById(int taskId) {
-		String sql = "SELECT id, row_version, status FROM tasks WHERE id = ?";
-		
-		return template.getDatabaseClient()
-				.sql(sql)
-				.bind(0, taskId)
-				.map(mapper::toStatusSummary)
-				.one();
-	}
 
 	@Override	
-	public Mono<Void> updateStatus(BasicSummary basic, TaskStatusType status) {
+	public Mono<Void> updateStatus(BasicSummary<Integer> basic, TaskStatusType status) {
+		if((!basic.getId().isPresent() && basic.getVersion().isPresent())) {
+			throw new IllegalArgumentException("Basic summary must has present id and version");
+		}
+		
+		Integer id = basic.getId().get();
+		Long version = basic.getVersion().get();
+		
 		return template.update(
 				Query.query(
-						Criteria.where("id").is(basic.getId())
-						.and(Criteria.where("version").is(basic.getVersion()))
+						Criteria.where("id").is(id)
+						.and(Criteria.where("version").is(version))
 						),
 				Update.from(Map.of(
 						SqlIdentifier.unquoted("status"), status.toString(),
-						SqlIdentifier.unquoted("version"), basic.getVersion()+1
+						SqlIdentifier.unquoted("version"), version+1
 						)),
 				Task.class
 				)
@@ -250,6 +163,55 @@ public class TaskRepositoryImpl extends RepositoryCustomImpl implements TaskRepo
 				.bind(0, userId)
 				.map(row -> row.get(0, Long.class))
 				.one();
+	}
+	
+	private Set<String> normalizeIncludedFields(Set<String> includedFields) {
+		Set<String> normalizedIncludedFields = new LinkedHashSet<>();
+		normalizedIncludedFields.addAll(TaskSummary.REQUIRED_FIELDS);
+		
+		if(includedFields != null && includedFields.size() > 0) {
+			Set<String> filtedFields = includedFields.stream()
+					.map(String::trim)
+					.filter(TaskSummary.FIELDS::contains)
+					.collect(Collectors.toSet());
+			
+			normalizedIncludedFields.addAll(filtedFields);
+		}else {
+			normalizedIncludedFields.addAll(TaskSummary.FIELDS);
+		}
+		
+		
+		return normalizedIncludedFields;
+	}
+	
+	private Pageable normalizePropertiesOfPageable(Pageable pageable) {
+		if(pageable != null) {
+			Order[] orders = pageable.getSort()
+				 	.stream()
+				 	.filter(o -> TaskSummary.FIELDS.contains(o.getProperty()))
+				 	.toArray(Order[]::new);
+			
+			return PageRequest.of(
+						pageable.getPageNumber(),
+						pageable.getPageSize(),
+						Sort.by(orders)
+					);
+		}
+		
+		return null;
+	}
+	
+	private Criteria buildCriteriaWithContains(Criteria criteria, String contains) {
+		if(contains != null && !contains.isBlank()) {
+			String strLike = "%" + contains + "%";
+			
+			return criteria.and(
+						Criteria.where("name").like(strLike)
+						.or(Criteria.where("summary").like(strLike))
+					);
+		}
+		
+		return criteria;
 	}
 	
 }
