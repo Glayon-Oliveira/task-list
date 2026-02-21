@@ -1,9 +1,12 @@
 package com.lmlasmo.tasklist.service;
 
+import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -17,6 +20,7 @@ import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.model.Task;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.TaskRepository;
+import com.lmlasmo.tasklist.repository.summary.Field;
 import com.lmlasmo.tasklist.repository.summary.TaskSummary;
 
 import reactor.core.publisher.Flux;
@@ -103,27 +107,36 @@ public abstract class AbstractTaskServiceCacheTest {
 		Pageable pageable = PageRequest.of(0, 5);
 		String contains = "Task name";
 		TaskStatusType status = TaskStatusType.COMPLETED;
-		String[] fields = new String[] {"name"};
+		Set<String> fields = Set.of("name");
 		
-		when(taskRepository.findAllByUserId(userId, pageable, contains, status, fields))
+		when(taskRepository.findSummariesByUserId(userId, pageable, contains, status, fields))
 			.thenReturn(Flux.just(
-					new TaskSummary(1, null, null, null, null, null, null, null, null, null)
+					new TaskSummary(
+							Field.of(1), Field.absent(), Field.absent(), Field.absent(), Field.absent(), 
+							Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent()
+							)
 					));
 		
-		List<TaskDTO> noCache = taskService.findByUser(userId, pageable, contains, status, fields)
+		List<Map<String, Object>> noCache = taskService.findByUser(userId, pageable, contains, status, fields)
 				.collectList()
 				.block();
 		
 		Thread.sleep(500);
 		
-		when(taskRepository.findAllByUserId(userId, pageable, contains, status, fields))
-			.thenReturn(Flux.empty());
+		when(taskRepository.findSummariesByUserId(userId, pageable, contains, status, fields))
+			.thenReturn(Flux.just(
+					new TaskSummary(
+							Field.of(2), Field.of("no cache"), Field.absent(), Field.absent(), Field.absent(), 
+							Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent()
+							)
+					));
 		
-		List<TaskDTO> cache = taskService.findByUser(userId, pageable, contains, status, fields)
+		List<Map<String, Object>> cache = taskService.findByUser(userId, pageable, contains, status, fields)
 				.collectList()
 				.block();
 		
-		assertEquals(noCache.get(0).getId(), cache.get(0).getId());
+		assertEquals(noCache.get(0).get("id"), cache.get(0).get("id"));
+		assertNull(cache.get(0).get("name"));
 	}
 	
 	@Test
@@ -145,6 +158,33 @@ public abstract class AbstractTaskServiceCacheTest {
 		TaskDTO cache = taskService.findById(taskId).block();
 		
 		assertEquals(noCache.getId(), cache.getId());
+	}
+	
+	@Test
+	void findByIdWithFields() throws InterruptedException {
+		int taskId = 1;
+		
+		when(taskRepository.existsById(taskId)).thenReturn(Mono.just(true));
+		
+		when(taskRepository.findSummaryById(taskId, Set.of("name")))
+			.thenReturn(Mono.just(
+					new TaskSummary(
+							Field.of(1), Field.of("name"), Field.absent(), Field.absent(), Field.absent(), 
+							Field.absent(), Field.absent(), Field.absent(), Field.absent(), Field.absent())
+					));
+		
+		Map<String, Object> noCache = taskService.findById(taskId, Set.of("name")).block();
+		
+		Thread.sleep(500);
+		
+		when(taskRepository.findSummaryById(taskId, Set.of("name")))
+			.thenReturn(Mono.empty());
+		
+		Map<String, Object> cache = taskService.findById(taskId, Set.of("name")).block();
+		
+		assertEquals(noCache.get("id"), cache.get("id"));
+		assertEquals(noCache.get("name"), cache.get("name"));
+		assertNull(cache.get("summary"));
 	}
 	
 	@Test

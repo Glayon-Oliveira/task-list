@@ -12,15 +12,17 @@ import org.springframework.data.relational.core.mapping.Table;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
+@ToString
 @NoArgsConstructor
 @Table(name = "subtasks")
 public class Subtask {
 
 	@Id
-	private int id;
+	private Integer id;
 	
 	@Column
 	private String name;
@@ -29,7 +31,7 @@ public class Subtask {
 	private String summary;
 	
 	@Column("duration_minutes")
-	private int durationMinutes;
+	private Integer durationMinutes;
 	
 	@Column
 	private TaskStatusType status = TaskStatusType.PENDING;
@@ -47,9 +49,9 @@ public class Subtask {
 	
 	@Column("row_version")
 	@Version
-	private long version;
+	private Long version;
 	
 	@Column("task_id")
-	private int taskId;
+	private Integer taskId;
 	
 }

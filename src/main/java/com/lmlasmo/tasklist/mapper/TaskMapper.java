@@ -11,16 +11,12 @@ import org.mapstruct.Mappings;
 import com.lmlasmo.tasklist.dto.TaskDTO;
 import com.lmlasmo.tasklist.dto.create.CreateTaskDTO;
 import com.lmlasmo.tasklist.model.Task;
-import com.lmlasmo.tasklist.repository.summary.TaskSummary;
 
 @Mapper(componentModel = "spring")
 public interface TaskMapper {
 
 	@Mapping(target = "deadline", expression = "java(mapDeadline(task.getDeadline(), task.getDeadlineZone()))")
 	TaskDTO toDTO(Task task);
-	
-	@Mapping(target = "deadline", expression = "java(mapDeadline(task.getDeadline(), task.getDeadlineZone()))")
-	TaskDTO toDTO(TaskSummary task);
 	
 	@Mappings({
 		@Mapping(target = "id", ignore = true),

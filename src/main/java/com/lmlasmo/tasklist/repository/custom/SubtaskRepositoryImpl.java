@@ -1,8 +1,8 @@
 package com.lmlasmo.tasklist.repository.custom;
 
 import java.math.BigDecimal;
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -26,8 +26,6 @@ import com.lmlasmo.tasklist.model.Subtask;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.summary.BasicSummary;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
-import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.PositionSummary;
-import com.lmlasmo.tasklist.repository.summary.SubtaskSummary.StatusSummary;
 
 import lombok.AllArgsConstructor;
 import reactor.core.publisher.Flux;
@@ -92,7 +90,20 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.one();
 	}
 	
-	public Flux<Subtask> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status) {
+	@Override
+	public Mono<SubtaskSummary> findSummaryById(int subtaskId, Set<String> includedFields) {
+		Criteria criteria =  Criteria.where("id").is(subtaskId);
+		
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
+		
+		Query query = Query.query(criteria).columns(normalizedIncludedFields);
+		
+		return template.selectOne(query, Subtask.class)
+				.map(st -> mapper.toSummary(st, normalizedIncludedFields));
+	}
+	
+	@Override
+	public Flux<SubtaskSummary> findSummariesByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status, Set<String> includedFields) {
 		Criteria criteria = Criteria.where("taskId").is(taskId);
 		
 		if(status != null) {
@@ -108,166 +119,101 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 			query = query.with(normalizedPageable);
 		}
 		
-		return template.select(query, Subtask.class);
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields); 
+		
+		query = query.columns(normalizedIncludedFields);
+		
+		return template.select(query, Subtask.class)
+				.map(st -> mapper.toSummary(st, normalizedIncludedFields));
 	}
 	
 	@Override
-	public Flux<SubtaskSummary> findAllByTaskId(int taskId, Pageable pageable, String contains, TaskStatusType status, String... fields) {
+	public Flux<SubtaskSummary> findSummariesByTaskIdAndSort(int taskId, Sort sort, Set<String> includedFields) {
 		Criteria criteria = Criteria.where("taskId").is(taskId);
 		
-		if(status != null) {
-			criteria = criteria.and(Criteria.where("status").is(status));
-		}
+		Sort normalizedSort = normalizerPropertiesOfSort(sort);
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
 		
-		criteria = buildCriteriaWithContains(criteria, contains);
+		Query query = Query.query(criteria).sort(normalizedSort).columns(normalizedIncludedFields);
 		
-		Query query = Query.query(criteria);
-		Pageable normalizedPageable = normalizePropertiesOfPageable(pageable);
-		
-		if(normalizedPageable != null) {
-			query = query.with(normalizedPageable);
-		}
-		
-		if(fields != null && fields.length > 0) {
-			Set<String> requiredFields = Set.of("id", "version", "createdAt", "updatedAt");
-			
-			Set<String> filtedFields = Arrays.stream(fields)
-					.map(String::trim)
-					.filter(SubtaskSummary.FIELDS::contains)
-					.collect(Collectors.toSet());
-			
-			query = query.columns(requiredFields).columns(filtedFields);
-		}
-		
-		return template.select(query, SubtaskSummary.class);
+		return template.select(query, Subtask.class)
+				.map(st -> mapper.toSummary(st, normalizedIncludedFields));
 	}
 	
-	private Pageable normalizePropertiesOfPageable(Pageable pageable) {
-		if(pageable != null) {
-			Order[] orders = pageable.getSort()
-				 	.stream()
-				 	.filter(o -> SubtaskSummary.FIELDS.contains(o.getProperty()))
-				 	.toArray(Order[]::new);
-			
-			return PageRequest.of(
-						pageable.getPageNumber(),
-						pageable.getPageSize(),
-						Sort.by(orders)
-					);
-		}
-		
-		return null;
-	}
-	
-	private Criteria buildCriteriaWithContains(Criteria criteria, String contains) {
-		if(contains != null && !contains.isBlank()) {
-			String strLike = "%" + contains + "%";
-			
-			return criteria.and(
-						Criteria.where("name").like(strLike)
-						.or(Criteria.where("summary").like(strLike))
-					);
-		}
-		
-		return criteria;
-	}
-
-	@Override	
-	public Flux<PositionSummary> findPositionSummaryByTaskIdOrderByASC(int taskId) {
-		String sql = new StringBuilder("SELECT s.id, s.row_version, s.position, s.task_id FROM subtasks s ")
-				.append("JOIN tasks t ON s.task_id = t.id ")
-				.append("WHERE t.id = ? ")
-				.append("ORDER BY s.position ")
-				.toString();
-		
-		return template.getDatabaseClient()
-				.sql(sql)
-				.bind(0, taskId)
-				.map(mapper::toPositionSummary)
-				.all();
-	}
-
 	@Override
-	public Mono<PositionSummary> findPositionSummaryById(int subtaskId) {
-		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE id = ?";
+	public Flux<SubtaskSummary> findSummaryByRelatedSubtaskId(int subtaskId, Set<String> includedFields) {
+		Set<String> normalizedIncludedFields = normalizeIncludedFieldsForSQL(includedFields)
+				.stream()
+				.map("s."::concat)
+				.collect(Collectors.toSet());
 		
-		return template.getDatabaseClient()
-				.sql(sql.toString())
-				.bind(0, subtaskId)
-				.map(mapper::toPositionSummary)
-				.one();
-	}
-
-	@Override
-	public Flux<PositionSummary> findPositionSummaryByRelatedSubtaskId(int subtaskId) {
 		String sql = new StringBuilder("SELECT s.id, s.row_version, s.position, s.task_id FROM subtasks s ")
 				.append("JOIN tasks t ON s.task_id = t.id ")
 				.append("WHERE t.id = (SELECT task_id FROM subtasks WHERE id = ?) ")
 				.append("AND s.id != ?")
-				.toString();
+				.toString()
+				.formatted(
+						normalizedIncludedFields.stream()
+						.collect(Collectors.joining(", "))
+						);
 		
 		return template.getDatabaseClient()
 				.sql(sql)
 				.bind(0, subtaskId)
 				.bind(1, subtaskId)
-				.map(mapper::toPositionSummary)
+				.map(r -> mapper.toSummary(r, normalizedIncludedFields))
 				.all();
 	}
-	
-	public Mono<PositionSummary> findFirstPositionSummaryByTaskIdOrderByASC(int taskId) {
-		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE task_id = ? ORDER BY position ASC LIMIT 1";
+
+	@Override
+	public Flux<SubtaskSummary> findSummaryByTaskIdAndPositionGreaterThan(int taskId, BigDecimal position, Pageable pageable, Set<String> includedFields) {
+		Criteria criteria = Criteria.where("taskId").is(taskId)
+				.and(Criteria.where("position").greaterThan(position));
 		
-		return template.getDatabaseClient()
-				.sql(sql)
-				.bind(0, taskId)
-				.map(mapper::toPositionSummary)
-				.first();
-	}
-	
-	public Mono<PositionSummary> findLastPositionSummaryByTaskIdOrderByASC(int taskId) {
-		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE task_id = ? ORDER BY position DESC LIMIT 1";
+		Pageable normalizedPageable = normalizePropertiesOfPageable(pageable);
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
 		
-		return template.getDatabaseClient()
-				.sql(sql)
-				.bind(0, taskId)
-				.map(mapper::toPositionSummary)
-				.first();
+		Query query = Query.query(criteria).columns(normalizedIncludedFields);
+		
+		if(normalizedPageable != null) query = query.with(normalizedPageable);
+		
+		return template.select(query, Subtask.class)
+				.map(st -> mapper.toSummary(st, normalizedIncludedFields));
 	}
 	
 	@Override
-	public Mono<PositionSummary> findFirstPositionSummaryByTaskIdAndPositionGreaterThanOrderByASC(int taskId, BigDecimal position) {
-		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE task_id = ? AND position > ? ORDER BY position ASC LIMIT 1";
+	public Flux<SubtaskSummary> findSummaryByTaskIdAndPositionLessThan(int taskId, BigDecimal position, Pageable pageable, Set<String> includedFields) {
+		Criteria criteria = Criteria.where("taskId").is(taskId)
+				.and(Criteria.where("position").lessThan(position));
 		
-		return template.getDatabaseClient()
-				.sql(sql)
-				.bind(0, taskId)
-				.bind(1, position)
-				.map(mapper::toPositionSummary)
-				.first();
+		Pageable normalizedPageable = normalizePropertiesOfPageable(pageable);
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
+		
+		Query query = Query.query(criteria).columns(normalizedIncludedFields);
+		
+		if(normalizedPageable != null) query = query.with(normalizedPageable);
+		
+		return template.select(query, Subtask.class)
+				.map(st -> mapper.toSummary(st, normalizedIncludedFields));
 	}
 
 	@Override
-	public Mono<PositionSummary> findFirstPositionSummaryByTaskIdAndPositionLessThanOrderByDESC(int taskId, BigDecimal position) {
-		String sql = "SELECT id, row_version, position, task_id FROM subtasks WHERE task_id = ? AND position < ? ORDER BY position DESC LIMIT 1";
+	public Mono<Void> updatePriority(BasicSummary<Integer> basic, BigDecimal position) {
+		if((!basic.getId().isPresent() && basic.getVersion().isPresent())) {
+			throw new IllegalArgumentException("Basic summary must has present id and version");
+		}
 		
-		return template.getDatabaseClient()
-				.sql(sql)
-				.bind(0, taskId)
-				.bind(1, position)
-				.map(mapper::toPositionSummary)
-				.first();
-	}
-
-	@Override
-	public Mono<Void> updatePriority(BasicSummary basic, BigDecimal position) {
+		Integer id = basic.getId().get();
+		Long version = basic.getVersion().get();
+		
 		return template.update(
 					Query.query(
-							Criteria.where("id").is(basic.getId())
-							.and(Criteria.where("version").is(basic.getVersion()))
+							Criteria.where("id").is(id)
+							.and(Criteria.where("version").is(version))
 							),
 					Update.from(Map.of(
 							SqlIdentifier.unquoted("position"), position,
-							SqlIdentifier.unquoted("version"), basic.getVersion()+1
+							SqlIdentifier.unquoted("version"), version+1
 							)),
 					Subtask.class
 					)
@@ -280,52 +226,22 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 	}
 
 	@Override
-	public Mono<StatusSummary> findStatusSummaryById(int subtaskId) {
-		String sql = new StringBuilder("SELECT s.id, s.row_version, s.status, s.task_id FROM subtasks s ")
-				.append("JOIN tasks t ON s.task_id = t.id ")
-				.append("WHERE s.id = ?")
-				.toString();
+	public Mono<Void> updateStatus(BasicSummary<Integer> basic, TaskStatusType status) {
+		if(!(basic.getId().isPresent() && basic.getVersion().isPresent())) {
+			throw new IllegalArgumentException("Basic summary must has present id and version");
+		}
 		
-		return template.getDatabaseClient()
-				.sql(sql)
-				.bind(0, subtaskId)
-				.map(mapper::toStatusSummary)
-				.one();
-	}
-
-	@Override
-	public Flux<StatusSummary> findStatusSummaryByIds(Collection<Integer> subtaskIds) {
-		if(subtaskIds.isEmpty()) return Flux.empty();
+		Integer id = basic.getId().get();
+		Long version = basic.getVersion().get();
 		
-		String placeholders = subtaskIds.stream()
-				.map(i -> "?")
-				.collect(Collectors.joining(", "));
-		
-		String sql = new StringBuilder("SELECT s.id, s.row_version, s.status, t.id AS task_id FROM subtasks s ")
-				.append("JOIN tasks t ON s.task_id = t.id ")
-				.append("WHERE s.id IN (%s)")
-				.toString()
-				.formatted(placeholders);
-		
-		
-		
-		return template.getDatabaseClient()
-				.sql(sql)
-				.bindValues(List.copyOf(subtaskIds))
-				.map(mapper::toStatusSummary)
-				.all();
-	}
-
-	@Override
-	public Mono<Void> updateStatus(BasicSummary basic, TaskStatusType status) {
 		return template.update(
 				Query.query(
-						Criteria.where("id").is(basic.getId())
-						.and(Criteria.where("version").is(basic.getVersion()))
+						Criteria.where("id").is(id)
+						.and(Criteria.where("version").is(version))
 						),
 				Update.from(Map.of(
 						SqlIdentifier.unquoted("status"), status,
-						SqlIdentifier.unquoted("version"), basic.getVersion()+1
+						SqlIdentifier.unquoted("version"), version+1
 						)),
 				Subtask.class
 				)
@@ -337,19 +253,27 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 	}
 
 	@Override
-	public Mono<Void> updateStatus(Collection<? extends BasicSummary> basics, TaskStatusType status) {
+	public Mono<Void> updateStatus(Collection<? extends BasicSummary<Integer>> basics, TaskStatusType status) {
 		if(basics.isEmpty()) return Mono.empty();
+		
+		boolean valid = basics.stream()
+				.allMatch(bs -> bs.getId().isPresent() && bs.getVersion().isPresent());
+		
+		if(!valid) throw new IllegalArgumentException("All the basic summaries must has present id and version");
 		
 		return Flux.fromIterable(basics)
 				.flatMap(b -> {
+					Integer id = b.getId().get();
+					Long version = b.getVersion().get();
+					
 					return template.update(
 							Query.query(
-									Criteria.where("id").is(b.getId())
-									.and(Criteria.where("version").is(b.getVersion()))
+									Criteria.where("id").is(id)
+									.and(Criteria.where("version").is(version))
 									),
 							Update.from(Map.of(
 									SqlIdentifier.unquoted("status"), status,
-									SqlIdentifier.unquoted("version"), b.getVersion()+1
+									SqlIdentifier.unquoted("version"), version+1L
 									)),
 							Subtask.class
 							)
@@ -361,6 +285,18 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				})
 				.then()
 				.as(getOperator()::transactional);
+	}
+	
+	@Override
+	public Mono<Void> updateStatusByTaskId(int taskId, TaskStatusType status) {
+		Query query = Query.query(Criteria.where("task_id").is(taskId));
+		
+		Update update = Update.from(Map.of(
+					SqlIdentifier.unquoted("status"), status
+				));
+		
+		return template.update(query, update, Subtask.class)
+				.then();
 	}
 	
 	@Override
@@ -379,6 +315,18 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.bindValues(List.copyOf(ids))
 				.map(row -> row.get(0, Long.class))
 				.one();
+	}
+	
+	@Override
+	public Flux<SubtaskSummary> findSummaryByIds(Collection<Integer> subtaskIds, Set<String> includedFields) {
+		Criteria criteria = Criteria.where("id").in(subtaskIds);
+		
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
+		
+		Query query = Query.query(criteria).columns(normalizedIncludedFields);
+		
+		return template.select(query, Subtask.class)
+				.map(st -> mapper.toSummary(st, normalizedIncludedFields));
 	}
 
 	@Override
@@ -419,6 +367,75 @@ public class SubtaskRepositoryImpl extends RepositoryCustomImpl implements Subta
 				.bind(0, taskId)
 				.map(row -> row.get(0, Long.class))
 				.one();
+	}
+	
+	private Set<String> normalizeIncludedFieldsForSQL(Set<String> includedFields) {
+		Set<String> normalizedIncludedFields = normalizeIncludedFields(includedFields);
+		
+		normalizedIncludedFields = normalizedIncludedFields.stream()
+				.map(f -> f.replaceAll("([a-z]([A-Z]))", "$1_$2").toLowerCase())
+				.map(f -> {
+					return f.equals("version")
+							? "row_version"
+							: f;
+				})
+				.collect(Collectors.toSet());
+		
+		return normalizedIncludedFields;
+	}
+	
+	private Set<String> normalizeIncludedFields(Set<String> includedFields) {
+		Set<String> normalizedIncludedFields = new LinkedHashSet<>();
+		normalizedIncludedFields.addAll(SubtaskSummary.REQUIRED_FIELDS);
+		
+		if(includedFields != null && includedFields.size() > 0) {
+			Set<String> filtedFields = includedFields.stream()
+					.map(String::trim)
+					.filter(SubtaskSummary.FIELDS::contains)
+					.collect(Collectors.toSet());
+			
+			normalizedIncludedFields.addAll(filtedFields);
+		}else {
+			normalizedIncludedFields.addAll(SubtaskSummary.FIELDS);
+		}
+		
+		
+		return normalizedIncludedFields;
+	}
+	
+	private Pageable normalizePropertiesOfPageable(Pageable pageable) {
+		if(pageable != null) {
+			Sort normalizedSort = normalizerPropertiesOfSort(pageable.getSort());
+			
+			return PageRequest.of(
+						pageable.getPageNumber(),
+						pageable.getPageSize(),
+						normalizedSort
+					);
+		}
+		
+		return null;
+	}
+	
+	private Sort normalizerPropertiesOfSort(Sort sort) {
+		Order[] orders = sort.stream()
+			 	.filter(o -> SubtaskSummary.FIELDS.contains(o.getProperty()))
+			 	.toArray(Order[]::new);
+		
+		return Sort.by(orders);
+	}
+	
+	private Criteria buildCriteriaWithContains(Criteria criteria, String contains) {
+		if(contains != null && !contains.isBlank()) {
+			String strLike = "%" + contains + "%";
+			
+			return criteria.and(
+						Criteria.where("name").like(strLike)
+						.or(Criteria.where("summary").like(strLike))
+					);
+		}
+		
+		return criteria;
 	}
 
 }

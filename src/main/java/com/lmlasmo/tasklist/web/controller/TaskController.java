@@ -1,5 +1,8 @@
 package com.lmlasmo.tasklist.web.controller;
 
+import java.util.Map;
+import java.util.Set;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
@@ -96,29 +99,30 @@ public class TaskController {
 	
 	@FindTasksApiDoc
 	@GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-	public Flux<TaskDTO> findAllByI(ETagHelper etagHelper,
+	public Flux<Map<String, Object>> findAllByI(ETagHelper etagHelper,
 			@PageableDefault(size = 50) Pageable pageable,
 			@RequestParam(value = "contains", required = false) @Size(max = 125) String contains,
 			@RequestParam(value = "status", required = false) TaskStatusType status,
-			@RequestParam(value = "fields", required = false) String... fields ) {
+			@RequestParam(value = "fields", required = false) Set<String> fields ) {
 		
 		return AuthenticatedTool.getUserId()
 				.flatMapMany(usid -> {
 					return etagHelper.checkEtag(et -> taskService.sumVersionByUser(usid, pageable, contains, status).map(s -> s.equals(et)))
-							.filter(Boolean::valueOf)
+							.filter(c -> !c)
 							.flatMapMany(c -> taskService.findByUser(usid, pageable, contains, status, fields))
-							.as(etagHelper::setEtag);
+							.as(etagHelper::setETagWithMap);
 				});
 	}
 	
 	@FindTaskApiDoc
 	@GetMapping(path = "/{taskId}", produces = MediaType.APPLICATION_JSON_VALUE)
-	public Mono<TaskDTO> findById(ETagHelper etagHelper, @PathVariable @Min(1) int taskId) {
+	public Mono<Map<String, Object>> findById(ETagHelper etagHelper, @PathVariable @Min(1) int taskId, 
+			@RequestParam(value = "fields", required = false) Set<String> fields) {
 		return resourceAccess.canAccess((u, r) -> r.canAccessTask(taskId, u))
 				.then(etagHelper.checkEtag(et -> taskService.existsByIdAndVersion(taskId, et)))
-				.filter(Boolean::valueOf)
-				.flatMap(c -> taskService.findById(taskId))
-				.as(etagHelper::setEtag);
+				.filter(c -> !c)
+				.flatMap(c -> taskService.findById(taskId, fields))
+				.as(etagHelper::setETagWithMap);
 	}
 	
 	@CountTasksApiDoc

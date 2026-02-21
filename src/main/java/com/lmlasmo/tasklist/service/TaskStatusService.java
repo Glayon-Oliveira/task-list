@@ -1,17 +1,18 @@
 package com.lmlasmo.tasklist.service;
 
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.stereotype.Service;
 
 import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
-import com.lmlasmo.tasklist.exception.TaskHasSubtasksException;
 import com.lmlasmo.tasklist.model.TaskStatusType;
 import com.lmlasmo.tasklist.repository.SubtaskRepository;
 import com.lmlasmo.tasklist.repository.TaskRepository;
 import com.lmlasmo.tasklist.repository.summary.SubtaskSummary;
 
 import lombok.AllArgsConstructor;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @AllArgsConstructor
@@ -22,32 +23,26 @@ public class TaskStatusService {
 	private SubtaskRepository subtaskRepository;
 	
 	public Mono<Void> updateTaskStatus(int taskId, TaskStatusType status) {
-		return taskRepository.findStatusSummaryById(taskId)
+		return taskRepository.findSummaryById(taskId, Set.of())
 				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Task not found for id " + taskId)))
-				.flatMap(t -> {
-					return subtaskRepository.countByTaskId(taskId)
-							.filter(l -> l == 0)
-							.switchIfEmpty(Mono.error(new TaskHasSubtasksException("Status of Task has subtasks is defined by subtasks")))
-							.thenReturn(t);
-				})
 				.flatMap(t -> taskRepository.updateStatus(t, status))
+				.flatMap(sts -> subtaskRepository.updateStatusByTaskId(taskId, status))
 				.as(m -> taskRepository.getOperator().transactional(m));
 	}
 	
 	public Mono<Void> updateSubtaskStatus(TaskStatusType status, List<Integer> subtaskIds) {
-		Mono<List<SubtaskSummary.StatusSummary>> statusSummaries = subtaskRepository.findStatusSummaryByIds(subtaskIds)
-				.collectList();
+		Flux<SubtaskSummary> statusSummaries = subtaskRepository.findSummaryByIds(subtaskIds, Set.of()).cache();
 		
 		Mono<Void> updateSummaries = statusSummaries
+				.collectList()
 				.filter(ss -> ss.size() == subtaskIds.size())
-				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Subtasks not found")))
+				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Some subtasks were not found")))
 				.flatMap(ss -> subtaskRepository.updateStatus(ss, status));
 		
 		Mono<Void> updateTask = statusSummaries
-				.flatMapIterable(ss -> ss)
-				.map(s -> s.getTaskId())
+				.map(s -> s.getTaskId().get())
 				.distinct()
-				.flatMap(i -> updateTaskStatus(i))
+				.flatMap(i -> updateTaskStatusFromExistingSubtaskStatus(i, status))
 				.then();
 		
 		return updateSummaries
@@ -55,17 +50,24 @@ public class TaskStatusService {
 				.as(m -> taskRepository.getOperator().transactional(m));
 	}
 	
-	private Mono<Void> updateTaskStatus(int taskId) {
-		return taskRepository.findStatusSummaryById(taskId)
-				.switchIfEmpty(Mono.error(new ResourceNotFoundException("Task not found for id " + taskId)))
+	private Mono<Void> updateTaskStatusFromExistingSubtaskStatus(int taskId, TaskStatusType status) {
+		return taskRepository.findSummaryById(taskId, Set.of())
 				.flatMap(t -> {
-					if(t.getStatus().equals(TaskStatusType.IN_PROGRESS)) {
-						return taskRepository.updateStatus(t, TaskStatusType.IN_PROGRESS);
-					}else if(t.getStatus().equals(TaskStatusType.COMPLETED)){
-						return taskRepository.updateStatus(t, TaskStatusType.COMPLETED);
-					}else {
-						return taskRepository.updateStatus(t, TaskStatusType.PENDING);
-					}
+					return assumeTaskStatusFromExistingSubtaskStatus(taskId, status)
+							.flatMap(ss -> taskRepository.updateStatus(t, ss))
+							.then();
+				});
+	}
+	
+	private Mono<TaskStatusType> assumeTaskStatusFromExistingSubtaskStatus(int taskId, TaskStatusType presentStatus) {
+		if(presentStatus == TaskStatusType.IN_PROGRESS) {
+			return Mono.just(TaskStatusType.IN_PROGRESS);
+		}
+		
+		return subtaskRepository.existsByTaskIdAndStatusNot(taskId, presentStatus)
+				.map(ed -> {
+					return ed ? TaskStatusType.IN_PROGRESS
+							 : presentStatus;
 				});
 	}
 

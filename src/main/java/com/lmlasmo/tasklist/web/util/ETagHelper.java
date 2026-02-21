@@ -1,5 +1,6 @@
 package com.lmlasmo.tasklist.web.util;
 
+import java.util.Map;
 import java.util.function.LongFunction;
 
 import org.springframework.lang.NonNull;
@@ -19,6 +20,14 @@ public class ETagHelper {
 	
 	public Mono<Boolean> checkEtag(LongFunction<Mono<Boolean>> check){
 		return ETagCheck.check(exchange, check);
+	}
+	
+	public Flux<Map<String, Object>> setETagWithMap(Flux<Map<String, Object>> body) {
+		return ETagWriter.setEtagWithMap(exchange, body);
+	}
+	
+	public Mono<Map<String, Object>> setETagWithMap(Mono<Map<String, Object>> body) {
+		return ETagWriter.setEtagWithMap(exchange, body);
 	}
 	
 	public <T extends VersionedDTO> Mono<T> setEtag(Mono<T> body) {

@@ -3,6 +3,7 @@ package com.lmlasmo.tasklist.service;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.util.Set;
 
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,7 +18,6 @@ import com.lmlasmo.tasklist.exception.ResourceNotFoundException;
 import com.lmlasmo.tasklist.mapper.UserMapper;
 import com.lmlasmo.tasklist.model.UserStatusType;
 import com.lmlasmo.tasklist.repository.UserRepository;
-import com.lmlasmo.tasklist.repository.summary.UserSummary.StatusSummary;
 import com.lmlasmo.tasklist.service.applier.UpdateUserApplier;
 
 import lombok.AllArgsConstructor;
@@ -96,24 +96,24 @@ public class UserService {
 	public Mono<Void> markUsersInactive(Duration expires) {
 		Instant after = OffsetDateTime.now().withSecond(0).withNano(0).minus(expires).toInstant();
 		
-		return repository.findStatusSummaryByStatusAndLastLoginAfter(UserStatusType.ACTIVE, after)
-				.map(StatusSummary::getId)
+		return repository.findSummaryByStatusAndLastLoginAfter(UserStatusType.ACTIVE, after, Set.of())
+				.map(ss -> ss.getId().get())
 				.collectList()
 				.flatMap(ids -> repository.changeStatusByIds(ids, UserStatusType.INACTIVE))
 				.then();
 	}
 	
 	public Mono<Void> markInactiveUsersForDeletion() {
-		return repository.findStatusSummaryByStatus(UserStatusType.INACTIVE)
-				.map(StatusSummary::getId)
+		return repository.findSummaryByStatus(UserStatusType.INACTIVE, Set.of())
+				.map(us -> us.getId().get())
 				.collectList()
 				.flatMap(ids -> repository.changeStatusByIds(ids, UserStatusType.DELETED))
 				.then();
 	}
 	
 	public Mono<Void> deleteUsersMarkedForDeletion() {
-		return repository.findStatusSummaryByStatus(UserStatusType.DELETED)
-				.map(StatusSummary::getId)
+		return repository.findSummaryByStatus(UserStatusType.DELETED, Set.of())
+				.map(us -> us.getId().get())				
 				.collectList()
 				.flatMap(ids -> repository.deleteAllById(ids))
 				.then();
