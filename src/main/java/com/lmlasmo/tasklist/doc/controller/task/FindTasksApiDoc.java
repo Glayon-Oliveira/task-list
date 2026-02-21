@@ -30,10 +30,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 					
 					status: Filters tasks by status.
 					contains: Specifies a string to search for in the name and summary fields.
-					fields: Filters which fields are included in the response. If empty, all fields
-						are returned. Some fields are automatically included in the response.
+					fields: Filters which fields are included in the response. If empty, only
+					 		required fields are returned. Some fields are automatically included 
+					 		in the response.
 					
-					Returns all tasks belonging to the authenticated user.
+					Returns the tasks belonging to the authenticated user.
 					""",
 		success = @StatusResponseApiDoc(status = 200, message = "Task list returned successfully")
 		)
