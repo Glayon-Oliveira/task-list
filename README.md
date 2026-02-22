@@ -1,104 +1,140 @@
-# Tasklist Project
+# Tasklist API
 
-- [Introduction](#introduction)
-- [How to Use](#how-to-use)
-  - [Docker](#docker)
-  - [Running Without Docker](#running-without-docker)
-- [OpenAPI](#openapi)
-- [Main Technologies](#main-technologies)
-- [About Deployment / Production](#about-deployment--production)
-- [License](#license)
+API RESTful reativa para gerenciamento de tarefas e subtarefas, com autenticação JWT, controle de acesso por usuário e arquitetura não-bloqueante baseada em Spring WebFlux.
 
-## Introduction
+Projeto desenvolvido com foco em boas práticas de segurança, arquitetura reativa e organização de domínio.
 
-This repository contains the implementation of a relatively simple task list web application built with Spring Boot.
-Its purpose is to serve as a study environment for experimenting with different technologies and implementation practices.
+---
 
-It offers the following features:
+## 🎯 Objetivos do Projeto
 
-- Security using JWT tokens with internally generated keys
-- Users and email support (without OAuth2)
-- Ordered tasks and subtasks
-- Optional support for ETag and request versioning
+- Implementar API REST reativa utilizando WebFlux
+- Aplicar autenticação segura com JWT (Access + Refresh Token)
+- Garantir isolamento de dados por usuário
+- Utilizar persistência reativa com R2DBC
+- Implementar cache com Caffeine e Redis
+- Aplicar paginação, ordenação e filtros dinâmicos
+- Documentação via OpenAPI
 
-## How to Use
+---
 
-### Docker
+## 🏗 Arquitetura e Stack
 
-You can use Docker to run the project. The repository includes a Dockerfile and two docker-compose files:
+### Backend
+- Spring Boot
+- Spring WebFlux (programação reativa)
+- Spring Security
+- Spring Data R2DBC
+- MySQL
 
-- **`docker-compose.yml`** — main configuration
-- **`docker-compose.override.yml`** — additional configuration for development
+### Cache
+- Caffeine (in-memory)
+- Redis (distribuído)
 
-Since an override file is present, you must explicitly specify the main compose file if you want to run it alone.
+### Testes
+- Spring Testcontainers
 
-Alternatively, you can use the `tasklist.sh` script, which simplifies working with both files.
+### Documentação
+- OpenAPI (Swagger)
 
-#### Docker Image
+---
 
-A prebuilt Docker image is also available for this project:
+## 🔐 Segurança
 
-```docker pull lmlasmo/tasklist:latest```
+- Autenticação baseada em JWT (Access Token + Refresh Token)
+- Chaves RSA geradas por instância
+- Controle de acesso por propriedade do recurso
+- Retorno 404 para recursos que não pertencem ao usuário
+- Apenas `/api/auth/**` é público
 
-This image is automatically updated from the `main` branch through a CI/CD pipeline configured with GitHub Actions.
-It always reflects the latest state of the project and can be used for quick testing, experimentation, or integration into other study environments.
+### Configuração via ambiente
 
-Although it is not intended for direct use in production, the image demonstrates a functional build and continuous delivery flow within a real pipeline.
+| Variável | Padrão |
+|----------|--------|
+| `APP_JWT_REFRESH_DURATION` | `24h` |
+| `APP_JWT_ACCESS_DURATION`  | `1h` |
+| `APP_JWT_ISSUER`           | `tasklist` |
 
-### Running Without Docker
+---
 
-If you prefer to run the application without Docker, make sure the required environment variables are configured — you can refer to the main `docker-compose.yml` or the `application.properties` file.
+## 🚀 Funcionalidades
 
-After that, you can start the application with:
+### 👤 Usuário
+- Cadastro com confirmação por email
+- Login com Access e Refresh Token
+- Renovação de token
+- Recuperação de senha
+- Gerenciamento de emails vinculados
+- Exclusão da própria conta
 
+### 📌 Tarefas
+- CRUD completo
+- Paginação e ordenação
+- Filtros por status
+- Busca por conteúdo
+- Seleção dinâmica de campos
+- Contagem total de registros
+
+Status possíveis:
+- `PENDING`
+- `IN_PROGRESS`
+- `COMPLETED`
+
+### 📎 Subtarefas
+- CRUD completo
+- Reordenação por posição (BEFORE / AFTER)
+- Atualização em lote de status
+- Paginação e filtros
+- Contagem total
+
+---
+
+## 🐳 Execução com Docker
+
+Produção:
+
+```bash
+docker compose -f docker-compose.yaml up
 ```
-./mvnw spring-boot:run
+
+Desenvolvimento:
+
+```bash
+docker compose up
 ```
 
-Or, directly using Maven:
+---
 
+## 📘 Documentação da API
+
+Ativar profile `doc`:
+
+```bash
+SPRING_PROFILES_ACTIVE=doc
 ```
-mvn clean install -DskipTests
-```
 
-## OpenAPI
-
-The project exposes OpenAPI documentation through the **doc** profile, which is disabled by default. To enable it, simply set the `SPRING_PROFILES_ACTIVE` environment variable.
-
-The development docker-compose file already enables this profile automatically.
-
-The documentation can be accessed at:
+Acessar:
 
 ```
 http://host:port/swagger-ui/index
 ```
 
-It includes a brief description of each endpoint.
+---
 
-## Main Technologies
+## 🧠 Conceitos Aplicados
 
-This project uses a set of technologies from the Spring ecosystem and supporting tools for building reactive APIs, security, persistence, and documentation:
+- Programação reativa e backpressure
+- Isolamento de domínio por usuário
+- Segurança stateless
+- Cache estratégico
+- Versionamento otimista
+- Arquitetura orientada a recursos
+- Separação clara entre camadas (security, domain, infra)
 
-- Spring Boot (3.5)
-- WebFlux
-- Spring Security + OAuth2 Resource Server
-- R2DBC
-- Flyway
-- MySQL — Execution environment
-- H2 — Testing environment
-- Spring Mail
-- MapStruct
-- Lombok
-- Springdoc OpenAPI (WebFlux UI)
-- Testing libraries
+---
 
-## About Deployment / Production
+## 📄 Licença
 
-The `docker-compose.yml` file provides the configuration closest to a production-like environment, including the database setup and essential environment variables.
+Projeto pessoal para fins de estudo e demonstração técnica.
 
-However, this project was not designed to be run directly in a production environment. Its purpose is to serve as a study-friendly and extensible foundation.
-
-## License
-
-This is a personal project and does not include a formal license.
-You are welcome to review the code, study it, and adapt ideas as needed, but there is no guarantee of support, maintenance, or suitability for commercial use.
+Sem garantia de suporte ou uso comercial.
